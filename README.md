@@ -1,2 +1,2 @@
-# sexpr
-S-Expressions in Go
+# scm
+Scheme in Go.
