@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"strings"
 	"unicode"
 )
 
@@ -66,10 +67,77 @@ func (p Point) Undefined() bool {
 
 // Token specifies an input token.
 type Token struct {
-	Type TokenType
-	From Point
-	To   Point
-	Bool bool
+	Type       TokenType
+	From       Point
+	To         Point
+	Identifier string
+	Bool       bool
+	Number     Number
+	Str        string
+}
+
+func (t *Token) String() string {
+	switch t.Type {
+	case TIdentifier:
+		return t.Identifier
+
+	case TBoolean:
+		var ch rune
+		if t.Bool {
+			ch = 't'
+		} else {
+			ch = 'f'
+		}
+		return fmt.Sprintf("#%c", ch)
+
+	case TNumber:
+		return fmt.Sprintf("%v", t.Number)
+
+	case TString:
+		var str strings.Builder
+		str.WriteRune('"')
+		for _, r := range t.Str {
+			switch r {
+			case '\\', '"', '|', '(':
+				str.WriteRune('\\')
+				str.WriteRune(r)
+			case '\a':
+				str.WriteRune('\\')
+				str.WriteRune('a')
+			case '\f':
+				str.WriteRune('\\')
+				str.WriteRune('f')
+			case '\n':
+				str.WriteRune('\\')
+				str.WriteRune('n')
+			case '\r':
+				str.WriteRune('\\')
+				str.WriteRune('r')
+			case '\t':
+				str.WriteRune('\\')
+				str.WriteRune('t')
+			case '\v':
+				str.WriteRune('\\')
+				str.WriteRune('v')
+			case '\b':
+				str.WriteRune('\\')
+				str.WriteRune('b')
+			case 0:
+				str.WriteRune('\\')
+				str.WriteRune('0')
+			default:
+				str.WriteRune(r)
+			}
+		}
+		str.WriteRune('"')
+		return str.String()
+
+	default:
+		if t.Type <= 0xff {
+			return fmt.Sprintf("%c", t.Type)
+		}
+		return t.Type.String()
+	}
 }
 
 // Lexer implement lexical analyser.
@@ -94,7 +162,13 @@ func NewLexer(source string, in io.Reader) *Lexer {
 			Line:   1,
 			Col:    0,
 		},
+		history: make(map[int][]rune),
 	}
+}
+
+func (l *Lexer) err(format string, a ...interface{}) error {
+	msg := fmt.Sprintf(format, a...)
+	return fmt.Errorf("%s: %s", l.point, msg)
 }
 
 // ReadRune reads the next input rune.
@@ -165,6 +239,12 @@ func (l *Lexer) Get() (*Token, error) {
 			continue
 		}
 		switch r {
+		case ';':
+			err = l.FlushEOL()
+			if err != nil {
+				return nil, err
+			}
+
 		case '(', ')', '\'', '`', ',', '.':
 			return l.Token(TokenType(r)), nil
 
@@ -182,14 +262,222 @@ func (l *Lexer) Get() (*Token, error) {
 				token.Bool = r == 't'
 				return token, nil
 
-				// i, e, b, o, d, x
+				// i, e
+
+			case 'b':
+				uval, err := l.parseDigit(2)
+				if err != nil {
+					return nil, err
+				}
+				token := l.Token(TNumber)
+				token.Number = NewNumber(2, uval)
+				return token, nil
+
+			case 'o':
+				uval, err := l.parseDigit(8)
+				if err != nil {
+					return nil, err
+				}
+				token := l.Token(TNumber)
+				token.Number = NewNumber(8, uval)
+				return token, nil
+
+			case 'd':
+				uval, err := l.parseDigit(10)
+				if err != nil {
+					return nil, err
+				}
+				token := l.Token(TNumber)
+				token.Number = NewNumber(10, uval)
+				return token, nil
+
+			case 'x':
+				uval, err := l.parseDigit(16)
+				if err != nil {
+					return nil, err
+				}
+				token := l.Token(TNumber)
+				token.Number = NewNumber(16, uval)
+				return token, nil
 
 			default:
 				l.UnreadRune()
 				return l.Token('#'), nil
 			}
+
+		case '"':
+			var str strings.Builder
+			for {
+				r, _, err := l.ReadRune()
+				if err != nil {
+					return nil, err
+				}
+				if r == '"' {
+					break
+				} else if r == '\\' {
+					r, _, err = l.ReadRune()
+					if err != nil {
+						return nil, err
+					}
+					switch r {
+					case '\\', '"', '|', '(':
+					case 'a':
+						r = '\a'
+					case 'f':
+						r = '\f'
+					case 'n':
+						r = '\n'
+					case 'r':
+						r = '\r'
+					case 't':
+						r = '\t'
+					case 'v':
+						r = '\v'
+					case 'b':
+						r = '\b'
+					case '0':
+						r = 0
+
+					default:
+						return nil, l.err("invalid escape: \\%c", r)
+					}
+				}
+				str.WriteRune(r)
+			}
+			token := l.Token(TString)
+			token.Str = str.String()
+			return token, nil
+
+		default:
+			if IsIdentifierInitial(r) {
+				id := []rune{r}
+				for {
+					r, _, err := l.ReadRune()
+					if err != nil {
+						if err == io.EOF {
+							break
+						}
+						return nil, err
+					}
+					if !IsIdentifierSubsequent(r) {
+						l.UnreadRune()
+						break
+					}
+					id = append(id, r)
+				}
+				token := l.Token(TIdentifier)
+				token.Identifier = string(id)
+				return token, nil
+			}
+			if IsDigit10(r) {
+				l.UnreadRune()
+				uval, err := l.parseDigit(10)
+				if err != nil {
+					return nil, err
+				}
+
+				token := l.Token(TNumber)
+				token.Number = NewNumber(0, uval)
+				return token, nil
+			}
 		}
 	}
+}
+
+func (l *Lexer) parseDigit(base uint64) (uint64, error) {
+	var result uint64
+	var count int
+
+	for {
+		r, _, err := l.ReadRune()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return 0, err
+		}
+		var done bool
+		var v uint64
+
+		switch base {
+		case 2:
+			if '0' <= r && r <= '1' {
+				v = uint64(r - '0')
+			} else {
+				done = true
+			}
+
+		case 8:
+			if '0' <= r && r <= '7' {
+				v = uint64(r - '0')
+			} else {
+				done = true
+			}
+
+		case 10:
+			if '0' <= r && r <= '9' {
+				v = uint64(r - '0')
+			} else {
+				done = true
+			}
+
+		case 16:
+			if '0' <= r && r <= '9' {
+				v = uint64(r - '0')
+			} else if 'a' <= r && r <= 'f' {
+				v = uint64(10 + r - 'a')
+			} else {
+				done = true
+			}
+
+		default:
+			return 0, l.err("invalid base %v", base)
+		}
+		if done {
+			l.UnreadRune()
+			break
+		}
+		result = result*base + v
+		count++
+	}
+	if count == 0 {
+		return 0, l.err("unexpected EOF")
+	}
+
+	return result, nil
+}
+
+// IsIdentifierInitial tests if the argument rune is a Scheme
+// identifier initial character.
+func IsIdentifierInitial(r rune) bool {
+	switch r {
+	// Special initial.
+	case '!', '$', '%', '&', '*', '/', ':', '<', '=', '>', '?', '~', '_', '^':
+		return true
+
+	default:
+		// Letter
+		return unicode.IsLetter(r)
+	}
+}
+
+// IsIdentifierSubsequent tests if the argument rune is a Scheme
+// identifier subsequent character.
+func IsIdentifierSubsequent(r rune) bool {
+	switch r {
+	// Special subsequent.
+	case '.', '+', '-':
+		return true
+
+	default:
+		// Digit or Identifier initial.
+		return IsDigit10(r) || IsIdentifierInitial(r)
+	}
+}
+
+// IsDigit10 tests if the rune is a 10-base digit.
+func IsDigit10(r rune) bool {
+	return '0' <= r && r <= '9'
 }
 
 // Unget pushes the token back to the lexer input stream. The next
