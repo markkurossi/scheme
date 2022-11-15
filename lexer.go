@@ -73,6 +73,7 @@ type Token struct {
 	Identifier string
 	Bool       bool
 	Number     Number
+	Char       rune
 	Str        string
 }
 
@@ -92,6 +93,9 @@ func (t *Token) String() string {
 
 	case TNumber:
 		return fmt.Sprintf("%v", t.Number)
+
+	case TCharacter:
+		return characterName(t.Char)
 
 	case TString:
 		var str strings.Builder
@@ -298,6 +302,38 @@ func (l *Lexer) Get() (*Token, error) {
 				}
 				token := l.Token(TNumber)
 				token.Number = NewNumber(16, uval)
+				return token, nil
+
+			case '\\':
+				var name []rune
+				for {
+					r, _, err = l.ReadRune()
+					if err != nil {
+						if err == io.EOF {
+							break
+						}
+						return nil, err
+					}
+					if unicode.IsSpace(r) {
+						if len(name) == 0 {
+							name = append(name, r)
+						} else {
+							l.UnreadRune()
+						}
+						break
+					} else if unicode.IsLetter(r) || unicode.IsDigit(r) {
+						name = append(name, r)
+					} else {
+						l.UnreadRune()
+						break
+					}
+				}
+				ch, err := lookupCharacter(name)
+				if err != nil {
+					return nil, err
+				}
+				token := l.Token(TCharacter)
+				token.Char = ch
 				return token, nil
 
 			default:
