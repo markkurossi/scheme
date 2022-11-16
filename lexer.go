@@ -83,58 +83,16 @@ func (t *Token) String() string {
 		return t.Identifier
 
 	case TBoolean:
-		var ch rune
-		if t.Bool {
-			ch = 't'
-		} else {
-			ch = 'f'
-		}
-		return fmt.Sprintf("#%c", ch)
+		return BooleanToScheme(t.Bool)
 
 	case TNumber:
 		return fmt.Sprintf("%v", t.Number)
 
 	case TCharacter:
-		return characterName(t.Char)
+		return CharacterToScheme(t.Char)
 
 	case TString:
-		var str strings.Builder
-		str.WriteRune('"')
-		for _, r := range t.Str {
-			switch r {
-			case '\\', '"', '|', '(':
-				str.WriteRune('\\')
-				str.WriteRune(r)
-			case '\a':
-				str.WriteRune('\\')
-				str.WriteRune('a')
-			case '\f':
-				str.WriteRune('\\')
-				str.WriteRune('f')
-			case '\n':
-				str.WriteRune('\\')
-				str.WriteRune('n')
-			case '\r':
-				str.WriteRune('\\')
-				str.WriteRune('r')
-			case '\t':
-				str.WriteRune('\\')
-				str.WriteRune('t')
-			case '\v':
-				str.WriteRune('\\')
-				str.WriteRune('v')
-			case '\b':
-				str.WriteRune('\\')
-				str.WriteRune('b')
-			case 0:
-				str.WriteRune('\\')
-				str.WriteRune('0')
-			default:
-				str.WriteRune(r)
-			}
-		}
-		str.WriteRune('"')
-		return str.String()
+		return StringToScheme(t.Str)
 
 	default:
 		if t.Type <= 0xff {
@@ -509,6 +467,11 @@ func IsIdentifierSubsequent(r rune) bool {
 		// Digit or Identifier initial.
 		return IsDigit10(r) || IsIdentifierInitial(r)
 	}
+}
+
+// IsDigit8 tests if the rune is a 8-base digit.
+func IsDigit8(r rune) bool {
+	return '0' <= r && r <= '8'
 }
 
 // IsDigit10 tests if the rune is a 10-base digit.

@@ -24,6 +24,11 @@ func NewNumber(base int, value interface{}) Number {
 	}
 }
 
+// Type returns the number value type.
+func (n Number) Type() ValueType {
+	return VNumber
+}
+
 func (n Number) String() string {
 	switch v := n.Value.(type) {
 	case uint64:

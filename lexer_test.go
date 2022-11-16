@@ -30,6 +30,8 @@ func TestLexer(t *testing.T) {
 			}
 			t.Fatalf("Lexer.Get: %v", err)
 		}
-		fmt.Printf("Token: %v\n", token)
+		if false {
+			fmt.Printf("Token: %v\n", token)
+		}
 	}
 }
