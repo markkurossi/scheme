@@ -70,22 +70,22 @@ func (p *Parser) Next() (Value, error) {
 			Name: t.Identifier,
 		}, nil
 
-	case TNumber:
-		return t.Number, nil
-
 	case TBoolean:
 		return &Boolean{
 			Bool: t.Bool,
 		}, nil
 
-	case TString:
-		return &String{
-			Str: t.Str,
-		}, nil
+	case TNumber:
+		return t.Number, nil
 
 	case TCharacter:
 		return &Character{
 			Char: t.Char,
+		}, nil
+
+	case TString:
+		return &String{
+			Str: t.Str,
 		}, nil
 
 	default:
