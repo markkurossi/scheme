@@ -30,6 +30,7 @@ const (
 	VCons ValueType = iota
 	VVector
 	VIdentifier
+	VKeyword
 	VNumber
 	VBoolean
 	VString

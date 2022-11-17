@@ -96,6 +96,9 @@ func (p *Parser) Next() (Value, error) {
 			Data: []byte(t.Str),
 		}, nil
 
+	case TKeyword:
+		return t.Keyword, nil
+
 	default:
 		return nil, fmt.Errorf("unexpected token: %v", t)
 	}

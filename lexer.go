@@ -26,6 +26,7 @@ const (
 	TString
 	THashLPar
 	TCommaAt
+	TKeyword
 )
 
 var tokenTypes = map[TokenType]string{
@@ -36,6 +37,7 @@ var tokenTypes = map[TokenType]string{
 	TString:     "string",
 	THashLPar:   "#(",
 	TCommaAt:    ",@",
+	TKeyword:    "keyword",
 }
 
 func (t TokenType) String() string {
@@ -47,6 +49,83 @@ func (t TokenType) String() string {
 		return fmt.Sprintf("%c", t)
 	}
 	return fmt.Sprintf("{TokenType %d}", t)
+}
+
+// Keyword defines a Scheme keyword.
+type Keyword int
+
+// Type returns the keyword type.
+func (kw Keyword) Type() ValueType {
+	return VKeyword
+}
+
+// Scheme returns the value as a Scheme string.
+func (kw Keyword) Scheme() string {
+	return kw.String()
+}
+
+func (kw Keyword) String() string {
+	name, ok := keywords[kw]
+	if ok {
+		return name
+	}
+	return fmt.Sprintf("{Keyword %d}", kw)
+}
+
+// Scheme keywords.
+const (
+	KwElse Keyword = iota
+	KwImplies
+	KwDefine
+	KwUnquote
+	KwUnquoteSplicing
+	KwQuote
+	KwLambda
+	KwIf
+	KwSet
+	KwBegin
+	KwCond
+	KwAnd
+	KwOr
+	KwCase
+	KwLet
+	KwLetStar
+	KwLetrec
+	KwDo
+	KwDelay
+	KwQuasiquote
+)
+
+var keywords = map[Keyword]string{
+	KwElse:            "else",
+	KwImplies:         "=>",
+	KwDefine:          "define",
+	KwUnquote:         "unquote",
+	KwUnquoteSplicing: "unquote-splicing",
+	KwQuote:           "quote",
+	KwLambda:          "lambda",
+	KwIf:              "if",
+	KwSet:             "set!",
+	KwBegin:           "begin",
+	KwCond:            "cond",
+	KwAnd:             "and",
+	KwOr:              "or",
+	KwCase:            "case",
+	KwLet:             "let",
+	KwLetStar:         "let*",
+	KwLetrec:          "letrec",
+	KwDo:              "do",
+	KwDelay:           "delay",
+	KwQuasiquote:      "quasiquote",
+}
+
+var keywordNames map[string]Keyword
+
+func init() {
+	keywordNames = make(map[string]Keyword)
+	for k, v := range keywords {
+		keywordNames[v] = k
+	}
 }
 
 // Point defines a position in the input data.
@@ -75,6 +154,7 @@ type Token struct {
 	Number     Number
 	Char       rune
 	Str        string
+	Keyword    Keyword
 }
 
 func (t *Token) String() string {
@@ -93,6 +173,9 @@ func (t *Token) String() string {
 
 	case TString:
 		return StringToScheme(t.Str)
+
+	case TKeyword:
+		return t.Keyword.String()
 
 	default:
 		if t.Type <= 0xff {
@@ -359,6 +442,14 @@ func (l *Lexer) Get() (*Token, error) {
 					}
 					id = append(id, r)
 				}
+				idName := string(id)
+				kw, ok := keywordNames[idName]
+				if ok {
+					token := l.Token(TKeyword)
+					token.Keyword = kw
+					return token, nil
+				}
+
 				token := l.Token(TIdentifier)
 				token.Identifier = string(id)
 				return token, nil
