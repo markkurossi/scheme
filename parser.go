@@ -8,11 +8,13 @@ package scm
 
 import (
 	"fmt"
+	"io"
 	"os"
 )
 
 // Parser implements S-expression parser.
 type Parser struct {
+	input io.ReadCloser
 	lexer *Lexer
 }
 
@@ -23,8 +25,14 @@ func NewParser(file string) (*Parser, error) {
 		return nil, err
 	}
 	return &Parser{
+		input: f,
 		lexer: NewLexer(file, f),
 	}, nil
+}
+
+// Close closes the parser input stream.
+func (p *Parser) Close() error {
+	return p.input.Close()
 }
 
 // Next parses the next value.

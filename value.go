@@ -19,6 +19,7 @@ var (
 	_ Value = &Boolean{}
 	_ Value = &String{}
 	_ Value = &Character{}
+	_ Value = &Lambda{}
 )
 
 // ValueType specifies value types.
@@ -33,11 +34,13 @@ const (
 	VBoolean
 	VString
 	VCharacter
+	VLambda
 )
 
 // Value implements a Scheme value.
 type Value interface {
 	Type() ValueType
+	Scheme() string
 }
 
 // Cons implements cons cell values.
@@ -49,6 +52,11 @@ type Cons struct {
 // Type returns the cons cell value type.
 func (v *Cons) Type() ValueType {
 	return VCons
+}
+
+// Scheme returns the value as a Scheme string.
+func (v *Cons) Scheme() string {
+	return v.String()
 }
 
 func (v *Cons) String() string {
@@ -64,7 +72,11 @@ loop:
 		} else {
 			str.WriteRune(' ')
 		}
-		str.WriteString(fmt.Sprintf("%v", i.Car))
+		if i.Car == nil {
+			str.WriteString("nil")
+		} else {
+			str.WriteString(i.Car.Scheme())
+		}
 		switch cdr := i.Cdr.(type) {
 		case *Cons:
 			i = cdr
@@ -93,6 +105,25 @@ func (v *Vector) Type() ValueType {
 	return VVector
 }
 
+// Scheme returns the value as a Scheme string.
+func (v *Vector) Scheme() string {
+	return v.String()
+}
+
+func (v *Vector) String() string {
+	var str strings.Builder
+	str.WriteString("#(")
+
+	for idx, el := range v.Elements {
+		if idx > 0 {
+			str.WriteRune(' ')
+		}
+		str.WriteString(fmt.Sprintf("%v", el))
+	}
+	str.WriteRune(')')
+	return str.String()
+}
+
 // Identifier implements identifier values.
 type Identifier struct {
 	Name   string
@@ -102,6 +133,11 @@ type Identifier struct {
 // Type returns the identifier value type.
 func (v *Identifier) Type() ValueType {
 	return VIdentifier
+}
+
+// Scheme returns the value as a Scheme string.
+func (v *Identifier) Scheme() string {
+	return v.String()
 }
 
 func (v *Identifier) String() string {
@@ -116,6 +152,11 @@ type Boolean struct {
 // Type returns the boolean value type.
 func (v *Boolean) Type() ValueType {
 	return VBoolean
+}
+
+// Scheme returns the value as a Scheme string.
+func (v *Boolean) Scheme() string {
+	return v.String()
 }
 
 func (v *Boolean) String() string {
@@ -143,8 +184,13 @@ func (v *String) Type() ValueType {
 	return VString
 }
 
-func (v *String) String() string {
+// Scheme returns the value as a Scheme string.
+func (v *String) Scheme() string {
 	return StringToScheme(v.Str)
+}
+
+func (v *String) String() string {
+	return v.Str
 }
 
 // StringToScheme returns the string as Scheme string literal.
@@ -198,6 +244,35 @@ func (v *Character) Type() ValueType {
 	return VCharacter
 }
 
-func (v *Character) String() string {
+// Scheme returns the value as a Scheme string.
+func (v *Character) Scheme() string {
 	return CharacterToScheme(v.Char)
 }
+
+func (v *Character) String() string {
+	return fmt.Sprintf("%c", v.Char)
+}
+
+// Lambda implements lambda values.
+type Lambda struct {
+	MinArgs int
+	MaxArgs int
+	Native  Native
+}
+
+// Type returns the lambda value type.
+func (v *Lambda) Type() ValueType {
+	return VLambda
+}
+
+// Scheme returns the value as a Scheme string.
+func (v *Lambda) Scheme() string {
+	return v.String()
+}
+
+func (v *Lambda) String() string {
+	return fmt.Sprintf("(lambda () {native})")
+}
+
+// Native implements native functions.
+type Native func(vm *VM, args []Value) (Value, error)

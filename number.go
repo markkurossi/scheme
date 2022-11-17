@@ -29,6 +29,11 @@ func (n Number) Type() ValueType {
 	return VNumber
 }
 
+// Scheme returns the value as a Scheme string.
+func (n Number) Scheme() string {
+	return n.String()
+}
+
 func (n Number) String() string {
 	switch v := n.Value.(type) {
 	case uint64:
