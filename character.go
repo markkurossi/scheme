@@ -12,6 +12,25 @@ import (
 	"unicode"
 )
 
+// Character implements character values.
+type Character struct {
+	Char rune
+}
+
+// Type returns the character value type.
+func (v *Character) Type() ValueType {
+	return VCharacter
+}
+
+// Scheme returns the value as a Scheme string.
+func (v *Character) Scheme() string {
+	return CharacterToScheme(v.Char)
+}
+
+func (v *Character) String() string {
+	return fmt.Sprintf("%c", v.Char)
+}
+
 var characters = map[string]rune{
 	"alarm":     0x0007,
 	"backspace": 0x0008,

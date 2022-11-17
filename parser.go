@@ -93,7 +93,7 @@ func (p *Parser) Next() (Value, error) {
 
 	case TString:
 		return &String{
-			Str: t.Str,
+			Data: []byte(t.Str),
 		}, nil
 
 	default:
