@@ -36,7 +36,7 @@ func (n Number) Scheme() string {
 
 func (n Number) String() string {
 	switch v := n.Value.(type) {
-	case uint64:
+	case uint64, int:
 		switch n.Base {
 		case 2:
 			return fmt.Sprintf("#b%b", v)
@@ -52,6 +52,6 @@ func (n Number) String() string {
 		}
 
 	default:
-		return fmt.Sprintf("{%v}", n.Value)
+		return fmt.Sprintf("{%v[%T]}", n.Value, v)
 	}
 }

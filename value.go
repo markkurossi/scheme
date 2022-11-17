@@ -179,6 +179,7 @@ type Lambda struct {
 	MinArgs int
 	MaxArgs int
 	Native  Native
+	Locals  []Value
 }
 
 // Type returns the lambda value type.
@@ -197,3 +198,11 @@ func (v *Lambda) String() string {
 
 // Native implements native functions.
 type Native func(vm *VM, args []Value) (Value, error)
+
+// Builtin defines a built-in native function.
+type Builtin struct {
+	Name    string
+	MinArgs int
+	MaxArgs int
+	Native  Native
+}

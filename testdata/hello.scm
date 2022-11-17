@@ -4,3 +4,5 @@
 
 (display "Hello, world!")
 (newline)
+
+(string-length "Hello, world!")

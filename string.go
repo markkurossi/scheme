@@ -7,6 +7,7 @@
 package scm
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -68,4 +69,21 @@ func StringToScheme(s string) string {
 	}
 	str.WriteRune('"')
 	return str.String()
+}
+
+var stringBuiltins = []Builtin{
+	{
+		Name:    "string-length",
+		MinArgs: 1,
+		MaxArgs: 1,
+		Native: func(vm *VM, args []Value) (Value, error) {
+			switch v := args[0].(type) {
+			case *String:
+				return NewNumber(0, len(v.Data)), nil
+
+			default:
+				return nil, fmt.Errorf("string-length: invalid argument")
+			}
+		},
+	},
 }

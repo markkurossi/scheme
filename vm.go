@@ -9,7 +9,6 @@ package scm
 import (
 	"fmt"
 	"io"
-	"math"
 )
 
 // Operand defines a Scheme bytecode instruction.
@@ -89,30 +88,29 @@ func NewVM() (*VM, error) {
 	vm := &VM{
 		symbols: make(map[string]*Identifier),
 	}
-	display := vm.Intern("display")
-	display.Global = &Lambda{
-		MinArgs: 1,
-		MaxArgs: math.MaxInt,
-		Native: func(vm *VM, args []Value) (Value, error) {
-			for idx, arg := range args {
-				if idx > 0 {
-					fmt.Print(" ")
-				}
-				fmt.Printf("%v", arg)
-			}
-			return nil, nil
-		},
-	}
 
-	newline := vm.Intern("newline")
-	newline.Global = &Lambda{
-		Native: func(vm *VM, args []Value) (Value, error) {
-			fmt.Println()
-			return nil, nil
-		},
-	}
+	vm.DefineBuiltins(outputBuiltins)
+	vm.DefineBuiltins(stringBuiltins)
 
 	return vm, nil
+}
+
+// DefineBuiltins defines the built-in functions, defined in the
+// argument array.
+func (vm *VM) DefineBuiltins(builtins []Builtin) {
+	for _, bi := range builtins {
+		vm.DefineBuiltin(bi.Name, bi.MinArgs, bi.MaxArgs, bi.Native)
+	}
+}
+
+// DefineBuiltin defines a built-in native function.
+func (vm *VM) DefineBuiltin(name string, minArgs, maxArgs int, native Native) {
+	sym := vm.Intern(name)
+	sym.Global = &Lambda{
+		MinArgs: minArgs,
+		MaxArgs: maxArgs,
+		Native:  native,
+	}
 }
 
 // EvalFile evaluates the scheme file.
@@ -215,6 +213,7 @@ func (vm *VM) addInstr(op Operand, v Value, i int) *Instr {
 // Execute runs the code.
 func (vm *VM) Execute(code Code) (Value, error) {
 
+	vm.pushFrame()
 	var err error
 
 	for {
@@ -232,9 +231,7 @@ func (vm *VM) Execute(code Code) (Value, error) {
 			vm.stack.Args[instr.I] = vm.accu
 
 		case OpNFrame:
-			f := &Frame{
-				Next: vm.stack,
-			}
+			f := vm.pushFrame()
 			switch ac := vm.accu.(type) {
 			case *Lambda:
 				f.Lambda = ac
@@ -245,11 +242,11 @@ func (vm *VM) Execute(code Code) (Value, error) {
 					return nil, fmt.Errorf("too many arguments")
 				}
 				f.Args = make([]Value, instr.I, instr.I)
+				f.Locals = ac.Locals
 
 			default:
 				return nil, fmt.Errorf("invalid function: %v", ac)
 			}
-			vm.stack = f
 
 		case OpCall:
 			lambda := vm.stack.Lambda
@@ -258,12 +255,13 @@ func (vm *VM) Execute(code Code) (Value, error) {
 				if err != nil {
 					return nil, err
 				}
-				vm.stack = vm.stack.Next
+				vm.popFrame()
 			} else {
 				return nil, fmt.Errorf("call: %v", lambda)
 			}
 
 		case OpHalt:
+			vm.popFrame()
 			return vm.accu, nil
 
 		default:
@@ -284,9 +282,22 @@ func (vm *VM) Intern(val string) *Identifier {
 	return id
 }
 
+func (vm *VM) pushFrame() *Frame {
+	f := &Frame{
+		Next: vm.stack,
+	}
+	vm.stack = f
+	return f
+}
+
+func (vm *VM) popFrame() {
+	vm.stack = vm.stack.Next
+}
+
 // Frame implements a VM stack frame.
 type Frame struct {
 	Next   *Frame
 	Lambda *Lambda
 	Args   []Value
+	Locals []Value
 }
