@@ -6,3 +6,7 @@
 (newline)
 
 (string-length "Hello, world!")
+
+(define (print msg)
+  (display msg)
+  (newline))

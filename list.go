@@ -6,12 +6,41 @@
 
 package scm
 
-// ListLength check if the argument cons cell is a valid Scheme list.
-func ListLength(cons *Cons) (int, bool) {
+import (
+	"errors"
+)
+
+// ErrorInvalidList is used to indicate when a malformed or otherwise
+// invalid list is passed to list functions.
+var ErrorInvalidList = errors.New("invalid list")
+
+// ListLength check if the argument value is a valid Scheme list.
+func ListLength(list Value) (int, bool) {
 	var count int
 
+	err := Map(func(v Value) error { count++; return nil }, list)
+	if err != nil {
+		return 0, false
+	}
+	return count, true
+}
+
+// Map maps function for each element of the list. The function
+// returns nil if the argument list is a list and map functions
+// returns nil for each of its element.
+func Map(f func(v Value) error, list Value) error {
+	if list == nil {
+		return nil
+	}
+	cons, ok := list.(*Cons)
+	if !ok {
+		return ErrorInvalidList
+	}
+
 	for cons != nil {
-		count++
+		if err := f(cons.Car); err != nil {
+			return err
+		}
 		switch cdr := cons.Cdr.(type) {
 		case *Cons:
 			cons = cdr
@@ -20,8 +49,32 @@ func ListLength(cons *Cons) (int, bool) {
 			cons = nil
 
 		default:
-			return 0, false
+			return ErrorInvalidList
 		}
 	}
-	return count, true
+	return nil
+}
+
+// Car returns the car element of the cons cell.
+func Car(consCell Value, ok bool) (Value, bool) {
+	if !ok {
+		return nil, false
+	}
+	cons, ok := consCell.(*Cons)
+	if !ok {
+		return nil, false
+	}
+	return cons.Car, true
+}
+
+// Cdr returns the cdr element of the cons cell.
+func Cdr(consCell Value, ok bool) (Value, bool) {
+	if !ok {
+		return nil, false
+	}
+	cons, ok := consCell.(*Cons)
+	if !ok {
+		return nil, false
+	}
+	return cons.Cdr, true
 }

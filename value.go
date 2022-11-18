@@ -15,6 +15,7 @@ var (
 	_ Value = &Cons{}
 	_ Value = &Vector{}
 	_ Value = &Identifier{}
+	_ Value = Keyword(0)
 	_ Value = &Number{}
 	_ Value = &Boolean{}
 	_ Value = &String{}

@@ -157,8 +157,17 @@ func (vm *VM) compileValue(value Value) error {
 			return fmt.Errorf("compile value: %v", v)
 		}
 
+		name, args, body, ok, err := isDefineFunc(v)
+		if err != nil {
+			return err
+		}
+		if ok {
+			fmt.Printf("(define (%s %v) %v\n", name, args, body)
+			break
+		}
+
 		// Compile function.
-		err := vm.compileValue(v.Car)
+		err = vm.compileValue(v.Car)
 		if err != nil {
 			return err
 		}
@@ -190,6 +199,9 @@ func (vm *VM) compileValue(value Value) error {
 		// XXX local vs. global
 		instr := vm.addInstr(OpGlobal, nil, 0)
 		instr.Sym = vm.Intern(v.Name)
+
+	case Keyword:
+		return fmt.Errorf("unexpected keyword: %s", v)
 
 	case *Boolean, *String, *Character, Number:
 		vm.addInstr(OpConst, v, 0)
@@ -300,4 +312,52 @@ type Frame struct {
 	Lambda *Lambda
 	Args   []Value
 	Locals []Value
+}
+
+func isDefineFunc(cons *Cons) (name *Identifier, args []*Identifier, body *Cons,
+	ok bool, err error) {
+
+	if !isKeyword(cons.Car, KwDefine) {
+		return
+	}
+
+	lst, ok := Car(Cdr(cons, true))
+	if !ok {
+		return
+	}
+	err = Map(func(v Value) error {
+		id, ok := v.(*Identifier)
+		if !ok {
+			return fmt.Errorf("lambda: arguments must be identifiers")
+		}
+		if name == nil {
+			name = id
+		} else {
+			args = append(args, id)
+		}
+		return nil
+	}, lst)
+	if err != nil {
+		return
+	}
+	if name == nil {
+		ok = false
+		return
+	}
+
+	lst, ok = Cdr(Cdr(cons, true))
+	if !ok {
+		return
+	}
+	body, ok = lst.(*Cons)
+
+	return
+}
+
+func isKeyword(value Value, keyword Keyword) bool {
+	kw, ok := value.(Keyword)
+	if !ok {
+		return false
+	}
+	return kw == keyword
 }
