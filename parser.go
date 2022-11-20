@@ -79,22 +79,16 @@ func (p *Parser) Next() (Value, error) {
 		}, nil
 
 	case TBoolean:
-		return &Boolean{
-			Bool: t.Bool,
-		}, nil
+		return Boolean(t.Bool), nil
 
 	case TNumber:
 		return t.Number, nil
 
 	case TCharacter:
-		return &Character{
-			Char: t.Char,
-		}, nil
+		return Character(t.Char), nil
 
 	case TString:
-		return &String{
-			Data: []byte(t.Str),
-		}, nil
+		return String([]byte(t.Str)), nil
 
 	case TKeyword:
 		return t.Keyword, nil

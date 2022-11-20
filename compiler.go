@@ -95,7 +95,7 @@ func (vm *VM) compileValue(value Value) error {
 	case Keyword:
 		return fmt.Errorf("unexpected keyword: %s", v)
 
-	case *Boolean, *String, *Character, Number:
+	case Boolean, String, Character, Number:
 		vm.addInstr(OpConst, v, 0)
 
 	default:

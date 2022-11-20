@@ -12,22 +12,20 @@ import (
 )
 
 // String implements string values.
-type String struct {
-	Data []byte
-}
+type String []byte
 
 // Type returns the string value type.
-func (v *String) Type() ValueType {
+func (v String) Type() ValueType {
 	return VString
 }
 
 // Scheme returns the value as a Scheme string.
-func (v *String) Scheme() string {
-	return StringToScheme(string(v.Data))
+func (v String) Scheme() string {
+	return StringToScheme(string(v))
 }
 
-func (v *String) String() string {
-	return string(v.Data)
+func (v String) String() string {
+	return string(v)
 }
 
 // StringToScheme returns the string as Scheme string literal.
@@ -78,8 +76,8 @@ var stringBuiltins = []Builtin{
 		MaxArgs: 1,
 		Native: func(vm *VM, args []Value) (Value, error) {
 			switch v := args[0].(type) {
-			case *String:
-				return NewNumber(0, len(v.Data)), nil
+			case String:
+				return NewNumber(0, len(v)), nil
 
 			default:
 				return nil, fmt.Errorf("string-length: invalid argument")

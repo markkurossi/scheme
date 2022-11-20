@@ -13,22 +13,20 @@ import (
 )
 
 // Character implements character values.
-type Character struct {
-	Char rune
-}
+type Character rune
 
 // Type returns the character value type.
-func (v *Character) Type() ValueType {
+func (v Character) Type() ValueType {
 	return VCharacter
 }
 
 // Scheme returns the value as a Scheme string.
-func (v *Character) Scheme() string {
-	return CharacterToScheme(v.Char)
+func (v Character) Scheme() string {
+	return CharacterToScheme(rune(v))
 }
 
-func (v *Character) String() string {
-	return fmt.Sprintf("%c", v.Char)
+func (v Character) String() string {
+	return fmt.Sprintf("%c", v)
 }
 
 var characters = map[string]rune{

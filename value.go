@@ -17,9 +17,9 @@ var (
 	_ Value = &Identifier{}
 	_ Value = Keyword(0)
 	_ Value = &Number{}
-	_ Value = &Boolean{}
+	_ Value = Boolean(true)
 	_ Value = &String{}
-	_ Value = &Character{}
+	_ Value = Character('@')
 	_ Value = &Lambda{}
 )
 
@@ -147,22 +147,20 @@ func (v *Identifier) String() string {
 }
 
 // Boolean implements boolean values.
-type Boolean struct {
-	Bool bool
-}
+type Boolean bool
 
 // Type returns the boolean value type.
-func (v *Boolean) Type() ValueType {
+func (v Boolean) Type() ValueType {
 	return VBoolean
 }
 
 // Scheme returns the value as a Scheme string.
-func (v *Boolean) Scheme() string {
+func (v Boolean) Scheme() string {
 	return v.String()
 }
 
-func (v *Boolean) String() string {
-	return BooleanToScheme(v.Bool)
+func (v Boolean) String() string {
+	return BooleanToScheme(bool(v))
 }
 
 // BooleanToScheme returns the bool as Scheme boolean literal.
