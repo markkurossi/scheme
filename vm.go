@@ -16,25 +16,37 @@ type Operand int
 // Bytecode instructions.
 const (
 	OpConst Operand = iota
+	OpDefine
+	OpLambda
+	OpLabel
 	OpLocal
 	OpGlobal
 	OpLocalSet
 	OpGlobalSet
+	OpPushF
+	OpPopF
 	OpPushS
 	OpPopS
 	OpCall
+	OpReturn
 	OpHalt
 )
 
 var operands = map[Operand]string{
 	OpConst:     "const",
+	OpDefine:    "define",
+	OpLambda:    "lambda",
+	OpLabel:     "label",
 	OpLocal:     "local",
 	OpGlobal:    "global",
 	OpLocalSet:  "local!",
 	OpGlobalSet: "global!",
+	OpPushF:     "pushf",
+	OpPopF:      "popf",
 	OpPushS:     "pushs",
 	OpPopS:      "pops",
 	OpCall:      "call",
+	OpReturn:    "return",
 	OpHalt:      "halt",
 }
 
@@ -57,20 +69,35 @@ type Instr struct {
 
 func (i Instr) String() string {
 	switch i.Op {
+	case OpLabel:
+		return fmt.Sprintf(".l%v:", i.I)
+
 	case OpConst:
-		return fmt.Sprintf("%s\t%v", i.Op, i.V)
+		str := fmt.Sprintf("\t%s\t", i.Op)
+		if i.V == nil {
+			str += fmt.Sprintf("%v", i.V)
+		} else {
+			str += i.V.Scheme()
+		}
+		return str
+
+	case OpPushF:
+		return fmt.Sprintf("\t%s\t%v", i.Op, i.I != 0)
 
 	case OpPushS:
-		return fmt.Sprintf("%s\t%v", i.Op, i.I)
+		return fmt.Sprintf("\t%s\t%v", i.Op, i.I)
+
+	case OpLambda:
+		return fmt.Sprintf("\t%s\tl%v:%v", i.Op, i.I, i.J)
 
 	case OpLocal, OpLocalSet:
-		return fmt.Sprintf("%s\t%v.%v", i.Op, i.I, i.J)
+		return fmt.Sprintf("\t%s\t%v.%v", i.Op, i.I, i.J)
 
-	case OpGlobal, OpGlobalSet:
-		return fmt.Sprintf("%s\t%v", i.Op, i.Sym)
+	case OpGlobal, OpGlobalSet, OpDefine:
+		return fmt.Sprintf("\t%s\t%v", i.Op, i.Sym)
 
 	default:
-		return fmt.Sprintf(i.Op.String())
+		return fmt.Sprintf("\t%s", i.Op.String())
 	}
 }
 
@@ -80,10 +107,22 @@ type Code []*Instr
 // VM implements a Scheme virtual machine.
 type VM struct {
 	compiled Code
-	pc       int
-	accu     Value
-	stack    *Frame
-	symbols  map[string]*Identifier
+	env      *Env
+	lambdas  []*LambdaBody
+
+	pc      int
+	fp      int
+	accu    Value
+	stack   [][]Value
+	symbols map[string]*Identifier
+}
+
+// LambdaBody defines the lambda body and its location in the compiled
+// bytecode.
+type LambdaBody struct {
+	Start int
+	End   int
+	Body  *Cons
 }
 
 // NewVM creates a new Scheme virtual machine.
@@ -123,7 +162,7 @@ func (vm *VM) EvalFile(file string) (Value, error) {
 		return nil, err
 	}
 	for _, c := range code {
-		fmt.Printf("\t%s\n", c)
+		fmt.Printf("%s\n", c)
 	}
 	return vm.Execute(code)
 }
@@ -131,10 +170,8 @@ func (vm *VM) EvalFile(file string) (Value, error) {
 // Execute runs the code.
 func (vm *VM) Execute(code Code) (Value, error) {
 
-	vm.pushFrame()
+	vm.pushFrame(nil, true)
 	var err error
-
-	var stack [][]Value
 
 	for {
 		instr := code[vm.pc]
@@ -144,45 +181,61 @@ func (vm *VM) Execute(code Code) (Value, error) {
 		case OpConst:
 			vm.accu = instr.V
 
+		case OpDefine:
+			fmt.Printf("%v := %v\n", instr.Sym, vm.accu)
+			instr.Sym.Global = vm.accu
+
+		case OpLambda:
+			vm.accu = &Lambda{
+				MinArgs: 1, // XXX
+				MaxArgs: 1, // XXX
+				Code:    vm.compiled[instr.I:instr.J],
+			}
+
 		case OpGlobal:
 			vm.accu = instr.Sym.Global
 
 		case OpLocalSet:
-			stack[instr.I][instr.J] = vm.accu
+			vm.stack[vm.fp+1+instr.I][instr.J] = vm.accu
+
+		case OpPushF:
+			// i.I != 0 for toplevel frames.
+			lambda, ok := vm.accu.(*Lambda)
+			if !ok {
+				return nil, fmt.Errorf("invalid function: %v", vm.accu)
+			}
+			vm.pushFrame(lambda, instr.I != 0)
 
 		case OpPushS:
-			stack = append(stack, make([]Value, instr.I, instr.I))
+			vm.pushScope(instr.I)
 
 		case OpCall:
-			frame := vm.pushFrame()
-			stackTop := len(stack) - 1
-			args := stack[stackTop]
+			frame, ok := vm.stack[vm.fp][0].(*Frame)
+			if !ok || frame.Lambda == nil {
+				return nil, fmt.Errorf("invalid function: %v", vm.accu)
+			}
+			lambda := frame.Lambda
 
-			switch ac := vm.accu.(type) {
-			case *Lambda:
-				frame.Lambda = ac
-				if len(args) < frame.Lambda.MinArgs {
-					return nil, fmt.Errorf("too few arguments")
-				}
-				if len(args) > frame.Lambda.MaxArgs {
-					return nil, fmt.Errorf("too many arguments")
-				}
+			stackTop := len(vm.stack) - 1
+			args := vm.stack[stackTop]
 
-			default:
-				return nil, fmt.Errorf("invalid function: %v", ac)
+			if len(args) < lambda.MinArgs {
+				return nil, fmt.Errorf("too few arguments")
+			}
+			if len(args) > lambda.MaxArgs {
+				return nil, fmt.Errorf("too many arguments")
 			}
 
-			lambda := vm.stack.Lambda
 			if lambda.Native != nil {
-				vm.accu, err = lambda.Native(vm, args)
+				vm.accu, err = frame.Lambda.Native(vm, args)
 				if err != nil {
 					return nil, err
 				}
-				vm.popFrame()
 			} else {
 				return nil, fmt.Errorf("call: %v", lambda)
 			}
-			stack = stack[:stackTop]
+
+			vm.popFrame()
 
 		case OpHalt:
 			vm.popFrame()
@@ -206,20 +259,66 @@ func (vm *VM) Intern(val string) *Identifier {
 	return id
 }
 
-func (vm *VM) pushFrame() *Frame {
-	f := &Frame{
-		Next: vm.stack,
+func (vm *VM) pushScope(size int) {
+	vm.stack = append(vm.stack, make([]Value, size, size))
+}
+
+func (vm *VM) popScope() {
+	vm.stack = vm.stack[:len(vm.stack)-1]
+}
+
+func (vm *VM) pushFrame(lambda *Lambda, toplevel bool) *Frame {
+	// Check that frame is valid.
+	if vm.fp < len(vm.stack) {
+		if len(vm.stack[vm.fp]) != 1 {
+			panic(fmt.Sprintf("invalid frame: %v", vm.stack[vm.fp]))
+		}
+		_, ok := vm.stack[vm.fp][0].(*Frame)
+		if !ok {
+			panic(fmt.Sprintf("invalid frame: %v", vm.stack[vm.fp][0]))
+		}
 	}
-	vm.stack = f
+
+	f := &Frame{
+		Lambda:   lambda,
+		Toplevel: toplevel,
+	}
+
+	f.Next = vm.fp
+	vm.fp = len(vm.stack)
+
+	vm.pushScope(1)
+	vm.stack[vm.fp][0] = f
+
 	return f
 }
 
 func (vm *VM) popFrame() {
-	vm.stack = vm.stack.Next
+	// Check that frame is valid.
+	if len(vm.stack[vm.fp]) != 1 {
+		panic(fmt.Sprintf("invalid frame: %v", vm.stack[vm.fp]))
+	}
+	frame, ok := vm.stack[vm.fp][0].(*Frame)
+	if !ok {
+		panic(fmt.Sprintf("invalid frame: %v", vm.stack[vm.fp][0]))
+	}
+	vm.stack = vm.stack[:vm.fp]
+	vm.fp = frame.Next
 }
 
 // Frame implements a VM call stack frame.
 type Frame struct {
-	Next   *Frame
-	Lambda *Lambda
+	Next     int
+	Lambda   *Lambda
+	Toplevel bool
+}
+
+// Scheme returns the value as a Scheme string.
+func (f *Frame) Scheme() string {
+	return f.String()
+}
+
+func (f *Frame) String() string {
+	return fmt.Sprintf("frame: next=%v, lambda=%v, toplevel=%v",
+		f.Next, f.Lambda, f.Toplevel)
 }

@@ -14,11 +14,6 @@ import (
 // String implements string values.
 type String []byte
 
-// Type returns the string value type.
-func (v String) Type() ValueType {
-	return VString
-}
-
 // Scheme returns the value as a Scheme string.
 func (v String) Scheme() string {
 	return StringToScheme(string(v))

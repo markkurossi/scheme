@@ -21,27 +21,12 @@ var (
 	_ Value = &String{}
 	_ Value = Character('@')
 	_ Value = &Lambda{}
-)
-
-// ValueType specifies value types.
-type ValueType int
-
-// Value types.
-const (
-	VCons ValueType = iota
-	VVector
-	VIdentifier
-	VKeyword
-	VNumber
-	VBoolean
-	VString
-	VCharacter
-	VLambda
+	_ Value = &Frame{}
 )
 
 // Value implements a Scheme value.
 type Value interface {
-	Type() ValueType
+	// Type() ValueType
 	Scheme() string
 }
 
@@ -49,11 +34,6 @@ type Value interface {
 type Cons struct {
 	Car Value
 	Cdr Value
-}
-
-// Type returns the cons cell value type.
-func (v *Cons) Type() ValueType {
-	return VCons
 }
 
 // Scheme returns the value as a Scheme string.
@@ -102,11 +82,6 @@ type Vector struct {
 	Elements []Value
 }
 
-// Type returns the vector value type.
-func (v *Vector) Type() ValueType {
-	return VVector
-}
-
 // Scheme returns the value as a Scheme string.
 func (v *Vector) Scheme() string {
 	return v.String()
@@ -132,11 +107,6 @@ type Identifier struct {
 	Global Value
 }
 
-// Type returns the identifier value type.
-func (v *Identifier) Type() ValueType {
-	return VIdentifier
-}
-
 // Scheme returns the value as a Scheme string.
 func (v *Identifier) Scheme() string {
 	return v.String()
@@ -148,11 +118,6 @@ func (v *Identifier) String() string {
 
 // Boolean implements boolean values.
 type Boolean bool
-
-// Type returns the boolean value type.
-func (v Boolean) Type() ValueType {
-	return VBoolean
-}
 
 // Scheme returns the value as a Scheme string.
 func (v Boolean) Scheme() string {
@@ -179,12 +144,8 @@ type Lambda struct {
 	MinArgs int
 	MaxArgs int
 	Native  Native
+	Code    Code
 	Locals  []Value
-}
-
-// Type returns the lambda value type.
-func (v *Lambda) Type() ValueType {
-	return VLambda
 }
 
 // Scheme returns the value as a Scheme string.
@@ -193,7 +154,10 @@ func (v *Lambda) Scheme() string {
 }
 
 func (v *Lambda) String() string {
-	return fmt.Sprintf("(lambda () {native})")
+	if v.Native != nil {
+		return fmt.Sprintf("(lambda () {native})")
+	}
+	return fmt.Sprintf("(lambda (%d-%d) %v)", v.MinArgs, v.MaxArgs, v.Code)
 }
 
 // Native implements native functions.

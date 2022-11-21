@@ -1,12 +1,12 @@
 ;;; Hello, world!
 
-#t
-
-(display "Hello, world!")
+(display "The length of \"Hello, world!\" is ")
+(display (string-length "Hello, world!"))
+(display ".")
 (newline)
 
-(string-length "Hello, world!")
-
-(define (print msg)
-  (display msg)
-  (newline))
+;; (define (print msg)
+;;   (display msg)
+;;   (newline))
+;;
+;; (print "Hello, lambda!")

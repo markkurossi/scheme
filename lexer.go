@@ -54,11 +54,6 @@ func (t TokenType) String() string {
 // Keyword defines a Scheme keyword.
 type Keyword int
 
-// Type returns the keyword type.
-func (kw Keyword) Type() ValueType {
-	return VKeyword
-}
-
 // Scheme returns the value as a Scheme string.
 func (kw Keyword) Scheme() string {
 	return kw.String()

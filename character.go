@@ -15,11 +15,6 @@ import (
 // Character implements character values.
 type Character rune
 
-// Type returns the character value type.
-func (v Character) Type() ValueType {
-	return VCharacter
-}
-
 // Scheme returns the value as a Scheme string.
 func (v Character) Scheme() string {
 	return CharacterToScheme(rune(v))

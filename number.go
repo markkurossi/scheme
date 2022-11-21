@@ -24,11 +24,6 @@ func NewNumber(base int, value interface{}) Number {
 	}
 }
 
-// Type returns the number value type.
-func (n Number) Type() ValueType {
-	return VNumber
-}
-
 // Scheme returns the value as a Scheme string.
 func (n Number) Scheme() string {
 	return n.String()

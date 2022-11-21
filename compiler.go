@@ -19,6 +19,9 @@ func (vm *VM) CompileFile(file string) (Code, error) {
 	}
 	defer parser.Close()
 
+	vm.compiled = nil
+	vm.env = &Env{}
+
 	for {
 		v, err := parser.Next()
 		if err != nil {
@@ -35,12 +38,36 @@ func (vm *VM) CompileFile(file string) (Code, error) {
 	}
 	vm.addInstr(OpHalt, nil, 0)
 
+	// Compile lambdas.
+	for _, lambda := range vm.lambdas {
+		// Lambda body starts after the label.
+		ofs := len(vm.compiled)
+		lambda.Start = ofs + 1
+		vm.addInstr(OpLabel, nil, lambda.Start)
+		err = Map(vm.compileValue, lambda.Body)
+		if err != nil {
+			return nil, err
+		}
+		vm.addInstr(OpReturn, nil, 0)
+		lambda.End = len(vm.compiled)
+	}
+
+	// Patch lambda code offsets.
+	for i := 0; i < len(vm.compiled); i++ {
+		instr := vm.compiled[i]
+
+		if instr.Op == OpLambda {
+			start := vm.lambdas[instr.I].Start
+			end := vm.lambdas[instr.I].End
+			instr.I = start
+			instr.J = end
+		}
+	}
+
 	return vm.compiled, nil
 }
 
 func (vm *VM) compileValue(value Value) error {
-	var stackDepth int
-
 	switch v := value.(type) {
 	case *Cons:
 		length, ok := ListLength(v)
@@ -48,16 +75,26 @@ func (vm *VM) compileValue(value Value) error {
 			return fmt.Errorf("compile value: %v", v)
 		}
 
-		name, args, body, ok, err := isDefineFunc(v)
+		ok, err := vm.compileDefineFunc(v)
 		if err != nil {
 			return err
 		}
 		if ok {
-			fmt.Printf("(define (%s %v) %v\n", name, args, body)
 			break
 		}
 
+		// Function call.
+
+		// Compile function.
+		err = vm.compileValue(v.Car)
+		if err != nil {
+			return err
+		}
+
 		// Create a call frame.
+		vm.addInstr(OpPushF, vm.accu, 0)
+
+		// Push argument scope.
 		vm.addInstr(OpPushS, nil, length-1)
 
 		// Evaluate arguments.
@@ -72,14 +109,8 @@ func (vm *VM) compileValue(value Value) error {
 				return err
 			}
 			li = cons.Cdr
-			instr := vm.addInstr(OpLocalSet, nil, stackDepth)
+			instr := vm.addInstr(OpLocalSet, nil, vm.env.Depth())
 			instr.J = j
-		}
-
-		// Compile function.
-		err = vm.compileValue(v.Car)
-		if err != nil {
-			return err
 		}
 
 		// Function call. XXX tail-call
@@ -114,8 +145,7 @@ func (vm *VM) addInstr(op Operand, v Value, i int) *Instr {
 	return instr
 }
 
-func isDefineFunc(cons *Cons) (name *Identifier, args []*Identifier, body *Cons,
-	ok bool, err error) {
+func (vm *VM) compileDefineFunc(cons *Cons) (ok bool, err error) {
 
 	if !isKeyword(cons.Car, KwDefine) {
 		return
@@ -125,6 +155,10 @@ func isDefineFunc(cons *Cons) (name *Identifier, args []*Identifier, body *Cons,
 	if !ok {
 		return
 	}
+
+	var name *Identifier
+	var args []*Identifier
+
 	err = Map(func(v Value) error {
 		id, ok := v.(*Identifier)
 		if !ok {
@@ -149,9 +183,49 @@ func isDefineFunc(cons *Cons) (name *Identifier, args []*Identifier, body *Cons,
 	if !ok {
 		return
 	}
-	body, ok = lst.(*Cons)
 
-	return
+	var body *Cons
+	body, ok = lst.(*Cons)
+	if !ok {
+		return
+	}
+	fmt.Printf("(define (%s %v) %s\n", name, args, body)
+
+	nameSym := vm.Intern(name.Name)
+	_, ok = vm.env.Lookup(name.Name)
+	if ok || nameSym.Global != nil {
+		return false, fmt.Errorf("symbol '%s' already defined", name.Name)
+	}
+
+	// Define arguments.
+	vm.env.PushFrame()
+	for _, arg := range args {
+		_, err = vm.env.Define(arg.Name)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	vm.env.PopFrame()
+
+	vm.addInstr(OpLambda, nil, len(vm.lambdas))
+	vm.lambdas = append(vm.lambdas, &LambdaBody{
+		Body: body,
+	})
+
+	if vm.env.Empty() {
+		instr := vm.addInstr(OpDefine, nil, 0)
+		instr.Sym = nameSym
+	} else {
+		b, err := vm.env.Define(name.Name)
+		if err != nil {
+			return false, err
+		}
+		instr := vm.addInstr(OpLocalSet, nil, b.Frame)
+		instr.J = b.Index
+	}
+
+	return true, nil
 }
 
 func isKeyword(value Value, keyword Keyword) bool {
@@ -160,4 +234,64 @@ func isKeyword(value Value, keyword Keyword) bool {
 		return false
 	}
 	return kw == keyword
+}
+
+// Env implements environment bindings.
+type Env struct {
+	Frames []EnvFrame
+}
+
+// Empty tests if the environment is empty.
+func (e *Env) Empty() bool {
+	return e.Depth() == 0
+}
+
+// Depth returns the depth of the environment.
+func (e *Env) Depth() int {
+	return len(e.Frames)
+}
+
+// PushFrame pushes an environment frame.
+func (e *Env) PushFrame() {
+	e.Frames = append(e.Frames, make(EnvFrame))
+}
+
+// PopFrame pops the topmost environment frame.
+func (e *Env) PopFrame() {
+	e.Frames = e.Frames[:len(e.Frames)-1]
+}
+
+// Define defines the named symbol in the environment.
+func (e *Env) Define(name string) (EnvBinding, error) {
+	top := len(e.Frames) - 1
+	_, ok := e.Frames[top][name]
+	if ok {
+		return EnvBinding{}, fmt.Errorf("symbol %s already defined", name)
+	}
+	b := EnvBinding{
+		Frame: top,
+		Index: len(e.Frames[top]),
+	}
+	e.Frames[top][name] = b
+	return b, nil
+}
+
+// Lookup finds the symbol from the environment.
+func (e *Env) Lookup(name string) (EnvBinding, bool) {
+	for i := len(e.Frames) - 1; i >= 0; i-- {
+		b, ok := e.Frames[i][name]
+		if ok {
+			return b, true
+		}
+	}
+	return EnvBinding{}, false
+}
+
+// EnvFrame implements an environment frame.
+type EnvFrame map[string]EnvBinding
+
+// EnvBinding defines symbol's location in the environment.
+type EnvBinding struct {
+	Frame int
+	Index int
 }
