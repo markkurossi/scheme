@@ -5,8 +5,9 @@
 (display ".")
 (newline)
 
-;; (define (print msg)
-;;   (display msg)
-;;   (newline))
-;;
-;; (print "Hello, lambda!")
+(define (print msg)
+  (display msg)
+  (newline))
+
+(print "Hello, lambda!")
+(print "Hello, world!")

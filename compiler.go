@@ -40,6 +40,15 @@ func (vm *VM) CompileFile(file string) (Code, error) {
 
 	// Compile lambdas.
 	for _, lambda := range vm.lambdas {
+		// Define arguments.
+		vm.env.PushFrame()
+		for _, arg := range lambda.Args {
+			_, err = vm.env.Define(arg.Name)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		// Lambda body starts after the label.
 		ofs := len(vm.compiled)
 		lambda.Start = ofs + 1
@@ -50,6 +59,8 @@ func (vm *VM) CompileFile(file string) (Code, error) {
 		}
 		vm.addInstr(OpReturn, nil, 0)
 		lambda.End = len(vm.compiled)
+
+		vm.env.PopFrame()
 	}
 
 	// Patch lambda code offsets.
@@ -93,9 +104,11 @@ func (vm *VM) compileValue(value Value) error {
 
 		// Create a call frame.
 		vm.addInstr(OpPushF, vm.accu, 0)
+		vm.env.PushFrame()
 
 		// Push argument scope.
 		vm.addInstr(OpPushS, nil, length-1)
+		vm.env.PushFrame()
 
 		// Evaluate arguments.
 		li := v.Cdr
@@ -109,9 +122,15 @@ func (vm *VM) compileValue(value Value) error {
 				return err
 			}
 			li = cons.Cdr
-			instr := vm.addInstr(OpLocalSet, nil, vm.env.Depth())
+			instr := vm.addInstr(OpLocalSet, nil, vm.env.Depth()-1)
 			instr.J = j
 		}
+
+		// Pop argument scope.
+		vm.env.PopFrame()
+
+		// Pop call frame.
+		vm.env.PopFrame()
 
 		// Function call. XXX tail-call
 		vm.addInstr(OpCall, nil, 0)
@@ -119,9 +138,14 @@ func (vm *VM) compileValue(value Value) error {
 		return nil
 
 	case *Identifier:
-		// XXX local vs. global
-		instr := vm.addInstr(OpGlobal, nil, 0)
-		instr.Sym = vm.Intern(v.Name)
+		b, ok := vm.env.Lookup(v.Name)
+		if ok {
+			instr := vm.addInstr(OpLocal, nil, b.Frame)
+			instr.J = b.Index
+		} else {
+			instr := vm.addInstr(OpGlobal, nil, 0)
+			instr.Sym = vm.Intern(v.Name)
+		}
 
 	case Keyword:
 		return fmt.Errorf("unexpected keyword: %s", v)
@@ -189,7 +213,6 @@ func (vm *VM) compileDefineFunc(cons *Cons) (ok bool, err error) {
 	if !ok {
 		return
 	}
-	fmt.Printf("(define (%s %v) %s\n", name, args, body)
 
 	nameSym := vm.Intern(name.Name)
 	_, ok = vm.env.Lookup(name.Name)
@@ -197,19 +220,9 @@ func (vm *VM) compileDefineFunc(cons *Cons) (ok bool, err error) {
 		return false, fmt.Errorf("symbol '%s' already defined", name.Name)
 	}
 
-	// Define arguments.
-	vm.env.PushFrame()
-	for _, arg := range args {
-		_, err = vm.env.Define(arg.Name)
-		if err != nil {
-			return false, err
-		}
-	}
-
-	vm.env.PopFrame()
-
 	vm.addInstr(OpLambda, nil, len(vm.lambdas))
 	vm.lambdas = append(vm.lambdas, &LambdaBody{
+		Args: args,
 		Body: body,
 	})
 

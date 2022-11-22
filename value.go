@@ -157,7 +157,8 @@ func (v *Lambda) String() string {
 	if v.Native != nil {
 		return fmt.Sprintf("(lambda () {native})")
 	}
-	return fmt.Sprintf("(lambda (%d-%d) %v)", v.MinArgs, v.MaxArgs, v.Code)
+
+	return fmt.Sprintf("(lambda (%d-%d) ...)", v.MinArgs, v.MaxArgs)
 }
 
 // Native implements native functions.

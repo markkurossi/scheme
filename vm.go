@@ -122,6 +122,7 @@ type VM struct {
 type LambdaBody struct {
 	Start int
 	End   int
+	Args  []*Identifier
 	Body  *Cons
 }
 
@@ -170,7 +171,9 @@ func (vm *VM) EvalFile(file string) (Value, error) {
 // Execute runs the code.
 func (vm *VM) Execute(code Code) (Value, error) {
 
-	vm.pushFrame(nil, true)
+	frame := vm.pushFrame(nil, true)
+	vm.fp = frame.Index
+
 	var err error
 
 	for {
@@ -182,7 +185,6 @@ func (vm *VM) Execute(code Code) (Value, error) {
 			vm.accu = instr.V
 
 		case OpDefine:
-			fmt.Printf("%v := %v\n", instr.Sym, vm.accu)
 			instr.Sym.Global = vm.accu
 
 		case OpLambda:
@@ -192,11 +194,18 @@ func (vm *VM) Execute(code Code) (Value, error) {
 				Code:    vm.compiled[instr.I:instr.J],
 			}
 
+		case OpLocal:
+			vm.accu = vm.stack[vm.fp+1+instr.I][instr.J]
+
 		case OpGlobal:
 			vm.accu = instr.Sym.Global
 
 		case OpLocalSet:
+			// fmt.Printf("*** local! I=%v, J=%v\n", instr.I, instr.J)
+			// vm.printStack()
 			vm.stack[vm.fp+1+instr.I][instr.J] = vm.accu
+			// fmt.Printf(" =>\n")
+			// vm.printStack()
 
 		case OpPushF:
 			// i.I != 0 for toplevel frames.
@@ -210,14 +219,14 @@ func (vm *VM) Execute(code Code) (Value, error) {
 			vm.pushScope(instr.I)
 
 		case OpCall:
-			frame, ok := vm.stack[vm.fp][0].(*Frame)
-			if !ok || frame.Lambda == nil {
-				return nil, fmt.Errorf("invalid function: %v", vm.accu)
-			}
-			lambda := frame.Lambda
-
 			stackTop := len(vm.stack) - 1
 			args := vm.stack[stackTop]
+
+			callFrame, ok := vm.stack[stackTop-1][0].(*Frame)
+			if !ok || callFrame.Lambda == nil {
+				return nil, fmt.Errorf("invalid function: %v", vm.accu)
+			}
+			lambda := callFrame.Lambda
 
 			if len(args) < lambda.MinArgs {
 				return nil, fmt.Errorf("too few arguments")
@@ -226,15 +235,31 @@ func (vm *VM) Execute(code Code) (Value, error) {
 				return nil, fmt.Errorf("too many arguments")
 			}
 
+			// Set fp form the call.
+			vm.fp = stackTop - 1
+
 			if lambda.Native != nil {
-				vm.accu, err = frame.Lambda.Native(vm, args)
+				vm.accu, err = callFrame.Lambda.Native(vm, args)
 				if err != nil {
 					return nil, err
 				}
+				vm.popFrame()
 			} else {
-				return nil, fmt.Errorf("call: %v", lambda)
+				// Save current excursion.
+				callFrame.PC = vm.pc
+				callFrame.Code = code
+
+				code = lambda.Code
+				vm.pc = 0
 			}
 
+		case OpReturn:
+			frame, ok := vm.stack[vm.fp][0].(*Frame)
+			if !ok {
+				return nil, fmt.Errorf("invalid function: %v", vm.accu)
+			}
+			vm.pc = frame.PC
+			code = frame.Code
 			vm.popFrame()
 
 		case OpHalt:
@@ -280,15 +305,16 @@ func (vm *VM) pushFrame(lambda *Lambda, toplevel bool) *Frame {
 	}
 
 	f := &Frame{
+		Index:    len(vm.stack),
 		Lambda:   lambda,
 		Toplevel: toplevel,
 	}
 
 	f.Next = vm.fp
-	vm.fp = len(vm.stack)
+	// vm.fp = len(vm.stack)
 
 	vm.pushScope(1)
-	vm.stack[vm.fp][0] = f
+	vm.stack[f.Index][0] = f
 
 	return f
 }
@@ -308,8 +334,11 @@ func (vm *VM) popFrame() {
 
 // Frame implements a VM call stack frame.
 type Frame struct {
+	Index    int
 	Next     int
 	Lambda   *Lambda
+	PC       int
+	Code     Code
 	Toplevel bool
 }
 
@@ -321,4 +350,14 @@ func (f *Frame) Scheme() string {
 func (f *Frame) String() string {
 	return fmt.Sprintf("frame: next=%v, lambda=%v, toplevel=%v",
 		f.Next, f.Lambda, f.Toplevel)
+}
+
+func (vm *VM) printStack() {
+	for i := len(vm.stack) - 1; i >= 0; i-- {
+		if vm.fp == i {
+			fmt.Printf("%7d>%v\n", i, vm.stack[i])
+		} else {
+			fmt.Printf("%7d %v\n", i, vm.stack[i])
+		}
+	}
 }
