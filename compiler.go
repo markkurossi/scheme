@@ -90,7 +90,14 @@ func (vm *VM) compileValue(value Value) error {
 			return fmt.Errorf("compile value: %v", v)
 		}
 
-		ok, err := vm.compileDefineFunc(v)
+		ok, err := vm.compileDefine(v, length)
+		if err != nil {
+			return err
+		}
+		if ok {
+			break
+		}
+		ok, err = vm.compileDefineFunc(v)
 		if err != nil {
 			return err
 		}
@@ -173,6 +180,55 @@ func (vm *VM) addInstr(op Operand, v Value, i int) *Instr {
 	return instr
 }
 
+func (vm *VM) compileDefine(cons *Cons, length int) (ok bool, err error) {
+	if length != 3 {
+		return
+	}
+	if !isKeyword(cons.Car, KwDefine) {
+		return
+	}
+	name, ok := isIdentifier(Car(Cdr(cons, true)))
+	if !ok {
+		return
+	}
+
+	v, ok := Car(Cdr(Cdr(cons, true)))
+	if !ok {
+		return
+	}
+	err = vm.compileValue(v)
+	if err != nil {
+		return
+	}
+
+	err = vm.define(name.Name)
+	if err != nil {
+		return
+	}
+	return true, nil
+}
+
+func (vm *VM) define(name string) error {
+	nameSym := vm.Intern(name)
+	_, ok := vm.env.Lookup(name)
+	if ok || nameSym.Global != nil {
+		return fmt.Errorf("symbol '%v' already defined", name)
+	}
+
+	if vm.env.Empty() {
+		instr := vm.addInstr(OpDefine, nil, 0)
+		instr.Sym = nameSym
+	} else {
+		b, err := vm.env.Define(name)
+		if err != nil {
+			return err
+		}
+		instr := vm.addInstr(OpLocalSet, nil, b.Frame)
+		instr.J = b.Index
+	}
+	return nil
+}
+
 func (vm *VM) compileDefineFunc(cons *Cons) (ok bool, err error) {
 
 	if !isKeyword(cons.Car, KwDefine) {
@@ -218,28 +274,15 @@ func (vm *VM) compileDefineFunc(cons *Cons) (ok bool, err error) {
 		return
 	}
 
-	nameSym := vm.Intern(name.Name)
-	_, ok = vm.env.Lookup(name.Name)
-	if ok || nameSym.Global != nil {
-		return false, fmt.Errorf("symbol '%s' already defined", name.Name)
-	}
-
 	vm.addInstr(OpLambda, nil, len(vm.lambdas))
 	vm.lambdas = append(vm.lambdas, &LambdaBody{
 		Args: args,
 		Body: body,
 	})
 
-	if vm.env.Empty() {
-		instr := vm.addInstr(OpDefine, nil, 0)
-		instr.Sym = nameSym
-	} else {
-		b, err := vm.env.Define(name.Name)
-		if err != nil {
-			return false, err
-		}
-		instr := vm.addInstr(OpLocalSet, nil, b.Frame)
-		instr.J = b.Index
+	err = vm.define(name.Name)
+	if err != nil {
+		return
 	}
 
 	return true, nil
@@ -251,6 +294,14 @@ func isKeyword(value Value, keyword Keyword) bool {
 		return false
 	}
 	return kw == keyword
+}
+
+func isIdentifier(value Value, ok bool) (*Identifier, bool) {
+	if !ok {
+		return nil, ok
+	}
+	id, ok := value.(*Identifier)
+	return id, ok
 }
 
 // Env implements environment bindings.
