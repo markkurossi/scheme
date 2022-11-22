@@ -66,9 +66,8 @@ func StringToScheme(s string) string {
 
 var stringBuiltins = []Builtin{
 	{
-		Name:    "string-length",
-		MinArgs: 1,
-		MaxArgs: 1,
+		Name: "string-length",
+		Args: []string{"string"},
 		Native: func(vm *VM, args []Value) (Value, error) {
 			switch v := args[0].(type) {
 			case String:

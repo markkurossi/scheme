@@ -8,14 +8,12 @@ package scm
 
 import (
 	"fmt"
-	"math"
 )
 
 var outputBuiltins = []Builtin{
 	{
-		Name:    "display",
-		MinArgs: 1,
-		MaxArgs: math.MaxInt,
+		Name: "display",
+		Args: []string{"obj", "[port]"},
 		Native: func(vm *VM, args []Value) (Value, error) {
 			for idx, arg := range args {
 				if idx > 0 {
@@ -28,6 +26,7 @@ var outputBuiltins = []Builtin{
 	},
 	{
 		Name: "newline",
+		Args: []string{"[port]"},
 		Native: func(vm *VM, args []Value) (Value, error) {
 			fmt.Println()
 			return nil, nil

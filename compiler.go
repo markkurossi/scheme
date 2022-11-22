@@ -68,10 +68,14 @@ func (vm *VM) CompileFile(file string) (Code, error) {
 		instr := vm.compiled[i]
 
 		if instr.Op == OpLambda {
-			start := vm.lambdas[instr.I].Start
-			end := vm.lambdas[instr.I].End
-			instr.I = start
-			instr.J = end
+			def := vm.lambdas[instr.I]
+			instr.V = &Lambda{
+				MinArgs: len(def.Args),
+				MaxArgs: len(def.Args),
+				Args:    def.Args,
+				Code:    vm.compiled[def.Start:def.End],
+				Body:    def.Body,
+			}
 		}
 	}
 

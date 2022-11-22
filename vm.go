@@ -142,14 +142,29 @@ func NewVM() (*VM, error) {
 // argument array.
 func (vm *VM) DefineBuiltins(builtins []Builtin) {
 	for _, bi := range builtins {
-		vm.DefineBuiltin(bi.Name, bi.MinArgs, bi.MaxArgs, bi.Native)
+		vm.DefineBuiltin(bi.Name, bi.Args, bi.Native)
 	}
 }
 
 // DefineBuiltin defines a built-in native function.
-func (vm *VM) DefineBuiltin(name string, minArgs, maxArgs int, native Native) {
+func (vm *VM) DefineBuiltin(name string, args []string, native Native) {
+
+	var minArgs, maxArgs int
+	var usage []*Identifier
+
+	for _, arg := range args {
+		usage = append(usage, &Identifier{
+			Name: arg,
+		})
+		maxArgs++
+		if arg[0] != '[' {
+			minArgs++
+		}
+	}
+
 	sym := vm.Intern(name)
 	sym.Global = &Lambda{
+		Args:    usage,
 		MinArgs: minArgs,
 		MaxArgs: maxArgs,
 		Native:  native,
@@ -188,11 +203,7 @@ func (vm *VM) Execute(code Code) (Value, error) {
 			instr.Sym.Global = vm.accu
 
 		case OpLambda:
-			vm.accu = &Lambda{
-				MinArgs: 1, // XXX
-				MaxArgs: 1, // XXX
-				Code:    vm.compiled[instr.I:instr.J],
-			}
+			vm.accu = instr.V
 
 		case OpLocal:
 			vm.accu = vm.stack[vm.fp+1+instr.I][instr.J]

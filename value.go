@@ -143,9 +143,11 @@ func BooleanToScheme(v bool) string {
 type Lambda struct {
 	MinArgs int
 	MaxArgs int
+	Args    []*Identifier
+	Locals  []Value
 	Native  Native
 	Code    Code
-	Locals  []Value
+	Body    *Cons
 }
 
 // Scheme returns the value as a Scheme string.
@@ -154,11 +156,29 @@ func (v *Lambda) Scheme() string {
 }
 
 func (v *Lambda) String() string {
-	if v.Native != nil {
-		return fmt.Sprintf("(lambda () {native})")
-	}
+	var str strings.Builder
 
-	return fmt.Sprintf("(lambda (%d-%d) ...)", v.MinArgs, v.MaxArgs)
+	str.WriteString("(lambda (")
+	for idx, arg := range v.Args {
+		if idx > 0 {
+			str.WriteRune(' ')
+		}
+		str.WriteString(arg.Name)
+	}
+	str.WriteRune(')')
+
+	if v.Native != nil {
+		str.WriteString(" {native}")
+	} else {
+		Map(func(v Value) error {
+			str.WriteRune(' ')
+			str.WriteString(fmt.Sprintf("%v", v))
+			return nil
+		}, v.Body)
+	}
+	str.WriteRune(')')
+
+	return str.String()
 }
 
 // Native implements native functions.
@@ -167,6 +187,7 @@ type Native func(vm *VM, args []Value) (Value, error)
 // Builtin defines a built-in native function.
 type Builtin struct {
 	Name    string
+	Args    []string
 	MinArgs int
 	MaxArgs int
 	Native  Native
