@@ -58,11 +58,11 @@ func Map(f func(v Value) error, list Value) error {
 // Car returns the car element of the cons cell.
 func Car(consCell Value, ok bool) (Value, bool) {
 	if !ok {
-		return nil, false
+		return consCell, false
 	}
 	cons, ok := consCell.(*Cons)
 	if !ok {
-		return nil, false
+		return consCell, false
 	}
 	return cons.Car, true
 }
@@ -70,11 +70,11 @@ func Car(consCell Value, ok bool) (Value, bool) {
 // Cdr returns the cdr element of the cons cell.
 func Cdr(consCell Value, ok bool) (Value, bool) {
 	if !ok {
-		return nil, false
+		return consCell, false
 	}
 	cons, ok := consCell.(*Cons)
 	if !ok {
-		return nil, false
+		return consCell, false
 	}
 	return cons.Cdr, true
 }

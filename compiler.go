@@ -94,6 +94,9 @@ func (vm *VM) compileValue(value Value) error {
 		if isKeyword(v.Car, KwDefine) {
 			return vm.compileDefine(v, length)
 		}
+		if isKeyword(v.Car, KwSet) {
+			return vm.compileSet(v, length)
+		}
 
 		// Function call.
 
@@ -172,7 +175,7 @@ func (vm *VM) addInstr(op Operand, v Value, i int) *Instr {
 
 func (vm *VM) compileDefine(cons *Cons, length int) error {
 	// (define name value)
-	name, ok := isIdentifier(Car(Cdr(cons, true)))
+	name, _, ok := isIdentifier(Car(Cdr(cons, true)))
 	if ok {
 		if length != 3 {
 			return fmt.Errorf("syntax error: %v", cons)
@@ -261,6 +264,37 @@ func (vm *VM) define(name string) error {
 	return nil
 }
 
+func (vm *VM) compileSet(cons *Cons, length int) error {
+	// (set! name value)
+	if length != 3 {
+		return fmt.Errorf("syntax error: %v", cons)
+	}
+	name, nameV, ok := isIdentifier(Car(Cdr(cons, true)))
+	if !ok {
+		return fmt.Errorf("set!: expected variable name: %v", nameV)
+	}
+	v, ok := Car(Cdr(Cdr(cons, true)))
+	if !ok {
+		return fmt.Errorf("syntax error: %v", cons)
+	}
+	err := vm.compileValue(v)
+	if err != nil {
+		return err
+	}
+
+	nameSym := vm.Intern(name.Name)
+	b, ok := vm.env.Lookup(name.Name)
+	if ok {
+		instr := vm.addInstr(OpLocalSet, nil, b.Frame)
+		instr.J = b.Index
+	} else {
+		instr := vm.addInstr(OpGlobalSet, nil, 0)
+		instr.Sym = nameSym
+	}
+
+	return nil
+}
+
 func isKeyword(value Value, keyword Keyword) bool {
 	kw, ok := value.(Keyword)
 	if !ok {
@@ -269,12 +303,12 @@ func isKeyword(value Value, keyword Keyword) bool {
 	return kw == keyword
 }
 
-func isIdentifier(value Value, ok bool) (*Identifier, bool) {
+func isIdentifier(value Value, ok bool) (*Identifier, Value, bool) {
 	if !ok {
-		return nil, ok
+		return nil, value, ok
 	}
 	id, ok := value.(*Identifier)
-	return id, ok
+	return id, value, ok
 }
 
 // Env implements environment bindings.

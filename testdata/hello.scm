@@ -13,4 +13,6 @@
 (print "Hello, world!")
 
 (define msg "Hello, msg!")
+(set! msg "Hello, set!")
+
 (print msg)

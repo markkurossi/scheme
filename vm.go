@@ -218,6 +218,12 @@ func (vm *VM) Execute(code Code) (Value, error) {
 			// fmt.Printf(" =>\n")
 			// vm.printStack()
 
+		case OpGlobalSet:
+			if instr.Sym.Global == nil {
+				return nil, fmt.Errorf("undefined symbol '%s'", instr.Sym.Name)
+			}
+			instr.Sym.Global = vm.accu
+
 		case OpPushF:
 			// i.I != 0 for toplevel frames.
 			lambda, ok := vm.accu.(*Lambda)
