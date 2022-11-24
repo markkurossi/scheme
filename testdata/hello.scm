@@ -5,12 +5,12 @@
 ;; (display ".")
 ;; (newline)
 ;;
-;; (define (print msg)
-;;   (display msg)
-;;   (newline))
-;;
-;; (print "Hello, lambda!")
-;; (print "Hello, world!")
+(define (print msg)
+  (display msg)
+  (newline))
+
+(print "Hello, lambda!")
+(print "Hello, world!")
 ;;
 ;; (define msg "Hello, msg!")
 ;; (set! msg "Hello, set!")
@@ -24,3 +24,7 @@
    msg))
 
 (say "Hello, world!")
+
+(lambda (msg)
+  (display msg)
+  (newline))

@@ -97,7 +97,7 @@ func (vm *VM) compileValue(value Value) error {
 			return vm.compileDefine(v, length)
 		}
 		if isKeyword(v.Car, KwLambda) {
-			return vm.compileLambda(v, length)
+			return vm.compileLambda(false, v, length)
 		}
 		if isKeyword(v.Car, KwSet) {
 			return vm.compileSet(v, length)
@@ -197,55 +197,7 @@ func (vm *VM) compileDefine(cons *Cons, length int) error {
 	}
 
 	// (define (name args?) body)
-
-	lst, ok := Car(Cdr(cons, true))
-	if !ok {
-		return fmt.Errorf("syntax error: %v", cons)
-	}
-	_, ok = ListLength(lst)
-	if !ok {
-		return fmt.Errorf("syntax error: %v", cons)
-	}
-
-	var args []*Identifier
-
-	err := Map(func(v Value) error {
-		id, ok := v.(*Identifier)
-		if !ok {
-			return fmt.Errorf("lambda: arguments must be identifiers")
-		}
-		if name == nil {
-			name = id
-		} else {
-			args = append(args, id)
-		}
-		return nil
-	}, lst)
-	if err != nil {
-		return err
-	}
-	if name == nil {
-		return fmt.Errorf("function name not define")
-	}
-
-	lst, ok = Cdr(Cdr(cons, true))
-	if !ok {
-		return fmt.Errorf("invalid function body")
-	}
-
-	var body *Cons
-	body, ok = lst.(*Cons)
-	if !ok {
-		return fmt.Errorf("invalid function body")
-	}
-
-	vm.addInstr(OpLambda, nil, len(vm.lambdas))
-	vm.lambdas = append(vm.lambdas, &LambdaBody{
-		Args: args,
-		Body: body,
-	})
-
-	return vm.define(name.Name)
+	return vm.compileLambda(true, cons, length)
 }
 
 func (vm *VM) define(name string) error {
@@ -269,8 +221,9 @@ func (vm *VM) define(name string) error {
 	return nil
 }
 
-func (vm *VM) compileLambda(cons *Cons, length int) error {
-	// (lambda (args) body)
+func (vm *VM) compileLambda(define bool, cons *Cons, length int) error {
+	// (define (name args?) body)
+	// (lambda (args?) body)
 	lst, ok := Car(Cdr(cons, true))
 	if !ok {
 		return fmt.Errorf("syntax error: %v", cons)
@@ -280,6 +233,7 @@ func (vm *VM) compileLambda(cons *Cons, length int) error {
 		return fmt.Errorf("syntax error: %v", cons)
 	}
 
+	var name *Identifier
 	var args []*Identifier
 
 	err := Map(func(v Value) error {
@@ -287,11 +241,18 @@ func (vm *VM) compileLambda(cons *Cons, length int) error {
 		if !ok {
 			return fmt.Errorf("lambda: arguments must be identifiers")
 		}
-		args = append(args, id)
+		if define && name == nil {
+			name = id
+		} else {
+			args = append(args, id)
+		}
 		return nil
 	}, lst)
 	if err != nil {
 		return err
+	}
+	if define && name == nil {
+		return fmt.Errorf("function name not define")
 	}
 
 	lst, ok = Cdr(Cdr(cons, true))
@@ -310,6 +271,9 @@ func (vm *VM) compileLambda(cons *Cons, length int) error {
 		Args: args,
 		Body: body,
 	})
+	if define {
+		return vm.define(name.Name)
+	}
 
 	return nil
 }
