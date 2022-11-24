@@ -206,13 +206,15 @@ func (vm *VM) Execute(code Code) (Value, error) {
 			vm.accu = instr.V
 
 		case OpLocal:
+			// fmt.Printf("*** local: %v.%v\n", vm.fp+1+instr.I, instr.J)
+			// vm.printStack()
 			vm.accu = vm.stack[vm.fp+1+instr.I][instr.J]
 
 		case OpGlobal:
 			vm.accu = instr.Sym.Global
 
 		case OpLocalSet:
-			// fmt.Printf("*** local! I=%v, J=%v\n", instr.I, instr.J)
+			// fmt.Printf("*** local! I=%v, J=%v\n", vm.fp+1+instr.I, instr.J)
 			// vm.printStack()
 			vm.stack[vm.fp+1+instr.I][instr.J] = vm.accu
 			// fmt.Printf(" =>\n")

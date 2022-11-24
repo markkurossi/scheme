@@ -39,7 +39,9 @@ func (vm *VM) CompileFile(file string) (Code, error) {
 	vm.addInstr(OpHalt, nil, 0)
 
 	// Compile lambdas.
-	for _, lambda := range vm.lambdas {
+	for i := 0; i < len(vm.lambdas); i++ {
+		lambda := vm.lambdas[i]
+
 		// Define arguments.
 		vm.env.PushFrame()
 		for _, arg := range lambda.Args {
@@ -93,6 +95,9 @@ func (vm *VM) compileValue(value Value) error {
 		}
 		if isKeyword(v.Car, KwDefine) {
 			return vm.compileDefine(v, length)
+		}
+		if isKeyword(v.Car, KwLambda) {
+			return vm.compileLambda(v, length)
 		}
 		if isKeyword(v.Car, KwSet) {
 			return vm.compileSet(v, length)
@@ -191,7 +196,7 @@ func (vm *VM) compileDefine(cons *Cons, length int) error {
 		return vm.define(name.Name)
 	}
 
-	// (define (args) body)
+	// (define (name args?) body)
 
 	lst, ok := Car(Cdr(cons, true))
 	if !ok {
@@ -261,6 +266,51 @@ func (vm *VM) define(name string) error {
 		instr := vm.addInstr(OpLocalSet, nil, b.Frame)
 		instr.J = b.Index
 	}
+	return nil
+}
+
+func (vm *VM) compileLambda(cons *Cons, length int) error {
+	// (lambda (args) body)
+	lst, ok := Car(Cdr(cons, true))
+	if !ok {
+		return fmt.Errorf("syntax error: %v", cons)
+	}
+	_, ok = ListLength(lst)
+	if !ok {
+		return fmt.Errorf("syntax error: %v", cons)
+	}
+
+	var args []*Identifier
+
+	err := Map(func(v Value) error {
+		id, ok := v.(*Identifier)
+		if !ok {
+			return fmt.Errorf("lambda: arguments must be identifiers")
+		}
+		args = append(args, id)
+		return nil
+	}, lst)
+	if err != nil {
+		return err
+	}
+
+	lst, ok = Cdr(Cdr(cons, true))
+	if !ok {
+		return fmt.Errorf("invalid function body")
+	}
+
+	var body *Cons
+	body, ok = lst.(*Cons)
+	if !ok {
+		return fmt.Errorf("invalid function body")
+	}
+
+	vm.addInstr(OpLambda, nil, len(vm.lambdas))
+	vm.lambdas = append(vm.lambdas, &LambdaBody{
+		Args: args,
+		Body: body,
+	})
+
 	return nil
 }
 
