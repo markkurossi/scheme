@@ -96,7 +96,8 @@ type Lambda struct {
 	MinArgs int
 	MaxArgs int
 	Args    []*Identifier
-	Locals  []Value
+	Capture int
+	Locals  [][]Value
 	Native  Native
 	Code    Code
 	Body    Pair

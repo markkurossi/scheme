@@ -9,6 +9,7 @@ package scm
 import (
 	"fmt"
 	"io"
+	"sort"
 )
 
 // CompileFile compiles the Scheme file.
@@ -20,7 +21,7 @@ func (vm *VM) CompileFile(file string) (Code, error) {
 	defer parser.Close()
 
 	vm.compiled = nil
-	vm.env = &Env{}
+	vm.env = NewEnv()
 
 	for {
 		v, err := parser.Next()
@@ -42,14 +43,7 @@ func (vm *VM) CompileFile(file string) (Code, error) {
 	for i := 0; i < len(vm.lambdas); i++ {
 		lambda := vm.lambdas[i]
 
-		// Define arguments.
-		vm.env.PushFrame()
-		for _, arg := range lambda.Args {
-			_, err = vm.env.Define(arg.Name)
-			if err != nil {
-				return nil, err
-			}
-		}
+		vm.env = lambda.Env
 
 		// Lambda body starts after the label.
 		ofs := len(vm.compiled)
@@ -62,7 +56,7 @@ func (vm *VM) CompileFile(file string) (Code, error) {
 		vm.addInstr(OpReturn, nil, 0)
 		lambda.End = len(vm.compiled)
 
-		vm.env.PopFrame()
+		vm.env = nil
 	}
 
 	// Patch lambda code offsets.
@@ -79,6 +73,7 @@ func (vm *VM) CompileFile(file string) (Code, error) {
 				Args:    def.Args,
 				Code:    vm.compiled[def.Start:def.End],
 				Body:    def.Body,
+				Capture: def.Env.Depth() - 1,
 			}
 		}
 	}
@@ -266,10 +261,40 @@ func (vm *VM) compileLambda(define bool, pair Pair, length int) error {
 		return fmt.Errorf("invalid function body")
 	}
 
+	// The environment (below) is converted to lambda capture:
+	//
+	//     0: let-frame-m           0: let-frame-m
+	//        ...                      ...
+	//   n-1: let-frame-0         n-2: let-frame-0
+	//     n: ctx-function-args   n-1: ctx-function-args
+	//							    n: lambda-args
+	//
+	// And the final lambda environment (scope) is as follows (the
+	// lambda args are pushed to the top of the environment):
+	//
+	//     0: lambda-args
+	//     1: let-frame-m
+	//        ...
+	//   n-1: let-frame-0
+	//     n: ctx-function-args
+
+	env := NewEnv()
+
+	env.PushFrame()
+	for _, arg := range args {
+		_, err = env.Define(arg.Name)
+		if err != nil {
+			return err
+		}
+	}
+	env.Push(vm.env)
+	env.ShiftDown()
+
 	vm.addInstr(OpLambda, nil, len(vm.lambdas))
 	vm.lambdas = append(vm.lambdas, &LambdaBody{
 		Args: args,
 		Body: body,
+		Env:  env,
 	})
 	if define {
 		return vm.define(name.Name)
@@ -325,9 +350,37 @@ func isIdentifier(value Value, ok bool) (*Identifier, Value, bool) {
 	return id, value, ok
 }
 
+// LambdaBody defines the lambda body and its location in the compiled
+// bytecode.
+type LambdaBody struct {
+	Start int
+	End   int
+	Args  []*Identifier
+	Body  Pair
+	Env   *Env
+}
+
 // Env implements environment bindings.
 type Env struct {
 	Frames []EnvFrame
+}
+
+// NewEnv creates a new empty environment.
+func NewEnv() *Env {
+	return &Env{}
+}
+
+// Print prints the environment to standard output.
+func (e *Env) Print() {
+	fmt.Printf("Env:    depth=%v\n", len(e.Frames))
+	for i := len(e.Frames) - 1; i >= 0; i-- {
+		fmt.Printf("%7d", i)
+		for k, v := range e.Frames[i] {
+			fmt.Printf(" %v=%d.%d", k, v.Frame, v.Index)
+		}
+		fmt.Println()
+	}
+	fmt.Printf("-------\n")
 }
 
 // Empty tests if the environment is empty.
@@ -348,6 +401,17 @@ func (e *Env) PushFrame() {
 // PopFrame pops the topmost environment frame.
 func (e *Env) PopFrame() {
 	e.Frames = e.Frames[:len(e.Frames)-1]
+}
+
+// ShiftDown shifts the environment frames down. The bottom-most
+// elements goes to the top of the env.
+func (e *Env) ShiftDown() {
+	if len(e.Frames) < 2 {
+		return
+	}
+	bottom := e.Frames[0]
+	e.Frames = e.Frames[1:]
+	e.Frames = append(e.Frames, bottom)
 }
 
 // Define defines the named symbol in the environment.
@@ -374,6 +438,25 @@ func (e *Env) Lookup(name string) (EnvBinding, bool) {
 		}
 	}
 	return EnvBinding{}, false
+}
+
+// Push pushes the frames of the argument environment to the top of
+// this environment.
+func (e *Env) Push(o *Env) {
+	for _, frame := range o.Frames {
+		var names []string
+		for k := range frame {
+			names = append(names, k)
+		}
+		sort.Slice(names, func(i, j int) bool {
+			return frame[names[i]].Index < frame[names[j]].Index
+		})
+
+		e.PushFrame()
+		for _, name := range names {
+			e.Define(name)
+		}
+	}
 }
 
 // EnvFrame implements an environment frame.

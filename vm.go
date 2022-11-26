@@ -117,15 +117,6 @@ type VM struct {
 	symbols map[string]*Identifier
 }
 
-// LambdaBody defines the lambda body and its location in the compiled
-// bytecode.
-type LambdaBody struct {
-	Start int
-	End   int
-	Args  []*Identifier
-	Body  Pair
-}
-
 // NewVM creates a new Scheme virtual machine.
 func NewVM() (*VM, error) {
 	vm := &VM{
@@ -203,7 +194,23 @@ func (vm *VM) Execute(code Code) (Value, error) {
 			instr.Sym.Global = vm.accu
 
 		case OpLambda:
-			vm.accu = instr.V
+			tmpl, ok := instr.V.(*Lambda)
+			if !ok {
+				return nil, fmt.Errorf("lambda: invalid argument: %V", instr.V)
+			}
+			lambda := &Lambda{
+				MinArgs: tmpl.MinArgs,
+				MaxArgs: tmpl.MaxArgs,
+				Args:    tmpl.Args,
+				Capture: tmpl.Capture,
+				Native:  tmpl.Native,
+				Code:    tmpl.Code,
+				Body:    tmpl.Body,
+			}
+			for i := len(vm.stack) - tmpl.Capture; i < len(vm.stack); i++ {
+				lambda.Locals = append(lambda.Locals, vm.stack[i])
+			}
+			vm.accu = lambda
 
 		case OpLocal:
 			// fmt.Printf("*** local: %v.%v\n", vm.fp+1+instr.I, instr.J)
@@ -254,7 +261,7 @@ func (vm *VM) Execute(code Code) (Value, error) {
 				return nil, fmt.Errorf("too many arguments")
 			}
 
-			// Set fp form the call.
+			// Set fp for the call.
 			vm.fp = stackTop - 1
 
 			if lambda.Native != nil {
@@ -264,6 +271,12 @@ func (vm *VM) Execute(code Code) (Value, error) {
 				}
 				vm.popFrame()
 			} else {
+				if len(lambda.Locals) > 0 {
+					for _, frame := range lambda.Locals {
+						vm.stack = append(vm.stack, frame)
+					}
+				}
+
 				// Save current excursion.
 				callFrame.PC = vm.pc
 				callFrame.Code = code
@@ -330,7 +343,6 @@ func (vm *VM) pushFrame(lambda *Lambda, toplevel bool) *Frame {
 	}
 
 	f.Next = vm.fp
-	// vm.fp = len(vm.stack)
 
 	vm.pushScope(1)
 	vm.stack[f.Index][0] = f
