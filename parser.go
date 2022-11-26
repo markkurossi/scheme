@@ -43,7 +43,7 @@ func (p *Parser) Next() (Value, error) {
 	}
 	switch t.Type {
 	case '(':
-		var list, cursor *Cons
+		var list, cursor Pair
 		for {
 			t, err = p.lexer.Get()
 			if err != nil {
@@ -60,15 +60,11 @@ func (p *Parser) Next() (Value, error) {
 			}
 
 			if cursor == nil {
-				cursor = &Cons{
-					Car: v,
-				}
+				cursor = NewLocationPair(t.From, v, nil)
 				list = cursor
 			} else {
-				cdr := &Cons{
-					Car: v,
-				}
-				cursor.Cdr = cdr
+				cdr := NewLocationPair(t.From, v, nil)
+				cursor.SetCdr(cdr)
 				cursor = cdr
 			}
 		}

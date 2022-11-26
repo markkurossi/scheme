@@ -12,7 +12,6 @@ import (
 )
 
 var (
-	_ Value = &Cons{}
 	_ Value = &Vector{}
 	_ Value = &Identifier{}
 	_ Value = Keyword(0)
@@ -28,53 +27,6 @@ var (
 type Value interface {
 	// Type() ValueType
 	Scheme() string
-}
-
-// Cons implements cons cell values.
-type Cons struct {
-	Car Value
-	Cdr Value
-}
-
-// Scheme returns the value as a Scheme string.
-func (v *Cons) Scheme() string {
-	return v.String()
-}
-
-func (v *Cons) String() string {
-	var str strings.Builder
-	str.WriteRune('(')
-
-	i := v
-	first := true
-loop:
-	for {
-		if first {
-			first = false
-		} else {
-			str.WriteRune(' ')
-		}
-		if i.Car == nil {
-			str.WriteString("nil")
-		} else {
-			str.WriteString(i.Car.Scheme())
-		}
-		switch cdr := i.Cdr.(type) {
-		case *Cons:
-			i = cdr
-
-		case nil:
-			break loop
-
-		default:
-			str.WriteString(" . ")
-			str.WriteString(fmt.Sprintf("%v", i.Cdr))
-			break loop
-		}
-	}
-	str.WriteRune(')')
-
-	return str.String()
 }
 
 // Vector implements vector values.
@@ -147,7 +99,7 @@ type Lambda struct {
 	Locals  []Value
 	Native  Native
 	Code    Code
-	Body    *Cons
+	Body    Pair
 }
 
 // Scheme returns the value as a Scheme string.

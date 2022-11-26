@@ -123,7 +123,7 @@ type LambdaBody struct {
 	Start int
 	End   int
 	Args  []*Identifier
-	Body  *Cons
+	Body  Pair
 }
 
 // NewVM creates a new Scheme virtual machine.

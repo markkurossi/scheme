@@ -88,25 +88,25 @@ func (vm *VM) CompileFile(file string) (Code, error) {
 
 func (vm *VM) compileValue(value Value) error {
 	switch v := value.(type) {
-	case *Cons:
+	case Pair:
 		length, ok := ListLength(v)
 		if !ok {
 			return fmt.Errorf("compile value: %v", v)
 		}
-		if isKeyword(v.Car, KwDefine) {
+		if isKeyword(v.Car(), KwDefine) {
 			return vm.compileDefine(v, length)
 		}
-		if isKeyword(v.Car, KwLambda) {
+		if isKeyword(v.Car(), KwLambda) {
 			return vm.compileLambda(false, v, length)
 		}
-		if isKeyword(v.Car, KwSet) {
+		if isKeyword(v.Car(), KwSet) {
 			return vm.compileSet(v, length)
 		}
 
 		// Function call.
 
 		// Compile function.
-		err := vm.compileValue(v.Car)
+		err := vm.compileValue(v.Car())
 		if err != nil {
 			return err
 		}
@@ -120,17 +120,17 @@ func (vm *VM) compileValue(value Value) error {
 		vm.env.PushFrame()
 
 		// Evaluate arguments.
-		li := v.Cdr
+		li := v.Cdr()
 		for j := 0; li != nil; j++ {
-			cons, ok := li.(*Cons)
+			pair, ok := li.(Pair)
 			if !ok {
 				return fmt.Errorf("invalid list: %v", li)
 			}
-			err := vm.compileValue(cons.Car)
+			err := vm.compileValue(pair.Car())
 			if err != nil {
 				return err
 			}
-			li = cons.Cdr
+			li = pair.Cdr()
 			instr := vm.addInstr(OpLocalSet, nil, vm.env.Depth()-1)
 			instr.J = j
 		}
@@ -178,16 +178,16 @@ func (vm *VM) addInstr(op Operand, v Value, i int) *Instr {
 	return instr
 }
 
-func (vm *VM) compileDefine(cons *Cons, length int) error {
+func (vm *VM) compileDefine(pair Pair, length int) error {
 	// (define name value)
-	name, _, ok := isIdentifier(Car(Cdr(cons, true)))
+	name, _, ok := isIdentifier(Car(Cdr(pair, true)))
 	if ok {
 		if length != 3 {
-			return fmt.Errorf("syntax error: %v", cons)
+			return fmt.Errorf("syntax error: %v", pair)
 		}
-		v, ok := Car(Cdr(Cdr(cons, true)))
+		v, ok := Car(Cdr(Cdr(pair, true)))
 		if !ok {
-			return fmt.Errorf("syntax error: %v", cons)
+			return fmt.Errorf("syntax error: %v", pair)
 		}
 		err := vm.compileValue(v)
 		if err != nil {
@@ -197,7 +197,7 @@ func (vm *VM) compileDefine(cons *Cons, length int) error {
 	}
 
 	// (define (name args?) body)
-	return vm.compileLambda(true, cons, length)
+	return vm.compileLambda(true, pair, length)
 }
 
 func (vm *VM) define(name string) error {
@@ -221,16 +221,16 @@ func (vm *VM) define(name string) error {
 	return nil
 }
 
-func (vm *VM) compileLambda(define bool, cons *Cons, length int) error {
+func (vm *VM) compileLambda(define bool, pair Pair, length int) error {
 	// (define (name args?) body)
 	// (lambda (args?) body)
-	lst, ok := Car(Cdr(cons, true))
+	lst, ok := Car(Cdr(pair, true))
 	if !ok {
-		return fmt.Errorf("syntax error: %v", cons)
+		return fmt.Errorf("syntax error: %v", pair)
 	}
 	_, ok = ListLength(lst)
 	if !ok {
-		return fmt.Errorf("syntax error: %v", cons)
+		return fmt.Errorf("syntax error: %v", pair)
 	}
 
 	var name *Identifier
@@ -255,13 +255,13 @@ func (vm *VM) compileLambda(define bool, cons *Cons, length int) error {
 		return fmt.Errorf("function name not define")
 	}
 
-	lst, ok = Cdr(Cdr(cons, true))
+	lst, ok = Cdr(Cdr(pair, true))
 	if !ok {
 		return fmt.Errorf("invalid function body")
 	}
 
-	var body *Cons
-	body, ok = lst.(*Cons)
+	var body Pair
+	body, ok = lst.(Pair)
 	if !ok {
 		return fmt.Errorf("invalid function body")
 	}
@@ -278,18 +278,18 @@ func (vm *VM) compileLambda(define bool, cons *Cons, length int) error {
 	return nil
 }
 
-func (vm *VM) compileSet(cons *Cons, length int) error {
+func (vm *VM) compileSet(pair Pair, length int) error {
 	// (set! name value)
 	if length != 3 {
-		return fmt.Errorf("syntax error: %v", cons)
+		return fmt.Errorf("syntax error: %v", pair)
 	}
-	name, nameV, ok := isIdentifier(Car(Cdr(cons, true)))
+	name, nameV, ok := isIdentifier(Car(Cdr(pair, true)))
 	if !ok {
 		return fmt.Errorf("set!: expected variable name: %v", nameV)
 	}
-	v, ok := Car(Cdr(Cdr(cons, true)))
+	v, ok := Car(Cdr(Cdr(pair, true)))
 	if !ok {
-		return fmt.Errorf("syntax error: %v", cons)
+		return fmt.Errorf("syntax error: %v", pair)
 	}
 	err := vm.compileValue(v)
 	if err != nil {

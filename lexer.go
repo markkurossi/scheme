@@ -130,6 +130,11 @@ type Point struct {
 	Col    int // 0-based
 }
 
+// Locator interface a source location.
+type Locator interface {
+	Location() Point
+}
+
 func (p Point) String() string {
 	return fmt.Sprintf("%s:%d:%d", p.Source, p.Line, p.Col)
 }
