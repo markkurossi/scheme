@@ -24,6 +24,35 @@ func NewNumber(base int, value interface{}) Number {
 	}
 }
 
+// Equal tests if the argument number is equal to this number.
+func (n Number) Equal(o Number) bool {
+	switch v := n.Value.(type) {
+	case int:
+		switch ov := o.Value.(type) {
+		case int:
+			return v == ov
+
+		default:
+			panic(fmt.Sprintf("int: o type %T not implemented", o.Value))
+		}
+
+	case uint64:
+		switch ov := o.Value.(type) {
+		case int:
+			return v == uint64(ov)
+
+		case uint64:
+			return v == v
+
+		default:
+			panic(fmt.Sprintf("uint64: o type %T not implemented", o.Value))
+		}
+
+	default:
+		panic(fmt.Sprintf("n type %T not implemented", n.Value))
+	}
+}
+
 // Scheme returns the value as a Scheme string.
 func (n Number) Scheme() string {
 	return n.String()

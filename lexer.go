@@ -24,9 +24,9 @@ const (
 	TNumber
 	TCharacter
 	TString
+	TKeyword
 	THashLPar
 	TCommaAt
-	TKeyword
 )
 
 var tokenTypes = map[TokenType]string{
@@ -35,9 +35,9 @@ var tokenTypes = map[TokenType]string{
 	TNumber:     "number",
 	TCharacter:  "character",
 	TString:     "string",
+	TKeyword:    "keyword",
 	THashLPar:   "#(",
 	TCommaAt:    ",@",
-	TKeyword:    "keyword",
 }
 
 func (t TokenType) String() string {
@@ -155,6 +155,35 @@ type Token struct {
 	Char       rune
 	Str        string
 	Keyword    Keyword
+}
+
+// Equal tests if the argument token is equal to this token.
+func (t *Token) Equal(o *Token) bool {
+	if t.Type != o.Type {
+		return false
+	}
+	switch t.Type {
+	case TIdentifier:
+		return t.Identifier == o.Identifier
+
+	case TBoolean:
+		return t.Bool == o.Bool
+
+	case TNumber:
+		return t.Number.Equal(o.Number)
+
+	case TCharacter:
+		return t.Char == o.Char
+
+	case TString:
+		return t.Str == o.Str
+
+	case TKeyword:
+		return t.Keyword == o.Keyword
+
+	default:
+		return true
+	}
 }
 
 func (t *Token) String() string {

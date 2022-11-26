@@ -73,6 +73,9 @@ var characters = map[string]rune{
 }
 
 func lookupCharacter(name []rune) (rune, error) {
+	if len(name) == 0 {
+		return 0, fmt.Errorf("invalid character name")
+	}
 	if len(name) == 1 {
 		return name[0], nil
 	}
