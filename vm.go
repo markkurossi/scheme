@@ -378,6 +378,19 @@ func (f *Frame) Scheme() string {
 	return f.String()
 }
 
+// Equal tests if the argument value is equal to this value.
+func (f *Frame) Equal(o Value) bool {
+	ov, ok := o.(*Frame)
+	if !ok {
+		return false
+	}
+	return f.Index == ov.Index &&
+		f.Next == ov.Next &&
+		f.Lambda == ov.Lambda &&
+		f.PC == ov.PC &&
+		f.Toplevel == ov.Toplevel
+}
+
 func (f *Frame) String() string {
 	return fmt.Sprintf("frame: next=%v, lambda=%v, toplevel=%v",
 		f.Next, f.Lambda, f.Toplevel)

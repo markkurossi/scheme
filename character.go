@@ -20,6 +20,12 @@ func (v Character) Scheme() string {
 	return CharacterToScheme(rune(v))
 }
 
+// Equal tests if the argument value is equal to this value.
+func (v Character) Equal(o Value) bool {
+	ch, ok := o.(Character)
+	return ok && v == ch
+}
+
 func (v Character) String() string {
 	return fmt.Sprintf("%c", v)
 }

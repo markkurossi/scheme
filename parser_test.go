@@ -9,22 +9,56 @@ package scm
 import (
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 )
 
+var parserTests = []struct {
+	i string
+	o Value
+}{
+	{
+		i: "(1 2)",
+		o: NewPair(NewNumber(10, 1), NewPair(NewNumber(10, 2), nil)),
+	},
+	{
+		i: "foo",
+		o: &Identifier{
+			Name: "foo",
+		},
+	},
+	{
+		i: "#t",
+		o: Boolean(true),
+	},
+	{
+		i: "1",
+		o: NewNumber(10, 1),
+	},
+	{
+		i: `"foo"`,
+		o: String([]byte("foo")),
+	},
+	{
+		i: "else",
+		o: KwElse,
+	},
+}
+
 func TestParser(t *testing.T) {
-	p, err := NewParser("testdata/wasm.scm")
-	if err != nil {
-		t.Fatalf("failed to create parser: %v", err)
-	}
-	for {
-		v, err := p.Next()
-		if err != nil {
-			if err != io.EOF {
+	for _, test := range parserTests {
+		parser := NewParser("{data}", strings.NewReader(test.i))
+		for {
+			v, err := parser.Next()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
 				t.Fatalf("Parser.Next failed: %v", err)
 			}
-			break
+			if !v.Equal(test.o) {
+				fmt.Printf("unexpected value %v, exptected %v\n", v, test.o)
+			}
 		}
-		fmt.Printf("Parse: %v\n", v)
 	}
 }

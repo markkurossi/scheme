@@ -9,16 +9,18 @@ package scm
 import (
 	"fmt"
 	"io"
+	"os"
 	"sort"
 )
 
 // CompileFile compiles the Scheme file.
 func (vm *VM) CompileFile(file string) (Code, error) {
-	parser, err := NewParser(file)
+	in, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
-	defer parser.Close()
+	defer in.Close()
+	parser := NewParser(file, in)
 
 	vm.compiled = nil
 	vm.env = NewEnv()

@@ -19,6 +19,20 @@ func (v String) Scheme() string {
 	return StringToScheme(string(v))
 }
 
+// Equal tests if the argument value is equal to this value.
+func (v String) Equal(o Value) bool {
+	ov, ok := o.(String)
+	if !ok || len(v) != len(ov) {
+		return false
+	}
+	for i := 0; i < len(v); i++ {
+		if v[i] != ov[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func (v String) String() string {
 	return string(v)
 }

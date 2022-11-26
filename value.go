@@ -25,8 +25,22 @@ var (
 
 // Value implements a Scheme value.
 type Value interface {
-	// Type() ValueType
 	Scheme() string
+	Equal(o Value) bool
+}
+
+// Equal tests if the argument value is equal to this value.
+func Equal(a, b Value) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil && b != nil {
+		return false
+	}
+	if a != nil && b == nil {
+		return false
+	}
+	return a.Equal(b)
 }
 
 // Vector implements vector values.
@@ -37,6 +51,20 @@ type Vector struct {
 // Scheme returns the value as a Scheme string.
 func (v *Vector) Scheme() string {
 	return v.String()
+}
+
+// Equal tests if the argument value is equal to this value.
+func (v *Vector) Equal(o Value) bool {
+	ov, ok := o.(*Vector)
+	if !ok || len(v.Elements) != len(ov.Elements) {
+		return false
+	}
+	for idx, v := range v.Elements {
+		if !v.Equal(ov.Elements[idx]) {
+			return false
+		}
+	}
+	return true
 }
 
 func (v *Vector) String() string {
@@ -64,6 +92,12 @@ func (v *Identifier) Scheme() string {
 	return v.String()
 }
 
+// Equal tests if the argument value is equal to this value.
+func (v *Identifier) Equal(o Value) bool {
+	ov, ok := o.(*Identifier)
+	return ok && v.Name == ov.Name
+}
+
 func (v *Identifier) String() string {
 	return v.Name
 }
@@ -74,6 +108,12 @@ type Boolean bool
 // Scheme returns the value as a Scheme string.
 func (v Boolean) Scheme() string {
 	return v.String()
+}
+
+// Equal tests if the argument value is equal to this value.
+func (v Boolean) Equal(o Value) bool {
+	ov, ok := o.(Boolean)
+	return ok && v == ov
 }
 
 func (v Boolean) String() string {
@@ -106,6 +146,27 @@ type Lambda struct {
 // Scheme returns the value as a Scheme string.
 func (v *Lambda) Scheme() string {
 	return v.String()
+}
+
+// Equal tests if the argument value is equal to this value.
+func (v *Lambda) Equal(o Value) bool {
+	ov, ok := o.(*Lambda)
+	if !ok {
+		return false
+	}
+	if len(v.Args) != len(ov.Args) {
+		return false
+	}
+	if v.Capture != ov.Capture {
+		return false
+	}
+	if v.Native == nil && ov.Native != nil {
+		return false
+	}
+	if v.Native != nil && ov.Native == nil {
+		return false
+	}
+	return v.Body.Equal(ov.Body)
 }
 
 func (v *Lambda) String() string {
