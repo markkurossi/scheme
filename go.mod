@@ -1,3 +1,3 @@
-module github.com/markkurossi/scm
+module github.com/markkurossi/scheme
 
 go 1.19
