@@ -8,12 +8,15 @@ package scm
 
 import (
 	"fmt"
+	"io"
 	"math"
+	"os"
 	"strings"
 )
 
 // Scheme implements Scheme interpreter and virtual machine.
 type Scheme struct {
+	Stdout   io.Writer
 	compiled Code
 	env      *Env
 	lambdas  []*LambdaBody
@@ -28,6 +31,7 @@ type Scheme struct {
 // New creates a new Scheme interpreter.
 func New() (*Scheme, error) {
 	scm := &Scheme{
+		Stdout:  os.Stdout,
 		symbols: make(map[string]*Identifier),
 	}
 
@@ -80,12 +84,25 @@ func (scm *Scheme) DefineBuiltin(name string, args []string, native Native) {
 
 // EvalFile evaluates the scheme file.
 func (scm *Scheme) EvalFile(file string) (Value, error) {
-	code, err := scm.CompileFile(file)
+	in, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
-	for _, c := range code {
-		fmt.Printf("%s\n", c)
+	defer in.Close()
+	return scm.Eval(file, in)
+}
+
+// Eval evaluates the scheme source.
+func (scm *Scheme) Eval(source string, in io.Reader) (Value, error) {
+	code, err := scm.Compile(source, in)
+	if err != nil {
+		return nil, err
+	}
+	if false {
+		fmt.Printf("Code:\n")
+		for _, c := range code {
+			fmt.Printf("%s\n", c)
+		}
 	}
 	return scm.Execute(code)
 }

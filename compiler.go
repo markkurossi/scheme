@@ -20,10 +20,16 @@ func (scm *Scheme) CompileFile(file string) (Code, error) {
 		return nil, err
 	}
 	defer in.Close()
-	parser := NewParser(file, in)
+	return scm.Compile(file, in)
+}
+
+// Compile compiles the scheme source.
+func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
+	parser := NewParser(source, in)
 
 	scm.compiled = nil
 	scm.env = NewEnv()
+	scm.lambdas = nil
 
 	for {
 		v, err := parser.Next()
@@ -51,7 +57,7 @@ func (scm *Scheme) CompileFile(file string) (Code, error) {
 		ofs := len(scm.compiled)
 		lambda.Start = ofs + 1
 		scm.addInstr(OpLabel, nil, lambda.Start)
-		err = Map(scm.compileValue, lambda.Body)
+		err := Map(scm.compileValue, lambda.Body)
 		if err != nil {
 			return nil, err
 		}

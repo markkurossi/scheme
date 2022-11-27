@@ -17,9 +17,9 @@ var outputBuiltins = []Builtin{
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			for idx, arg := range args {
 				if idx > 0 {
-					fmt.Print(" ")
+					fmt.Fprint(scm.Stdout, " ")
 				}
-				fmt.Printf("%v", arg)
+				fmt.Fprintf(scm.Stdout, "%v", arg)
 			}
 			return nil, nil
 		},
@@ -28,7 +28,7 @@ var outputBuiltins = []Builtin{
 		Name: "newline",
 		Args: []string{"[port]"},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			fmt.Println()
+			fmt.Fprintln(scm.Stdout)
 			return nil, nil
 		},
 	},

@@ -58,7 +58,7 @@ func (op Operand) String() string {
 	return fmt.Sprintf("{op %d}", op)
 }
 
-// Instr implementes a Scheme bytecode instruction.
+// Instr implements a Scheme bytecode instruction.
 type Instr struct {
 	Op  Operand
 	V   Value
@@ -106,6 +106,9 @@ type Code []*Instr
 
 // Execute runs the code.
 func (scm *Scheme) Execute(code Code) (Value, error) {
+
+	scm.pc = 0
+	scm.accu = nil
 
 	frame := scm.pushFrame(nil, true)
 	scm.fp = frame.Index
