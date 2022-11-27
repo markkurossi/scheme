@@ -460,6 +460,12 @@ func (l *Lexer) Get() (*Token, error) {
 			token.Str = str.String()
 			return token, nil
 
+		case '+':
+			// XXX numbers
+			token := l.Token(TIdentifier)
+			token.Identifier = "+"
+			return token, nil
+
 		default:
 			if IsIdentifierInitial(r) {
 				id := []rune{r}
@@ -500,12 +506,14 @@ func (l *Lexer) Get() (*Token, error) {
 				token.Number = NewNumber(0, uval)
 				return token, nil
 			}
+			l.UnreadRune()
+			return nil, l.err("unexpected character: %c", r)
 		}
 	}
 }
 
-func (l *Lexer) parseDigit(base uint64) (uint64, error) {
-	var result uint64
+func (l *Lexer) parseDigit(base int64) (int64, error) {
+	var result int64
 	var count int
 
 	for {
@@ -517,35 +525,35 @@ func (l *Lexer) parseDigit(base uint64) (uint64, error) {
 			return 0, err
 		}
 		var done bool
-		var v uint64
+		var v int64
 
 		switch base {
 		case 2:
 			if '0' <= r && r <= '1' {
-				v = uint64(r - '0')
+				v = int64(r - '0')
 			} else {
 				done = true
 			}
 
 		case 8:
 			if '0' <= r && r <= '7' {
-				v = uint64(r - '0')
+				v = int64(r - '0')
 			} else {
 				done = true
 			}
 
 		case 10:
 			if '0' <= r && r <= '9' {
-				v = uint64(r - '0')
+				v = int64(r - '0')
 			} else {
 				done = true
 			}
 
 		case 16:
 			if '0' <= r && r <= '9' {
-				v = uint64(r - '0')
+				v = int64(r - '0')
 			} else if 'a' <= r && r <= 'f' {
-				v = uint64(10 + r - 'a')
+				v = int64(10 + r - 'a')
 			} else {
 				done = true
 			}

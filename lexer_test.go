@@ -149,24 +149,31 @@ var lexerTests = []struct {
 		},
 	},
 	{
-		i: `!foo`,
+		i: "!foo",
 		o: &Token{
 			Type:       TIdentifier,
 			Identifier: "!foo",
 		},
 	},
 	{
-		i: `$foo`,
+		i: "$foo",
 		o: &Token{
 			Type:       TIdentifier,
 			Identifier: "$foo",
 		},
 	},
 	{
-		i: `name`,
+		i: "name",
 		o: &Token{
 			Type:       TIdentifier,
 			Identifier: "name",
+		},
+	},
+	{
+		i: "+",
+		o: &Token{
+			Type:       TIdentifier,
+			Identifier: "+",
 		},
 	},
 	{
@@ -188,14 +195,19 @@ var lexerTests = []struct {
 func TestLexer(t *testing.T) {
 	for _, test := range lexerTests {
 		lexer := NewLexer("{data}", strings.NewReader(test.i))
+		var count int
 		for {
 			token, err := lexer.Get()
 			if err != nil {
 				if err == io.EOF {
+					if count != 1 {
+						t.Errorf("Lexer.Get: should have returned 1 token")
+					}
 					break
 				}
 				t.Fatalf("Lexer.Get: %v", err)
 			}
+			count++
 			if !token.Equal(test.o) {
 				t.Errorf("unexpected token %v, expected %v", token, test.o)
 			}

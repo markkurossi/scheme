@@ -8,6 +8,8 @@ package scm
 
 import (
 	"fmt"
+	"math"
+	"strings"
 )
 
 // Scheme implements Scheme interpreter and virtual machine.
@@ -31,6 +33,7 @@ func New() (*Scheme, error) {
 
 	scm.DefineBuiltins(outputBuiltins)
 	scm.DefineBuiltins(stringBuiltins)
+	scm.DefineBuiltins(numberBuiltins)
 
 	return scm, nil
 }
@@ -48,6 +51,7 @@ func (scm *Scheme) DefineBuiltin(name string, args []string, native Native) {
 
 	var minArgs, maxArgs int
 	var usage []*Identifier
+	var rest bool
 
 	for _, arg := range args {
 		usage = append(usage, &Identifier{
@@ -57,6 +61,12 @@ func (scm *Scheme) DefineBuiltin(name string, args []string, native Native) {
 		if arg[0] != '[' {
 			minArgs++
 		}
+		if strings.HasSuffix(arg, "...") {
+			rest = true
+		}
+	}
+	if rest {
+		maxArgs = math.MaxInt
 	}
 
 	sym := scm.Intern(name)

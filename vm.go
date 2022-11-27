@@ -185,10 +185,12 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 			lambda := callFrame.Lambda
 
 			if len(args) < lambda.MinArgs {
-				return nil, fmt.Errorf("too few arguments")
+				return nil, fmt.Errorf("too few arguments: got %v, need %v",
+					len(args), lambda.MinArgs)
 			}
 			if len(args) > lambda.MaxArgs {
-				return nil, fmt.Errorf("too many arguments")
+				return nil, fmt.Errorf("too many arguments: got %v, max %v",
+					len(args), lambda.MaxArgs)
 			}
 
 			// Set fp for the call.
