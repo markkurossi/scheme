@@ -4,7 +4,7 @@
 // All rights reserved.
 //
 
-package scm
+package scheme
 
 import (
 	"fmt"
@@ -133,6 +133,7 @@ func BooleanToScheme(v bool) string {
 
 // Lambda implements lambda values.
 type Lambda struct {
+	Name    string
 	MinArgs int
 	MaxArgs int
 	Args    []*Identifier
@@ -172,7 +173,13 @@ func (v *Lambda) Equal(o Value) bool {
 func (v *Lambda) String() string {
 	var str strings.Builder
 
-	str.WriteString("(lambda (")
+	if v.Native != nil {
+		str.WriteRune('(')
+		str.WriteString(v.Name)
+		str.WriteString(" (")
+	} else {
+		str.WriteString("(lambda (")
+	}
 	for idx, arg := range v.Args {
 		if idx > 0 {
 			str.WriteRune(' ')

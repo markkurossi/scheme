@@ -4,7 +4,7 @@
 // All rights reserved.
 //
 
-package scm
+package scheme
 
 import (
 	"fmt"
@@ -30,6 +30,7 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 	scm.compiled = nil
 	scm.env = NewEnv()
 	scm.lambdas = nil
+	scm.Parsing = true
 
 	for {
 		v, err := parser.Next()
@@ -39,6 +40,7 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 			}
 			break
 		}
+		scm.Parsing = false
 
 		err = scm.compileValue(v)
 		if err != nil {

@@ -4,7 +4,7 @@
 // All rights reserved.
 //
 
-package scm
+package scheme
 
 import (
 	"fmt"
@@ -17,6 +17,7 @@ import (
 // Scheme implements Scheme interpreter and virtual machine.
 type Scheme struct {
 	Stdout   io.Writer
+	Parsing  bool
 	compiled Code
 	env      *Env
 	lambdas  []*LambdaBody
@@ -75,6 +76,7 @@ func (scm *Scheme) DefineBuiltin(name string, args []string, native Native) {
 
 	sym := scm.Intern(name)
 	sym.Global = &Lambda{
+		Name:    name,
 		Args:    usage,
 		MinArgs: minArgs,
 		MaxArgs: maxArgs,

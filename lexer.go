@@ -4,7 +4,7 @@
 // All rights reserved.
 //
 
-package scm
+package scheme
 
 import (
 	"bufio"
