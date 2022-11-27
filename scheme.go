@@ -39,6 +39,7 @@ func New() (*Scheme, error) {
 	scm.DefineBuiltins(outputBuiltins)
 	scm.DefineBuiltins(stringBuiltins)
 	scm.DefineBuiltins(numberBuiltins)
+	scm.DefineBuiltins(debugBuiltins)
 
 	return scm, nil
 }
