@@ -100,6 +100,13 @@ var lexerTests = []struct {
 		},
 	},
 	{
+		i: "#e42",
+		o: &Token{
+			Type:   TNumber,
+			Number: NewNumber(0, 42),
+		},
+	},
+	{
 		i: `#\alarm`,
 		o: &Token{
 			Type: TCharacter,

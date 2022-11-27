@@ -8,6 +8,7 @@ package scheme
 
 import (
 	"fmt"
+	"math/big"
 )
 
 // Number implements numeric values.
@@ -25,6 +26,9 @@ func NewNumber(base int, value interface{}) Number {
 		numValue = int64(v)
 
 	case int64:
+		numValue = v
+
+	case *big.Int:
 		numValue = v
 
 	default:
@@ -54,8 +58,23 @@ func (n Number) Equal(o Value) bool {
 		case int64:
 			return v == ov
 
+		case *big.Int:
+			return ov.Cmp(big.NewInt(v)) == 0
+
 		default:
 			panic(fmt.Sprintf("uint64: o type %T not implemented", on.Value))
+		}
+
+	case *big.Int:
+		switch ov := on.Value.(type) {
+		case int64:
+			return v.Cmp(big.NewInt(ov)) == 0
+
+		case *big.Int:
+			return v.Cmp(ov) == 0
+
+		default:
+			panic(fmt.Sprintf("*big.Int: o type %T not implemented", on.Value))
 		}
 
 	default:
@@ -78,6 +97,22 @@ func (n Number) String() string {
 
 		default:
 			return fmt.Sprintf("%v", n.Value)
+		}
+
+	case *big.Int:
+		switch n.Base {
+		case 2:
+			return fmt.Sprintf("#e#b%v", v.Text(n.Base))
+		case 8:
+			return fmt.Sprintf("#e#o%v", v.Text(n.Base))
+		case 10:
+			return fmt.Sprintf("#e#d%v", v.Text(n.Base))
+		case 16:
+			return fmt.Sprintf("#e#x%v", v.Text(n.Base))
+
+		default:
+			return fmt.Sprintf("#e%v", v.Text(10))
+
 		}
 
 	default:

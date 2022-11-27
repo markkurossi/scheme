@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math/big"
 	"strings"
 	"unicode"
 )
@@ -342,44 +343,6 @@ func (l *Lexer) Get() (*Token, error) {
 				token.Bool = r == 't'
 				return token, nil
 
-				// i, e
-
-			case 'b':
-				uval, err := l.parseDigit(2)
-				if err != nil {
-					return nil, err
-				}
-				token := l.Token(TNumber)
-				token.Number = NewNumber(2, uval)
-				return token, nil
-
-			case 'o':
-				uval, err := l.parseDigit(8)
-				if err != nil {
-					return nil, err
-				}
-				token := l.Token(TNumber)
-				token.Number = NewNumber(8, uval)
-				return token, nil
-
-			case 'd':
-				uval, err := l.parseDigit(10)
-				if err != nil {
-					return nil, err
-				}
-				token := l.Token(TNumber)
-				token.Number = NewNumber(10, uval)
-				return token, nil
-
-			case 'x':
-				uval, err := l.parseDigit(16)
-				if err != nil {
-					return nil, err
-				}
-				token := l.Token(TNumber)
-				token.Number = NewNumber(16, uval)
-				return token, nil
-
 			case '\\':
 				var name []rune
 				for {
@@ -411,6 +374,10 @@ func (l *Lexer) Get() (*Token, error) {
 				token := l.Token(TCharacter)
 				token.Char = ch
 				return token, nil
+
+			case 'i', 'e', 'b', 'o', 'd', 'x':
+				l.UnreadRune()
+				return l.parseNumber()
 
 			default:
 				l.UnreadRune()
@@ -497,14 +464,11 @@ func (l *Lexer) Get() (*Token, error) {
 			}
 			if IsDigit10(r) {
 				l.UnreadRune()
-				uval, err := l.parseDigit(10)
+				val, err := l.parseDigit(10)
 				if err != nil {
 					return nil, err
 				}
-
-				token := l.Token(TNumber)
-				token.Number = NewNumber(0, uval)
-				return token, nil
+				return l.newNumber(false, 0, val)
 			}
 			l.UnreadRune()
 			return nil, l.err("unexpected character: %c", r)
@@ -512,8 +476,95 @@ func (l *Lexer) Get() (*Token, error) {
 	}
 }
 
-func (l *Lexer) parseDigit(base int64) (int64, error) {
-	var result int64
+func (l *Lexer) newNumber(exact bool, base int, val *big.Int) (*Token, error) {
+	token := l.Token(TNumber)
+	if exact {
+		token.Number = NewNumber(base, val)
+	} else {
+		token.Number = NewNumber(base, val.Int64())
+	}
+	return token, nil
+}
+
+func (l *Lexer) parseNumber() (*Token, error) {
+	var exact bool
+
+	for {
+		// Here we have seen '#' before r.
+
+		r, _, err := l.ReadRune()
+		if err != nil {
+			return nil, err
+		}
+		switch r {
+		case 'i':
+			exact = false
+
+		case 'e':
+			exact = true
+
+		case 'b':
+			val, err := l.parseDigit(2)
+			if err != nil {
+				return nil, err
+			}
+			return l.newNumber(exact, 2, val)
+
+		case 'o':
+			val, err := l.parseDigit(8)
+			if err != nil {
+				return nil, err
+			}
+			return l.newNumber(exact, 8, val)
+
+		case 'd':
+			val, err := l.parseDigit(10)
+			if err != nil {
+				return nil, err
+			}
+			return l.newNumber(exact, 10, val)
+
+		case 'x':
+			val, err := l.parseDigit(16)
+			if err != nil {
+				return nil, err
+			}
+			return l.newNumber(exact, 16, val)
+
+		default:
+			l.UnreadRune()
+			return nil, l.err("unexpected character: %c", r)
+		}
+
+		r, _, err = l.ReadRune()
+		if err != nil {
+			return nil, err
+		}
+		if r == '#' {
+			r, _, err = l.ReadRune()
+			if err != nil {
+				return nil, err
+			}
+			// Continue from the top.
+
+		} else if IsDigit10(r) {
+			l.UnreadRune()
+			val, err := l.parseDigit(10)
+			if err != nil {
+				return nil, err
+			}
+			return l.newNumber(exact, 0, val)
+		} else {
+			l.UnreadRune()
+			return nil, l.err("unexpected character: %c", r)
+		}
+	}
+}
+
+func (l *Lexer) parseDigit(base int64) (*big.Int, error) {
+	result := &big.Int{}
+	baseBig := big.NewInt(base)
+
 	var count int
 
 	for {
@@ -522,7 +573,7 @@ func (l *Lexer) parseDigit(base int64) (int64, error) {
 			if err == io.EOF {
 				break
 			}
-			return 0, err
+			return nil, err
 		}
 		var done bool
 		var v int64
@@ -559,17 +610,18 @@ func (l *Lexer) parseDigit(base int64) (int64, error) {
 			}
 
 		default:
-			return 0, l.err("invalid base %v", base)
+			return nil, l.err("invalid base %v", base)
 		}
 		if done {
 			l.UnreadRune()
 			break
 		}
-		result = result*base + v
+		result.Mul(result, baseBig)
+		result.Add(result, big.NewInt(v))
 		count++
 	}
 	if count == 0 {
-		return 0, l.err("unexpected EOF")
+		return nil, l.err("unexpected EOF")
 	}
 
 	return result, nil
