@@ -107,6 +107,9 @@ func (scm *Scheme) compileValue(value Value) error {
 		if isKeyword(v.Car(), KwSet) {
 			return scm.compileSet(v, length)
 		}
+		if isKeyword(v.Car(), KwBegin) {
+			return scm.compileBegin(v, length)
+		}
 
 		// Function call.
 
@@ -341,6 +344,22 @@ func (scm *Scheme) compileSet(pair Pair, length int) error {
 		instr.Sym = nameSym
 	}
 
+	return nil
+}
+
+func (scm *Scheme) compileBegin(pair Pair, length int) error {
+	li := pair.Cdr()
+	for li != nil {
+		pair, ok := li.(Pair)
+		if !ok {
+			return fmt.Errorf("invalid list: %v", li)
+		}
+		err := scm.compileValue(pair.Car())
+		if err != nil {
+			return err
+		}
+		li = pair.Cdr()
+	}
 	return nil
 }
 

@@ -82,6 +82,11 @@ Hello, world!
 		v: NewNumber(0, 1),
 		o: ``,
 	},
+	{
+		i: `(begin 1 2 3 4)`,
+		v: NewNumber(0, 4),
+		o: ``,
+	},
 }
 
 func TestVM(t *testing.T) {
