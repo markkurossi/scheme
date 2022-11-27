@@ -82,7 +82,7 @@ var stringBuiltins = []Builtin{
 	{
 		Name: "string-length",
 		Args: []string{"string"},
-		Native: func(vm *VM, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v := args[0].(type) {
 			case String:
 				return NewNumber(0, len(v)), nil

@@ -14,7 +14,7 @@ var outputBuiltins = []Builtin{
 	{
 		Name: "display",
 		Args: []string{"obj", "[port]"},
-		Native: func(vm *VM, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			for idx, arg := range args {
 				if idx > 0 {
 					fmt.Print(" ")
@@ -27,7 +27,7 @@ var outputBuiltins = []Builtin{
 	{
 		Name: "newline",
 		Args: []string{"[port]"},
-		Native: func(vm *VM, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			fmt.Println()
 			return nil, nil
 		},

@@ -196,7 +196,7 @@ func (v *Lambda) String() string {
 }
 
 // Native implements native functions.
-type Native func(vm *VM, args []Value) (Value, error)
+type Native func(scm *Scheme, args []Value) (Value, error)
 
 // Builtin defines a built-in native function.
 type Builtin struct {

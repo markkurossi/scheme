@@ -104,94 +104,24 @@ func (i Instr) String() string {
 // Code implements scheme bytecode.
 type Code []*Instr
 
-// VM implements a Scheme virtual machine.
-type VM struct {
-	compiled Code
-	env      *Env
-	lambdas  []*LambdaBody
-
-	pc      int
-	fp      int
-	accu    Value
-	stack   [][]Value
-	symbols map[string]*Identifier
-}
-
-// NewVM creates a new Scheme virtual machine.
-func NewVM() (*VM, error) {
-	vm := &VM{
-		symbols: make(map[string]*Identifier),
-	}
-
-	vm.DefineBuiltins(outputBuiltins)
-	vm.DefineBuiltins(stringBuiltins)
-
-	return vm, nil
-}
-
-// DefineBuiltins defines the built-in functions, defined in the
-// argument array.
-func (vm *VM) DefineBuiltins(builtins []Builtin) {
-	for _, bi := range builtins {
-		vm.DefineBuiltin(bi.Name, bi.Args, bi.Native)
-	}
-}
-
-// DefineBuiltin defines a built-in native function.
-func (vm *VM) DefineBuiltin(name string, args []string, native Native) {
-
-	var minArgs, maxArgs int
-	var usage []*Identifier
-
-	for _, arg := range args {
-		usage = append(usage, &Identifier{
-			Name: arg,
-		})
-		maxArgs++
-		if arg[0] != '[' {
-			minArgs++
-		}
-	}
-
-	sym := vm.Intern(name)
-	sym.Global = &Lambda{
-		Args:    usage,
-		MinArgs: minArgs,
-		MaxArgs: maxArgs,
-		Native:  native,
-	}
-}
-
-// EvalFile evaluates the scheme file.
-func (vm *VM) EvalFile(file string) (Value, error) {
-	code, err := vm.CompileFile(file)
-	if err != nil {
-		return nil, err
-	}
-	for _, c := range code {
-		fmt.Printf("%s\n", c)
-	}
-	return vm.Execute(code)
-}
-
 // Execute runs the code.
-func (vm *VM) Execute(code Code) (Value, error) {
+func (scm *Scheme) Execute(code Code) (Value, error) {
 
-	frame := vm.pushFrame(nil, true)
-	vm.fp = frame.Index
+	frame := scm.pushFrame(nil, true)
+	scm.fp = frame.Index
 
 	var err error
 
 	for {
-		instr := code[vm.pc]
-		vm.pc++
+		instr := code[scm.pc]
+		scm.pc++
 
 		switch instr.Op {
 		case OpConst:
-			vm.accu = instr.V
+			scm.accu = instr.V
 
 		case OpDefine:
-			instr.Sym.Global = vm.accu
+			instr.Sym.Global = scm.accu
 
 		case OpLambda:
 			tmpl, ok := instr.V.(*Lambda)
@@ -207,50 +137,50 @@ func (vm *VM) Execute(code Code) (Value, error) {
 				Code:    tmpl.Code,
 				Body:    tmpl.Body,
 			}
-			for i := len(vm.stack) - tmpl.Capture; i < len(vm.stack); i++ {
-				lambda.Locals = append(lambda.Locals, vm.stack[i])
+			for i := len(scm.stack) - tmpl.Capture; i < len(scm.stack); i++ {
+				lambda.Locals = append(lambda.Locals, scm.stack[i])
 			}
-			vm.accu = lambda
+			scm.accu = lambda
 
 		case OpLocal:
-			// fmt.Printf("*** local: %v.%v\n", vm.fp+1+instr.I, instr.J)
-			// vm.printStack()
-			vm.accu = vm.stack[vm.fp+1+instr.I][instr.J]
+			// fmt.Printf("*** local: %v.%v\n", scm.fp+1+instr.I, instr.J)
+			// scm.printStack()
+			scm.accu = scm.stack[scm.fp+1+instr.I][instr.J]
 
 		case OpGlobal:
-			vm.accu = instr.Sym.Global
+			scm.accu = instr.Sym.Global
 
 		case OpLocalSet:
-			// fmt.Printf("*** local! I=%v, J=%v\n", vm.fp+1+instr.I, instr.J)
-			// vm.printStack()
-			vm.stack[vm.fp+1+instr.I][instr.J] = vm.accu
+			// fmt.Printf("*** local! I=%v, J=%v\n", scm.fp+1+instr.I, instr.J)
+			// scm.printStack()
+			scm.stack[scm.fp+1+instr.I][instr.J] = scm.accu
 			// fmt.Printf(" =>\n")
-			// vm.printStack()
+			// scm.printStack()
 
 		case OpGlobalSet:
 			if instr.Sym.Global == nil {
 				return nil, fmt.Errorf("undefined symbol '%s'", instr.Sym.Name)
 			}
-			instr.Sym.Global = vm.accu
+			instr.Sym.Global = scm.accu
 
 		case OpPushF:
 			// i.I != 0 for toplevel frames.
-			lambda, ok := vm.accu.(*Lambda)
+			lambda, ok := scm.accu.(*Lambda)
 			if !ok {
-				return nil, fmt.Errorf("invalid function: %v", vm.accu)
+				return nil, fmt.Errorf("invalid function: %v", scm.accu)
 			}
-			vm.pushFrame(lambda, instr.I != 0)
+			scm.pushFrame(lambda, instr.I != 0)
 
 		case OpPushS:
-			vm.pushScope(instr.I)
+			scm.pushScope(instr.I)
 
 		case OpCall:
-			stackTop := len(vm.stack) - 1
-			args := vm.stack[stackTop]
+			stackTop := len(scm.stack) - 1
+			args := scm.stack[stackTop]
 
-			callFrame, ok := vm.stack[stackTop-1][0].(*Frame)
+			callFrame, ok := scm.stack[stackTop-1][0].(*Frame)
 			if !ok || callFrame.Lambda == nil {
-				return nil, fmt.Errorf("invalid function: %v", vm.accu)
+				return nil, fmt.Errorf("invalid function: %v", scm.accu)
 			}
 			lambda := callFrame.Lambda
 
@@ -262,41 +192,41 @@ func (vm *VM) Execute(code Code) (Value, error) {
 			}
 
 			// Set fp for the call.
-			vm.fp = stackTop - 1
+			scm.fp = stackTop - 1
 
 			if lambda.Native != nil {
-				vm.accu, err = callFrame.Lambda.Native(vm, args)
+				scm.accu, err = callFrame.Lambda.Native(scm, args)
 				if err != nil {
 					return nil, err
 				}
-				vm.popFrame()
+				scm.popFrame()
 			} else {
 				if len(lambda.Locals) > 0 {
 					for _, frame := range lambda.Locals {
-						vm.stack = append(vm.stack, frame)
+						scm.stack = append(scm.stack, frame)
 					}
 				}
 
 				// Save current excursion.
-				callFrame.PC = vm.pc
+				callFrame.PC = scm.pc
 				callFrame.Code = code
 
 				code = lambda.Code
-				vm.pc = 0
+				scm.pc = 0
 			}
 
 		case OpReturn:
-			frame, ok := vm.stack[vm.fp][0].(*Frame)
+			frame, ok := scm.stack[scm.fp][0].(*Frame)
 			if !ok {
-				return nil, fmt.Errorf("invalid function: %v", vm.accu)
+				return nil, fmt.Errorf("invalid function: %v", scm.accu)
 			}
-			vm.pc = frame.PC
+			scm.pc = frame.PC
 			code = frame.Code
-			vm.popFrame()
+			scm.popFrame()
 
 		case OpHalt:
-			vm.popFrame()
-			return vm.accu, nil
+			scm.popFrame()
+			return scm.accu, nil
 
 		default:
 			return nil, fmt.Errorf("%s: not implemented", instr.Op)
@@ -305,65 +235,65 @@ func (vm *VM) Execute(code Code) (Value, error) {
 }
 
 // Intern interns the name and returns the interned symbol.
-func (vm *VM) Intern(val string) *Identifier {
-	id, ok := vm.symbols[val]
+func (scm *Scheme) Intern(val string) *Identifier {
+	id, ok := scm.symbols[val]
 	if !ok {
 		id = &Identifier{
 			Name: val,
 		}
-		vm.symbols[val] = id
+		scm.symbols[val] = id
 	}
 	return id
 }
 
-func (vm *VM) pushScope(size int) {
-	vm.stack = append(vm.stack, make([]Value, size, size))
+func (scm *Scheme) pushScope(size int) {
+	scm.stack = append(scm.stack, make([]Value, size, size))
 }
 
-func (vm *VM) popScope() {
-	vm.stack = vm.stack[:len(vm.stack)-1]
+func (scm *Scheme) popScope() {
+	scm.stack = scm.stack[:len(scm.stack)-1]
 }
 
-func (vm *VM) pushFrame(lambda *Lambda, toplevel bool) *Frame {
+func (scm *Scheme) pushFrame(lambda *Lambda, toplevel bool) *Frame {
 	// Check that frame is valid.
-	if vm.fp < len(vm.stack) {
-		if len(vm.stack[vm.fp]) != 1 {
-			panic(fmt.Sprintf("invalid frame: %v", vm.stack[vm.fp]))
+	if scm.fp < len(scm.stack) {
+		if len(scm.stack[scm.fp]) != 1 {
+			panic(fmt.Sprintf("invalid frame: %v", scm.stack[scm.fp]))
 		}
-		_, ok := vm.stack[vm.fp][0].(*Frame)
+		_, ok := scm.stack[scm.fp][0].(*Frame)
 		if !ok {
-			panic(fmt.Sprintf("invalid frame: %v", vm.stack[vm.fp][0]))
+			panic(fmt.Sprintf("invalid frame: %v", scm.stack[scm.fp][0]))
 		}
 	}
 
 	f := &Frame{
-		Index:    len(vm.stack),
+		Index:    len(scm.stack),
 		Lambda:   lambda,
 		Toplevel: toplevel,
 	}
 
-	f.Next = vm.fp
+	f.Next = scm.fp
 
-	vm.pushScope(1)
-	vm.stack[f.Index][0] = f
+	scm.pushScope(1)
+	scm.stack[f.Index][0] = f
 
 	return f
 }
 
-func (vm *VM) popFrame() {
+func (scm *Scheme) popFrame() {
 	// Check that frame is valid.
-	if len(vm.stack[vm.fp]) != 1 {
-		panic(fmt.Sprintf("invalid frame: %v", vm.stack[vm.fp]))
+	if len(scm.stack[scm.fp]) != 1 {
+		panic(fmt.Sprintf("invalid frame: %v", scm.stack[scm.fp]))
 	}
-	frame, ok := vm.stack[vm.fp][0].(*Frame)
+	frame, ok := scm.stack[scm.fp][0].(*Frame)
 	if !ok {
-		panic(fmt.Sprintf("invalid frame: %v", vm.stack[vm.fp][0]))
+		panic(fmt.Sprintf("invalid frame: %v", scm.stack[scm.fp][0]))
 	}
-	vm.stack = vm.stack[:vm.fp]
-	vm.fp = frame.Next
+	scm.stack = scm.stack[:scm.fp]
+	scm.fp = frame.Next
 }
 
-// Frame implements a VM call stack frame.
+// Frame implements a SCM call stack frame.
 type Frame struct {
 	Index    int
 	Next     int
@@ -396,12 +326,12 @@ func (f *Frame) String() string {
 		f.Next, f.Lambda, f.Toplevel)
 }
 
-func (vm *VM) printStack() {
-	for i := len(vm.stack) - 1; i >= 0; i-- {
-		if vm.fp == i {
-			fmt.Printf("%7d>%v\n", i, vm.stack[i])
+func (scm *Scheme) printStack() {
+	for i := len(scm.stack) - 1; i >= 0; i-- {
+		if scm.fp == i {
+			fmt.Printf("%7d>%v\n", i, scm.stack[i])
 		} else {
-			fmt.Printf("%7d %v\n", i, vm.stack[i])
+			fmt.Printf("%7d %v\n", i, scm.stack[i])
 		}
 	}
 }
