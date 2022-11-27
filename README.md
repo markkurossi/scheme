@@ -15,8 +15,8 @@ structured data operations.
 
  - [ ] Compiler
    - [ ] let syntax
-   - [ ] Lambda environment capture
-   - [ ] Store lexical locations into values
+   - [X] Lambda environment capture
+   - [X] Store lexical locations into values
  - [ ] VM
    - Tail call
    - Call with current continuation
