@@ -8,6 +8,7 @@ package scheme
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 )
 
@@ -15,6 +16,11 @@ import (
 type Number struct {
 	Base  int
 	Value interface{}
+}
+
+// Zero defines an inexact number 0.
+var Zero = Number{
+	Value: int64(0),
 }
 
 // NewNumber creates a new numeric value.
@@ -82,6 +88,97 @@ func (n Number) Equal(o Value) bool {
 	}
 }
 
+// Int64 returns the number as int64 value.
+func (n Number) Int64() int64 {
+	switch v := n.Value.(type) {
+	case int64:
+		return v
+
+	case *big.Int:
+		return v.Int64()
+
+	default:
+		panic(fmt.Errorf("Number.Int64: invalid number: %v", v))
+	}
+}
+
+// Add adds the argument number to this number and returns the sum.
+func (n *Number) Add(o Number) (Number, error) {
+	var result Number
+
+	switch v := n.Value.(type) {
+	case int64:
+		result.Value = v + o.Int64()
+
+	case *big.Int:
+		switch ov := o.Value.(type) {
+		case int64:
+			result.Value = v.Int64() + ov
+
+		case *big.Int:
+			result.Value = v.Add(v, ov)
+
+		default:
+			return Zero, fmt.Errorf("+: unsupport number %v", ov)
+		}
+	default:
+		return Zero, fmt.Errorf("+: unsupport number %v", v)
+	}
+	return result, nil
+}
+
+// Mul multiplies the argument number with this number and returns the
+// product.
+func (n *Number) Mul(o Number) (Number, error) {
+	var result Number
+
+	switch v := n.Value.(type) {
+	case int64:
+		result.Value = v * o.Int64()
+
+	case *big.Int:
+		switch ov := o.Value.(type) {
+		case int64:
+			result.Value = v.Int64() * ov
+
+		case *big.Int:
+			result.Value = v.Mul(v, ov)
+
+		default:
+			return Zero, fmt.Errorf("*: unsupport number %v", ov)
+		}
+	default:
+		return Zero, fmt.Errorf("*: unsupport number %v", v)
+	}
+	return result, nil
+}
+
+// Expt computes this number to the power of the argument number.
+func (n *Number) Expt(o Number) (Number, error) {
+	var result Number
+
+	switch v := n.Value.(type) {
+	case int64:
+		result.Value = int64(math.Pow(float64(v), float64(o.Int64())))
+
+	case *big.Int:
+		switch ov := o.Value.(type) {
+		case int64:
+			result.Value = int64(math.Pow(float64(v.Int64()), float64(ov)))
+
+		case *big.Int:
+			result.Value = v.Exp(v, ov, nil)
+
+		default:
+			return Zero, fmt.Errorf("expt: invalid number %v", ov)
+		}
+
+	default:
+		return Zero, fmt.Errorf("expt: invalid number %v", v)
+	}
+	return result, nil
+}
+
 func (n Number) String() string {
 	switch v := n.Value.(type) {
 	case int64:
@@ -125,40 +222,55 @@ var numberBuiltins = []Builtin{
 		Name: "+",
 		Args: []string{"[z1]..."},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			var sum int64
+			sum := NewNumber(0, big.NewInt(0))
+			var err error
+
 			for _, arg := range args {
 				num, ok := arg.(Number)
 				if !ok {
 					return nil, fmt.Errorf("+: invalid argument %v", arg)
 				}
-				switch v := num.Value.(type) {
-				case int64:
-					sum += int64(v)
-				default:
-					return nil, fmt.Errorf("+: invalid agument %v", num)
+				sum, err = sum.Add(num)
+				if err != nil {
+					return nil, err
 				}
 			}
-			return NewNumber(0, sum), nil
+			return sum, nil
 		},
 	},
 	{
 		Name: "*",
 		Args: []string{"[z1]..."},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			var product int64 = 1
+			product := NewNumber(0, big.NewInt(1))
+			var err error
+
 			for _, arg := range args {
 				num, ok := arg.(Number)
 				if !ok {
-					return nil, fmt.Errorf("+: invalid argument %v", arg)
+					return nil, fmt.Errorf("*: invalid argument %v", arg)
 				}
-				switch v := num.Value.(type) {
-				case int64:
-					product *= int64(v)
-				default:
-					return nil, fmt.Errorf("+: invalid agument %v", num)
+				product, err = product.Mul(num)
+				if err != nil {
+					return nil, err
 				}
 			}
-			return NewNumber(0, product), nil
+			return product, nil
+		},
+	},
+	{
+		Name: "expt",
+		Args: []string{"z1", "z2"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			z1, ok := args[0].(Number)
+			if !ok {
+				return nil, fmt.Errorf("expt: invalid argument %v", args[0])
+			}
+			z2, ok := args[1].(Number)
+			if !ok {
+				return nil, fmt.Errorf("expt: invalid argument %v", args[1])
+			}
+			return z1.Expt(z2)
 		},
 	},
 }
