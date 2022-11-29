@@ -103,6 +103,13 @@ func (i Instr) String() string {
 	case OpIf, OpJmp:
 		return fmt.Sprintf("\t%s\t%v\t; l%v", i.Op, i.I, i.J)
 
+	case OpCall:
+		var suffix string
+		if i.I != 0 {
+			suffix = "\ttail"
+		}
+		return fmt.Sprintf("\t%s%s", i.Op, suffix)
+
 	default:
 		return fmt.Sprintf("\t%s", i.Op.String())
 	}
@@ -110,6 +117,13 @@ func (i Instr) String() string {
 
 // Code implements scheme bytecode.
 type Code []*Instr
+
+// Print prints the code to standard output.
+func (code Code) Print() {
+	for _, c := range code {
+		fmt.Printf("%s\n", c)
+	}
+}
 
 // Execute runs the code.
 func (scm *Scheme) Execute(code Code) (Value, error) {
@@ -215,6 +229,21 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 				}
 				scm.popFrame()
 			} else {
+				if instr.I != 0 {
+					next := callFrame.Next
+
+					nextFrame, ok := scm.stack[next][0].(*Frame)
+					if !ok {
+						panic(fmt.Sprintf("invalid next frame: %v",
+							scm.stack[callFrame.Next]))
+					}
+
+					nextFrame.Lambda = callFrame.Lambda
+					scm.stack[next+1] = scm.stack[stackTop]
+					scm.stack = scm.stack[:next+2]
+
+					scm.fp = next
+				}
 				if len(lambda.Locals) > 0 {
 					for _, frame := range lambda.Locals {
 						scm.stack = append(scm.stack, frame)
@@ -320,10 +349,11 @@ func (scm *Scheme) popFrame() {
 type Frame struct {
 	Index    int
 	Next     int
-	Lambda   *Lambda
-	PC       int
-	Code     Code
 	Toplevel bool
+
+	Lambda *Lambda
+	PC     int
+	Code   Code
 }
 
 // Scheme returns the value as a Scheme string.
@@ -345,8 +375,12 @@ func (f *Frame) Equal(o Value) bool {
 }
 
 func (f *Frame) String() string {
-	return fmt.Sprintf("frame: next=%v, lambda=%v, toplevel=%v",
-		f.Next, f.Lambda, f.Toplevel)
+	var toplevel = "#f"
+	if f.Toplevel {
+		toplevel = "#t"
+	}
+	return fmt.Sprintf("frame: next=%v, toplevel=%v, \u03BB=%v",
+		f.Next, toplevel, f.Lambda)
 }
 
 func (scm *Scheme) printStack() {

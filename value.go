@@ -191,7 +191,7 @@ func (v *Lambda) String() string {
 	if v.Native != nil {
 		str.WriteString(" {native}")
 	} else {
-		Map(func(v Value) error {
+		Map(func(idx int, v Value) error {
 			str.WriteRune(' ')
 			str.WriteString(fmt.Sprintf("%v", v))
 			return nil

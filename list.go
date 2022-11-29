@@ -150,7 +150,7 @@ var ErrorInvalidList = errors.New("invalid list")
 func ListLength(list Value) (int, bool) {
 	var count int
 
-	err := Map(func(v Value) error { count++; return nil }, list)
+	err := Map(func(idx int, v Value) error { count++; return nil }, list)
 	if err != nil {
 		return 0, false
 	}
@@ -160,7 +160,7 @@ func ListLength(list Value) (int, bool) {
 // Map maps function for each element of the list. The function
 // returns nil if the argument list is a list and map functions
 // returns nil for each of its element.
-func Map(f func(v Value) error, list Value) error {
+func Map(f func(idx int, v Value) error, list Value) error {
 	if list == nil {
 		return nil
 	}
@@ -169,8 +169,8 @@ func Map(f func(v Value) error, list Value) error {
 		return ErrorInvalidList
 	}
 
-	for pair != nil {
-		if err := f(pair.Car()); err != nil {
+	for idx := 0; pair != nil; idx++ {
+		if err := f(idx, pair.Car()); err != nil {
 			point := pair.Location()
 			if point.Undefined() {
 				return err

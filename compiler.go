@@ -42,7 +42,7 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 		}
 		scm.Parsing = false
 
-		err = scm.compileValue(v)
+		err = scm.compileValue(v, false)
 		if err != nil {
 			return nil, err
 		}
@@ -58,8 +58,16 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 		// Lambda body starts after the label.
 		ofs := len(scm.compiled)
 		lambda.Start = ofs + 1
+
+		length, ok := ListLength(lambda.Body)
+		if !ok {
+			return nil, fmt.Errorf("invalid lambda body")
+		}
+
 		scm.addInstr(OpLabel, nil, lambda.Start)
-		err := Map(scm.compileValue, lambda.Body)
+		err := Map(func(idx int, v Value) error {
+			return scm.compileValue(v, idx+1 >= length)
+		}, lambda.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -106,7 +114,7 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 	return scm.compiled, nil
 }
 
-func (scm *Scheme) compileValue(value Value) error {
+func (scm *Scheme) compileValue(value Value, tail bool) error {
 	switch v := value.(type) {
 	case Pair:
 		length, ok := ListLength(v)
@@ -123,16 +131,18 @@ func (scm *Scheme) compileValue(value Value) error {
 			return scm.compileSet(v, length)
 		}
 		if isKeyword(v.Car(), KwBegin) {
-			return scm.compileSequence(v.Cdr())
+			return Map(func(idx int, v Value) error {
+				return scm.compileValue(v, tail && idx+1 >= length-1)
+			}, v.Cdr())
 		}
 		if isKeyword(v.Car(), KwIf) {
-			return scm.compileIf(v, length)
+			return scm.compileIf(v, length, tail)
 		}
 
 		// Function call.
 
 		// Compile function.
-		err := scm.compileValue(v.Car())
+		err := scm.compileValue(v.Car(), false)
 		if err != nil {
 			return err
 		}
@@ -152,7 +162,7 @@ func (scm *Scheme) compileValue(value Value) error {
 			if !ok {
 				return fmt.Errorf("invalid list: %v", li)
 			}
-			err := scm.compileValue(pair.Car())
+			err := scm.compileValue(pair.Car(), false)
 			if err != nil {
 				return err
 			}
@@ -167,8 +177,11 @@ func (scm *Scheme) compileValue(value Value) error {
 		// Pop call frame.
 		scm.env.PopFrame()
 
-		// Function call. XXX tail-call
-		scm.addInstr(OpCall, nil, 0)
+		if tail {
+			scm.addInstr(OpCall, nil, 1)
+		} else {
+			scm.addInstr(OpCall, nil, 0)
+		}
 
 		return nil
 
@@ -227,7 +240,7 @@ func (scm *Scheme) compileDefine(pair Pair, length int) error {
 		if !ok {
 			return fmt.Errorf("syntax error: %v", pair)
 		}
-		err := scm.compileValue(v)
+		err := scm.compileValue(v, false)
 		if err != nil {
 			return err
 		}
@@ -274,7 +287,7 @@ func (scm *Scheme) compileLambda(define bool, pair Pair, length int) error {
 	var name *Identifier
 	var args []*Identifier
 
-	err := Map(func(v Value) error {
+	err := Map(func(idx int, v Value) error {
 		id, ok := v.(*Identifier)
 		if !ok {
 			return fmt.Errorf("lambda: arguments must be identifiers")
@@ -359,7 +372,7 @@ func (scm *Scheme) compileSet(pair Pair, length int) error {
 	if !ok {
 		return fmt.Errorf("syntax error: %v", pair)
 	}
-	err := scm.compileValue(v)
+	err := scm.compileValue(v, false)
 	if err != nil {
 		return err
 	}
@@ -377,22 +390,7 @@ func (scm *Scheme) compileSet(pair Pair, length int) error {
 	return nil
 }
 
-func (scm *Scheme) compileSequence(v Value) error {
-	for v != nil {
-		pair, ok := v.(Pair)
-		if !ok {
-			return fmt.Errorf("invalid list: %v", v)
-		}
-		err := scm.compileValue(pair.Car())
-		if err != nil {
-			return err
-		}
-		v = pair.Cdr()
-	}
-	return nil
-}
-
-func (scm *Scheme) compileIf(pair Pair, length int) error {
+func (scm *Scheme) compileIf(pair Pair, length int, tail bool) error {
 	if length < 3 || length > 4 {
 		return fmt.Errorf("if: syntax error")
 	}
@@ -415,7 +413,7 @@ func (scm *Scheme) compileIf(pair Pair, length int) error {
 	labelTrue := scm.newLabel()
 	labelEnd := scm.newLabel()
 
-	err := scm.compileValue(cond)
+	err := scm.compileValue(cond, false)
 	if err != nil {
 		return err
 	}
@@ -423,20 +421,24 @@ func (scm *Scheme) compileIf(pair Pair, length int) error {
 	instr.J = labelTrue.I
 
 	if length == 4 {
-		err = scm.compileValue(f)
+		err = scm.compileValue(f, tail)
 		if err != nil {
 			return err
 		}
-		instr = scm.addInstr(OpJmp, nil, 0)
-		instr.J = labelEnd.I
+		if !tail {
+			instr = scm.addInstr(OpJmp, nil, 0)
+			instr.J = labelEnd.I
+		}
 	}
 
 	scm.addLabel(labelTrue)
-	err = scm.compileValue(t)
+	err = scm.compileValue(t, tail)
 	if err != nil {
 		return err
 	}
-	scm.addLabel(labelEnd)
+	if !tail {
+		scm.addLabel(labelEnd)
+	}
 
 	return nil
 }
