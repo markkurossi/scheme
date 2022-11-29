@@ -7,8 +7,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 
 	"github.com/markkurossi/scheme"
@@ -16,6 +18,11 @@ import (
 )
 
 func main() {
+	log.SetFlags(0)
+
+	replp := flag.Bool("repl", false, "read-eval-print-loop")
+	flag.Parse()
+
 	fmt.Printf("Go Scheme Version 0.0\n")
 
 	scm, err := scheme.New()
@@ -24,6 +31,18 @@ func main() {
 		return
 	}
 
+	for _, arg := range flag.Args() {
+		_, err = scm.EvalFile(arg)
+		if err != nil {
+			log.Fatalf("%s\n", err)
+		}
+	}
+	if *replp || len(flag.Args()) == 0 {
+		repl(scm)
+	}
+}
+
+func repl(scm *scheme.Scheme) {
 	input := &input{
 		scm:   scm,
 		liner: liner.NewLiner(),
