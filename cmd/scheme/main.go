@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/markkurossi/scheme"
@@ -21,6 +22,7 @@ func main() {
 	log.SetFlags(0)
 
 	replp := flag.Bool("repl", false, "read-eval-print-loop")
+	bc := flag.Bool("bc", false, "compile scheme into bytecode")
 	flag.Parse()
 
 	fmt.Printf("Go Scheme Version 0.0\n")
@@ -32,14 +34,33 @@ func main() {
 	}
 
 	for _, arg := range flag.Args() {
-		_, err = scm.EvalFile(arg)
-		if err != nil {
-			log.Fatalf("%s\n", err)
+		if *bc {
+			err = bytecode(scm, arg)
+		} else {
+			_, err = scm.EvalFile(arg)
 		}
+	}
+	if err != nil {
+		log.Fatalf("n%s\n", err)
 	}
 	if *replp || len(flag.Args()) == 0 {
 		repl(scm)
 	}
+}
+
+func bytecode(scm *scheme.Scheme, file string) error {
+	in, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	code, err := scm.Compile(file, in)
+	if err != nil {
+		return err
+	}
+	code.Print()
+	return nil
 }
 
 func repl(scm *scheme.Scheme) {
