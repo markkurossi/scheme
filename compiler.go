@@ -69,11 +69,19 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 		scm.env = nil
 	}
 
-	// Patch lambda code offsets.
+	// Collect label offsets
+	labels := make(map[int]int)
+	for idx, c := range scm.compiled {
+		if c.Op == OpLabel {
+			labels[c.I] = idx
+		}
+	}
+
+	// Patch code offsets.
 	for i := 0; i < len(scm.compiled); i++ {
 		instr := scm.compiled[i]
-
-		if instr.Op == OpLambda {
+		switch instr.Op {
+		case OpLambda:
 			def := scm.lambdas[instr.I]
 			instr.I = def.Start
 			instr.J = def.End
@@ -85,6 +93,13 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 				Body:    def.Body,
 				Capture: def.Env.Depth() - 1,
 			}
+
+		case OpIf, OpJmp:
+			ofs, ok := labels[instr.J]
+			if !ok {
+				return nil, fmt.Errorf("Label l%v not defined", instr.J)
+			}
+			instr.I = ofs - i
 		}
 	}
 
@@ -108,7 +123,10 @@ func (scm *Scheme) compileValue(value Value) error {
 			return scm.compileSet(v, length)
 		}
 		if isKeyword(v.Car(), KwBegin) {
-			return scm.compileBegin(v, length)
+			return scm.compileSequence(v.Cdr())
+		}
+		if isKeyword(v.Car(), KwIf) {
+			return scm.compileIf(v, length)
 		}
 
 		// Function call.
@@ -184,6 +202,18 @@ func (scm *Scheme) addInstr(op Operand, v Value, i int) *Instr {
 	}
 	scm.compiled = append(scm.compiled, instr)
 	return instr
+}
+
+func (scm *Scheme) addLabel(l *Instr) {
+	scm.compiled = append(scm.compiled, l)
+}
+
+func (scm *Scheme) newLabel() *Instr {
+	scm.nextLabel++
+	return &Instr{
+		Op: OpLabel,
+		I:  scm.nextLabel - 1,
+	}
 }
 
 func (scm *Scheme) compileDefine(pair Pair, length int) error {
@@ -347,19 +377,67 @@ func (scm *Scheme) compileSet(pair Pair, length int) error {
 	return nil
 }
 
-func (scm *Scheme) compileBegin(pair Pair, length int) error {
-	li := pair.Cdr()
-	for li != nil {
-		pair, ok := li.(Pair)
+func (scm *Scheme) compileSequence(v Value) error {
+	for v != nil {
+		pair, ok := v.(Pair)
 		if !ok {
-			return fmt.Errorf("invalid list: %v", li)
+			return fmt.Errorf("invalid list: %v", v)
 		}
 		err := scm.compileValue(pair.Car())
 		if err != nil {
 			return err
 		}
-		li = pair.Cdr()
+		v = pair.Cdr()
 	}
+	return nil
+}
+
+func (scm *Scheme) compileIf(pair Pair, length int) error {
+	if length < 3 || length > 4 {
+		return fmt.Errorf("if: syntax error")
+	}
+	cond, ok := Car(Cdr(pair, true))
+	if !ok {
+		return fmt.Errorf("if: syntax error")
+	}
+	t, ok := Car(Cdr(Cdr(pair, true)))
+	if !ok {
+		return fmt.Errorf("if: syntax error: consequent")
+	}
+	var f Value
+	if length == 4 {
+		f, ok = Car(Cdr(Cdr(Cdr(pair, true))))
+		if !ok {
+			return fmt.Errorf("if: syntax error: alternate")
+		}
+	}
+
+	labelTrue := scm.newLabel()
+	labelEnd := scm.newLabel()
+
+	err := scm.compileValue(cond)
+	if err != nil {
+		return err
+	}
+	instr := scm.addInstr(OpIf, nil, 0)
+	instr.J = labelTrue.I
+
+	if length == 4 {
+		err = scm.compileValue(f)
+		if err != nil {
+			return err
+		}
+		instr = scm.addInstr(OpJmp, nil, 0)
+		instr.J = labelEnd.I
+	}
+
+	scm.addLabel(labelTrue)
+	err = scm.compileValue(t)
+	if err != nil {
+		return err
+	}
+	scm.addLabel(labelEnd)
+
 	return nil
 }
 

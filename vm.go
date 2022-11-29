@@ -28,6 +28,8 @@ const (
 	OpPushS
 	OpPopS
 	OpCall
+	OpIf
+	OpJmp
 	OpReturn
 	OpHalt
 )
@@ -46,6 +48,8 @@ var operands = map[Operand]string{
 	OpPushS:     "pushs",
 	OpPopS:      "pops",
 	OpCall:      "call",
+	OpIf:        "if",
+	OpJmp:       "jmp",
 	OpReturn:    "return",
 	OpHalt:      "halt",
 }
@@ -96,6 +100,9 @@ func (i Instr) String() string {
 	case OpGlobal, OpGlobalSet, OpDefine:
 		return fmt.Sprintf("\t%s\t%v", i.Op, i.Sym)
 
+	case OpIf, OpJmp:
+		return fmt.Sprintf("\t%s\t%v\t; l%v", i.Op, i.I, i.J)
+
 	default:
 		return fmt.Sprintf("\t%s", i.Op.String())
 	}
@@ -144,6 +151,8 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 				lambda.Locals = append(lambda.Locals, scm.stack[i])
 			}
 			scm.accu = lambda
+
+		case OpLabel:
 
 		case OpLocal:
 			// fmt.Printf("*** local: %v.%v\n", scm.fp+1+instr.I, instr.J)
@@ -219,6 +228,15 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 				code = lambda.Code
 				scm.pc = 0
 			}
+
+		case OpIf:
+			boolean, ok := scm.accu.(Boolean)
+			if ok && bool(boolean) {
+				scm.pc += instr.I
+			}
+
+		case OpJmp:
+			scm.pc += instr.I
 
 		case OpReturn:
 			frame, ok := scm.stack[scm.fp][0].(*Frame)

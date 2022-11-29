@@ -87,6 +87,17 @@ Hello, world!
 		v: NewNumber(0, 4),
 		o: ``,
 	},
+	{
+		i: `(if #t 1 2)`,
+		v: NewNumber(0, 1),
+		o: ``,
+	},
+
+	{
+		i: `(if #f 1 2)`,
+		v: NewNumber(0, 2),
+		o: ``,
+	},
 }
 
 func TestVM(t *testing.T) {

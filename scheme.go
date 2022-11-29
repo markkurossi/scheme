@@ -22,11 +22,12 @@ type Scheme struct {
 	env      *Env
 	lambdas  []*LambdaBody
 
-	pc      int
-	fp      int
-	accu    Value
-	stack   [][]Value
-	symbols map[string]*Identifier
+	pc        int
+	fp        int
+	accu      Value
+	stack     [][]Value
+	symbols   map[string]*Identifier
+	nextLabel int
 }
 
 // New creates a new Scheme interpreter.
