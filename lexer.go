@@ -428,9 +428,15 @@ func (l *Lexer) Get() (*Token, error) {
 			return token, nil
 
 		case '+':
-			// XXX numbers
+			// XXX numbers.
 			token := l.Token(TIdentifier)
 			token.Identifier = "+"
+			return token, nil
+
+		case '-':
+			// XXX numbers.
+			token := l.Token(TIdentifier)
+			token.Identifier = "-"
 			return token, nil
 
 		default:

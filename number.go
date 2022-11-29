@@ -127,6 +127,32 @@ func (n *Number) Add(o Number) (Number, error) {
 	return result, nil
 }
 
+// Sub subtracts the argument number to this number and returns the
+// result.
+func (n *Number) Sub(o Number) (Number, error) {
+	var result Number
+
+	switch v := n.Value.(type) {
+	case int64:
+		result.Value = v - o.Int64()
+
+	case *big.Int:
+		switch ov := o.Value.(type) {
+		case int64:
+			result.Value = v.Int64() - ov
+
+		case *big.Int:
+			result.Value = v.Sub(v, ov)
+
+		default:
+			return Zero, fmt.Errorf("-: unsupport number %v", ov)
+		}
+	default:
+		return Zero, fmt.Errorf("-: unsupport number %v", v)
+	}
+	return result, nil
+}
+
 // Mul multiplies the argument number with this number and returns the
 // product.
 func (n *Number) Mul(o Number) (Number, error) {
@@ -239,6 +265,30 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
+		Name: "-",
+		Args: []string{"z1", "[z2]..."},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			result := NewNumber(0, big.NewInt(0))
+			var err error
+
+			for idx, arg := range args {
+				num, ok := arg.(Number)
+				if !ok {
+					return nil, fmt.Errorf("-: invalid argument %v", arg)
+				}
+				if idx == 0 && len(args) > 1 {
+					result = num
+				} else {
+					result, err = result.Sub(num)
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+			return result, nil
+		},
+	},
+	{
 		Name: "*",
 		Args: []string{"[z1]..."},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
@@ -256,6 +306,25 @@ var numberBuiltins = []Builtin{
 				}
 			}
 			return product, nil
+		},
+	},
+	{
+		Name: "=",
+		Args: []string{"z1", "z2", "[z1]..."},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			var last Number
+
+			for idx, arg := range args {
+				num, ok := arg.(Number)
+				if !ok {
+					return nil, fmt.Errorf("=: invalid argument %v", arg)
+				}
+				if idx > 0 && !last.Equal(num) {
+					return Boolean(false), nil
+				}
+				last = num
+			}
+			return Boolean(true), nil
 		},
 	},
 	{
