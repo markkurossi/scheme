@@ -8,9 +8,27 @@ package scheme
 
 import (
 	"fmt"
+	"sort"
 )
 
 var debugBuiltins = []Builtin{
+	{
+		Name: "print-env",
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			var names []string
+			for k, v := range scm.symbols {
+				if v.Global != nil {
+					names = append(names, k)
+				}
+			}
+			sort.Strings(names)
+			fmt.Printf("Global symbols:\n")
+			for _, name := range names {
+				fmt.Printf("%16s : %s\n", name, scm.symbols[name].Global)
+			}
+			return nil, nil
+		},
+	},
 	{
 		Name: "disassemble",
 		Args: []string{"value"},
