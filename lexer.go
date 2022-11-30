@@ -547,10 +547,6 @@ func (l *Lexer) parseNumber() (*Token, error) {
 			return nil, err
 		}
 		if r == '#' {
-			r, _, err = l.ReadRune()
-			if err != nil {
-				return nil, err
-			}
 			// Continue from the top.
 
 		} else if IsDigit10(r) {
