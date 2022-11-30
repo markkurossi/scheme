@@ -23,8 +23,8 @@ type Pair interface {
 	Locator
 	Car() Value
 	Cdr() Value
-	SetCar(v Value)
-	SetCdr(v Value)
+	SetCar(v Value) error
+	SetCdr(v Value) error
 	Scheme() string
 	Equal(o Value) bool
 }
@@ -59,13 +59,15 @@ func (pair *PlainPair) Cdr() Value {
 }
 
 // SetCar sets the pair's car value.
-func (pair *PlainPair) SetCar(v Value) {
+func (pair *PlainPair) SetCar(v Value) error {
 	pair.car = v
+	return nil
 }
 
 // SetCdr sets the pair's cdr value.
-func (pair *PlainPair) SetCdr(v Value) {
+func (pair *PlainPair) SetCdr(v Value) error {
 	pair.cdr = v
+	return nil
 }
 
 // Scheme returns the value as a Scheme string.
@@ -213,4 +215,128 @@ func Cdr(pair Value, ok bool) (Value, bool) {
 		return pair, false
 	}
 	return p.Cdr(), true
+}
+
+var listBuiltins = []Builtin{
+	{
+		Name: "pair?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			_, ok := args[0].(Pair)
+			return Boolean(ok), nil
+		},
+	},
+	{
+		Name: "cons",
+		Args: []string{"obj1", "obj2"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			return NewPair(args[0], args[1]), nil
+		},
+	},
+	{
+		Name: "car",
+		Args: []string{"pair"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			pair, ok := args[0].(Pair)
+			if !ok {
+				return nil, fmt.Errorf("car: not a pair: %v", args[0])
+			}
+			return pair.Car(), nil
+		},
+	},
+	{
+		Name: "cdr",
+		Args: []string{"pair"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			pair, ok := args[0].(Pair)
+			if !ok {
+				return nil, fmt.Errorf("cdr: not a pair: %v", args[0])
+			}
+			return pair.Cdr(), nil
+		},
+	},
+	{
+		Name: "set-car!",
+		Args: []string{"pair", "obj"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			pair, ok := args[0].(Pair)
+			if !ok {
+				return nil, fmt.Errorf("set-car!: not a pair: %v", args[0])
+			}
+			err := pair.SetCar(args[1])
+			if err != nil {
+				return nil, err
+			}
+			return nil, nil
+		},
+	},
+	{
+		Name: "set-cdr!",
+		Args: []string{"pair", "obj"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			pair, ok := args[0].(Pair)
+			if !ok {
+				return nil, fmt.Errorf("set-cdr!: not a pair: %v", args[0])
+			}
+			err := pair.SetCdr(args[1])
+			if err != nil {
+				return nil, err
+			}
+			return nil, nil
+		},
+	},
+	{
+		Name: "null?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			return Boolean(args[0] == nil), nil
+		},
+	},
+	{
+		Name: "list?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			_, ok := ListLength(args[0])
+			return Boolean(ok), nil
+		},
+	},
+	{
+		Name: "list",
+		Args: []string{"[obj]..."},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			var result Pair
+			for i := len(args) - 1; i >= 0; i-- {
+				result = NewPair(args[i], result)
+			}
+			return result, nil
+		},
+	},
+	{
+		Name: "length",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			length, ok := ListLength(args[0])
+			if !ok {
+				return nil, fmt.Errorf("length: not a list: %v", args[0])
+			}
+			return NewNumber(0, length), nil
+		},
+	},
+	// XXX append
+	{
+		Name: "reverse",
+		Args: []string{"list"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			var result Pair
+
+			err := Map(func(idx int, v Value) error {
+				result = NewPair(v, result)
+				return nil
+			}, args[0])
+			if err != nil {
+				return nil, fmt.Errorf("reverse: %v", err)
+			}
+			return result, nil
+		},
+	},
 }

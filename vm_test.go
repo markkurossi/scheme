@@ -34,7 +34,8 @@ Hello, world!
 `,
 	},
 	{
-		i: `(define msg "Hello, msg!")
+		i: `(define (print msg) (display msg) (newline))
+(define msg "Hello, msg!")
 (set! msg "Hello, set!")
 (print msg)
 `,
@@ -98,23 +99,77 @@ Hello, world!
 		v: NewNumber(0, 2),
 		o: ``,
 	},
+	{
+		i: `(pair? (cons 1 2))`,
+		v: Boolean(true),
+	},
+	{
+		i: `(pair? 3)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(cons 1 2)`,
+		v: NewPair(NewNumber(0, 1), NewNumber(0, 2)),
+	},
+	{
+		i: `(car (cons 1 2))`,
+		v: NewNumber(0, 1),
+	},
+	{
+		i: `(cdr (cons 1 2))`,
+		v: NewNumber(0, 2),
+	},
+	{
+		i: `(define v (cons 1 2)) (set-car! v 42) v`,
+		v: NewPair(NewNumber(0, 42), NewNumber(0, 2)),
+	},
+	{
+		i: `(define v (cons 1 2)) (set-cdr! v 42) v`,
+		v: NewPair(NewNumber(0, 1), NewNumber(0, 42)),
+	},
+	{
+		i: `(null? (list))`,
+		v: Boolean(true),
+	},
+	{
+		i: `(null? (list 1))`,
+		v: Boolean(false),
+	},
+	{
+		i: `(list? (list))`,
+		v: Boolean(true),
+	},
+	{
+		i: `(list? (list 1))`,
+		v: Boolean(true),
+	},
+	{
+		i: `(list? 1)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(length (list))`,
+		v: NewNumber(0, 0),
+	},
+	{
+		i: `(length (list 1 2 3))`,
+		v: NewNumber(0, 3),
+	},
 }
 
 func TestVM(t *testing.T) {
-	scm, err := New()
-	if err != nil {
-		t.Fatalf("failed to create virtual machine: %v", err)
-	}
-	stdout := &strings.Builder{}
-	scm.Stdout = stdout
-
 	for idx, test := range vmTests {
-		stdout.Reset()
+		scm, err := New()
+		if err != nil {
+			t.Fatalf("failed to create virtual machine: %v", err)
+		}
+		stdout := &strings.Builder{}
+		scm.Stdout = stdout
 
 		v, err := scm.Eval(fmt.Sprintf("test-%d", idx),
 			strings.NewReader(test.i))
 		if err != nil {
-			t.Fatalf("Eval failed: %v", err)
+			t.Fatalf("Test %d: Eval failed: %v", idx, err)
 		}
 		if !Equal(v, test.v) {
 			t.Errorf("Eval failed: got %v, expected %v", v, test.v)

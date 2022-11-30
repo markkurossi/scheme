@@ -37,10 +37,11 @@ func New() (*Scheme, error) {
 		symbols: make(map[string]*Identifier),
 	}
 
+	scm.DefineBuiltins(debugBuiltins)
+	scm.DefineBuiltins(listBuiltins)
+	scm.DefineBuiltins(numberBuiltins)
 	scm.DefineBuiltins(outputBuiltins)
 	scm.DefineBuiltins(stringBuiltins)
-	scm.DefineBuiltins(numberBuiltins)
-	scm.DefineBuiltins(debugBuiltins)
 
 	return scm, nil
 }
