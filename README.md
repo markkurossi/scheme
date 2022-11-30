@@ -18,7 +18,7 @@ structured data operations.
    - [X] Lambda environment capture
    - [X] Store lexical locations into values
  - [ ] VM
-   - Tail call
-   - Call with current continuation
+   - [X] Tail call
+   - [ ] Call with current continuation
  - [ ] Runtime
    - [ ] Almost everything
