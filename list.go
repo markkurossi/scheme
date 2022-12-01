@@ -339,4 +339,63 @@ var listBuiltins = []Builtin{
 			return result, nil
 		},
 	},
+	{
+		Name: "list-tail",
+		Args: []string{"list", "k"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			kn, ok := args[1].(Number)
+			if !ok {
+				return nil, fmt.Errorf("list-tail: invalid index: %v", args[1])
+			}
+			k := int(kn.Int64())
+			pair := args[0]
+			var i int
+
+			for i = 0; i < k && pair != nil; i++ {
+				pair, ok = Cdr(pair, true)
+				if !ok {
+					return nil, fmt.Errorf("list-tail: invalid list: %v", pair)
+				}
+			}
+			if i < k {
+				return nil,
+					fmt.Errorf("list-tail: index %v out of range for list %v",
+						k, args[0])
+			}
+
+			return pair, nil
+		},
+	},
+	{
+		Name: "list-ref",
+		Args: []string{"list", "k"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			kn, ok := args[1].(Number)
+			if !ok {
+				return nil, fmt.Errorf("list-ref: invalid index: %v", args[1])
+			}
+			k := int(kn.Int64())
+			pair := args[0]
+			var i int
+
+			for i = 0; i < k && pair != nil; i++ {
+				pair, ok = Cdr(pair, true)
+				if !ok {
+					return nil, fmt.Errorf("list-ref: invalid list: %v", pair)
+				}
+			}
+			if pair == nil {
+				return nil,
+					fmt.Errorf("list-ref: index %v out of range for list %v",
+						k, args[0])
+			}
+
+			result, ok := Car(pair, true)
+			if !ok {
+				return nil, fmt.Errorf("list-ref: invalid list: %v", pair)
+			}
+
+			return result, nil
+		},
+	},
 }
