@@ -138,6 +138,17 @@ func (scm *Scheme) compileValue(value Value, tail bool) error {
 		if isKeyword(v.Car(), KwIf) {
 			return scm.compileIf(v, length, tail)
 		}
+		if isKeyword(v.Car(), KwQuote) {
+			if length != 2 {
+				return fmt.Errorf("invalid quote: %v", v)
+			}
+			quoted, ok := Car(v.Cdr(), true)
+			if !ok {
+				return fmt.Errorf("invalid quote: %v", v)
+			}
+			scm.addInstr(OpConst, quoted, 0)
+			return nil
+		}
 
 		// Function call.
 

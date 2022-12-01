@@ -30,6 +30,15 @@ func (p *Parser) Next() (Value, error) {
 		return nil, err
 	}
 	switch t.Type {
+	case '\'':
+		v, err := p.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		return NewLocationPair(t.From, KwQuote,
+			NewLocationPair(t.From, v, nil)), nil
+
 	case '(':
 		var list, cursor Pair
 		for {
