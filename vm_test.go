@@ -155,6 +155,26 @@ Hello, world!
 		i: `(length (list 1 2 3))`,
 		v: NewNumber(0, 3),
 	},
+	{
+		i: `(list-tail (list 1 2 3) 2)`,
+		v: NewPair(NewNumber(0, 3), nil),
+	},
+	{
+		i: `(list-tail (list 1 2 3) 3)`,
+		v: nil,
+	},
+	{
+		i: `(list-ref (list 1 2 3) 0)`,
+		v: NewNumber(0, 1),
+	},
+	{
+		i: `(list-ref (list 1 2 3) 1)`,
+		v: NewNumber(0, 2),
+	},
+	{
+		i: `(list-ref (list 1 2 3) 2)`,
+		v: NewNumber(0, 3),
+	},
 }
 
 func TestVM(t *testing.T) {
