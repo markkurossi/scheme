@@ -100,6 +100,55 @@ var stringBuiltins = []Builtin{
 		},
 	},
 	{
+		Name: "make-string",
+		Args: []string{"k", "[char]"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			k, ok := args[0].(Number)
+			if !ok {
+				return nil, fmt.Errorf("make-string: invalid length: %v",
+					args[0])
+			}
+			length := k.Int64()
+			if length < 0 {
+				return nil, fmt.Errorf("make-string: negative length: %v", k)
+			}
+
+			fill := byte(' ')
+			if len(args) == 2 {
+				ch, ok := args[1].(Character)
+				if !ok {
+					return nil, fmt.Errorf("make-string: invalid char: %v",
+						args[1])
+				}
+				fill = byte(ch)
+			}
+			str := make([]byte, length, length)
+			for i := 0; i < int(length); i++ {
+				str[i] = fill
+			}
+
+			return String(str), nil
+		},
+	},
+	{
+		Name: "string",
+		Args: []string{"char..."},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			length := len(args)
+			str := make([]byte, length, length)
+
+			for i := 0; i < length; i++ {
+				ch, ok := args[i].(Character)
+				if !ok {
+					return nil, fmt.Errorf("string: invalid character: %v",
+						args[i])
+				}
+				str[i] = byte(ch)
+			}
+			return String(str), nil
+		},
+	},
+	{
 		Name: "string-length",
 		Args: []string{"string"},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
@@ -112,4 +161,93 @@ var stringBuiltins = []Builtin{
 			}
 		},
 	},
+	{
+		Name: "string-ref",
+		Args: []string{"string", "k"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			str, ok := args[0].(String)
+			if !ok {
+				return nil, fmt.Errorf("string-ref: invalid string: %v",
+					args[0])
+			}
+			kn, ok := args[1].(Number)
+			if !ok {
+				return nil, fmt.Errorf("string-ref: invalid index: %v", args[1])
+			}
+			k := kn.Int64()
+			if k < 0 || k >= int64(len(str)) {
+				return nil, fmt.Errorf("string-ref: invalid index: %v", args[1])
+			}
+			return Character(str[k]), nil
+		},
+	},
+	// XXX string-set!
+	// XXX string=?
+	// XXX string-ci=?
+	// XXX string<?
+	// XXX string>?
+	// XXX string<=?
+	// XXX string>=?
+	// XXX string-ci<?
+	// XXX string-ci>?
+	// XXX string-ci<=?
+	// XXX string-ci>=?
+	// XXX substring
+	// XXX string-append
+	{
+		Name: "string->list",
+		Args: []string{"string"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			str, ok := args[0].(String)
+			if !ok {
+				return nil, fmt.Errorf("string->list: invalid string: %v",
+					args[0])
+			}
+			var head, tail Pair
+			for i := 0; i < len(str); i++ {
+				item := NewPair(Character(str[i]), nil)
+				if head == nil {
+					head = item
+				} else {
+					tail.SetCdr(item)
+				}
+				tail = item
+			}
+			return head, nil
+		},
+	},
+	{
+		Name: "list->string",
+		Args: []string{"chars"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			var str []byte
+			err := Map(func(idx int, v Value) error {
+				ch, ok := v.(Character)
+				if !ok {
+					return fmt.Errorf("list->string: invalid character: %v", v)
+				}
+				str = append(str, byte(ch))
+				return nil
+			}, args[0])
+			if err != nil {
+				return nil, err
+			}
+			return String(str), nil
+		},
+	},
+	{
+		Name: "string-copy",
+		Args: []string{"string"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			str, ok := args[0].(String)
+			if !ok {
+				return nil, fmt.Errorf("string-copy: invalid string: %v",
+					args[0])
+			}
+			new := make([]byte, len(str), len(str))
+			copy(new, str)
+			return String(new), nil
+		},
+	},
+	// XXX string-fill!
 }
