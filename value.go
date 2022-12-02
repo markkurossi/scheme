@@ -102,35 +102,6 @@ func (v *Identifier) String() string {
 	return v.Name
 }
 
-// Boolean implements boolean values.
-type Boolean bool
-
-// Scheme returns the value as a Scheme string.
-func (v Boolean) Scheme() string {
-	return v.String()
-}
-
-// Equal tests if the argument value is equal to this value.
-func (v Boolean) Equal(o Value) bool {
-	ov, ok := o.(Boolean)
-	return ok && v == ov
-}
-
-func (v Boolean) String() string {
-	return BooleanToScheme(bool(v))
-}
-
-// BooleanToScheme returns the bool as Scheme boolean literal.
-func BooleanToScheme(v bool) string {
-	var ch rune
-	if v {
-		ch = 't'
-	} else {
-		ch = 'f'
-	}
-	return fmt.Sprintf("#%c", ch)
-}
-
 // Lambda implements lambda values.
 type Lambda struct {
 	Name    string

@@ -259,8 +259,7 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 			}
 
 		case OpIf:
-			boolean, ok := scm.accu.(Boolean)
-			if ok && bool(boolean) {
+			if True(scm.accu) {
 				scm.pc += instr.I
 			}
 

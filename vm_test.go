@@ -195,6 +195,42 @@ Hello, world!
 		i: `'#t`,
 		v: Boolean(true),
 	},
+	{
+		i: `(not 3)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(not (list 3))`,
+		v: Boolean(false),
+	},
+	{
+		i: `(not #f)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(not '())`,
+		v: Boolean(false),
+	},
+	{
+		i: `(not (list))`,
+		v: Boolean(false),
+	},
+	{
+		i: `(not nil)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(boolean? #f)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(boolean? 0)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(boolean? '())`,
+		v: Boolean(false),
+	},
 }
 
 func TestVM(t *testing.T) {
