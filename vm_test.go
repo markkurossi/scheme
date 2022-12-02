@@ -175,6 +175,26 @@ Hello, world!
 		i: `(list-ref (list 1 2 3) 2)`,
 		v: NewNumber(0, 3),
 	},
+	{
+		i: `'()`,
+		v: nil,
+	},
+	{
+		i: `'(1 2)`,
+		v: NewPair(NewNumber(0, 1), NewPair(NewNumber(0, 2), nil)),
+	},
+	{
+		i: `(quote ())`,
+		v: nil,
+	},
+	{
+		i: `(quote (1 2))`,
+		v: NewPair(NewNumber(0, 1), NewPair(NewNumber(0, 2), nil)),
+	},
+	{
+		i: `'#t`,
+		v: Boolean(true),
+	},
 }
 
 func TestVM(t *testing.T) {

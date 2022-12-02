@@ -36,8 +36,15 @@ func (p *Parser) Next() (Value, error) {
 			return nil, err
 		}
 
-		return NewLocationPair(t.From, KwQuote,
-			NewLocationPair(t.From, v, nil)), nil
+		var next Value
+		locator, ok := v.(Locator)
+		if ok {
+			next = NewLocationPair(locator.Location(), v, nil)
+		} else {
+			next = NewPair(v, nil)
+		}
+
+		return NewLocationPair(t.From, KwQuote, next), nil
 
 	case '(':
 		var list, cursor Pair
