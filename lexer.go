@@ -60,6 +60,11 @@ func (kw Keyword) Scheme() string {
 	return kw.String()
 }
 
+// Eq tests if the argument value is eq? to this value.
+func (kw Keyword) Eq(o Value) bool {
+	return kw.Equal(o)
+}
+
 // Equal tests if the argument value is equal to this value.
 func (kw Keyword) Equal(o Value) bool {
 	ov, ok := o.(Keyword)

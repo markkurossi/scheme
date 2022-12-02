@@ -26,21 +26,8 @@ var (
 // Value implements a Scheme value.
 type Value interface {
 	Scheme() string
+	Eq(o Value) bool
 	Equal(o Value) bool
-}
-
-// Equal tests if the argument value is equal to this value.
-func Equal(a, b Value) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil && b != nil {
-		return false
-	}
-	if a != nil && b == nil {
-		return false
-	}
-	return a.Equal(b)
 }
 
 // Vector implements vector values.
@@ -51,6 +38,11 @@ type Vector struct {
 // Scheme returns the value as a Scheme string.
 func (v *Vector) Scheme() string {
 	return v.String()
+}
+
+// Eq tests if the argument value is eq? to this value.
+func (v *Vector) Eq(o Value) bool {
+	return v == o
 }
 
 // Equal tests if the argument value is equal to this value.
@@ -92,6 +84,11 @@ func (v *Identifier) Scheme() string {
 	return v.String()
 }
 
+// Eq tests if the argument value is eq? to this value.
+func (v *Identifier) Eq(o Value) bool {
+	return v.Equal(o)
+}
+
 // Equal tests if the argument value is equal to this value.
 func (v *Identifier) Equal(o Value) bool {
 	ov, ok := o.(*Identifier)
@@ -118,6 +115,11 @@ type Lambda struct {
 // Scheme returns the value as a Scheme string.
 func (v *Lambda) Scheme() string {
 	return v.String()
+}
+
+// Eq tests if the argument value is eq? to this value.
+func (v *Lambda) Eq(o Value) bool {
+	return v == v
 }
 
 // Equal tests if the argument value is equal to this value.

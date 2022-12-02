@@ -26,6 +26,7 @@ type Pair interface {
 	SetCar(v Value) error
 	SetCdr(v Value) error
 	Scheme() string
+	Eq(o Value) bool
 	Equal(o Value) bool
 }
 
@@ -73,6 +74,11 @@ func (pair *PlainPair) SetCdr(v Value) error {
 // Scheme returns the value as a Scheme string.
 func (pair *PlainPair) Scheme() string {
 	return pair.String()
+}
+
+// Eq tests if the argument value is eq? to this value.
+func (pair *PlainPair) Eq(o Value) bool {
+	return pair == o
 }
 
 // Equal tests if the argument value is equal to this value.

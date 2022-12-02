@@ -51,6 +51,33 @@ func (n Number) Scheme() string {
 	return n.String()
 }
 
+// Eq tests if the argument value is eq? to this value.
+func (n Number) Eq(o Value) bool {
+	on, ok := o.(Number)
+	if !ok {
+		return false
+	}
+
+	switch v := n.Value.(type) {
+	case int64:
+		ov, ok := on.Value.(int64)
+		if !ok {
+			return false
+		}
+		return v == ov
+
+	case *big.Int:
+		ov, ok := on.Value.(*big.Int)
+		if !ok {
+			return false
+		}
+		return v.Cmp(ov) == 0
+
+	default:
+		panic(fmt.Sprintf("n type %T not implemented", n.Value))
+	}
+}
+
 // Equal tests if the argument value is equal to this number.
 func (n Number) Equal(o Value) bool {
 	on, ok := o.(Number)

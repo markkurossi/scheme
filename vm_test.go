@@ -231,6 +231,86 @@ Hello, world!
 		i: `(boolean? '())`,
 		v: Boolean(false),
 	},
+	{
+		i: `(eq? #t #t)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(eq? #f #f)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(eq? 'a 'a)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(eq? 42 42)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(eq? #e42 #e42)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(eq? #\a #\a)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(eq? '() '())`,
+		v: Boolean(true),
+	},
+	// XXX pairs, vectors, strings
+	// XXX procedures
+	{
+		i: `(eq? #t #\a)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(eq? #t #f)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(eq? 'a 'b)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(eq? 42 #e42)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(eq? #\a #\b)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(eq? '() '(a))`,
+		v: Boolean(false),
+	},
+	{
+		i: `(eq? (cons 1 2) (cons 1 2))`,
+		v: Boolean(false),
+	},
+	// XXX pairs, vectors, strings
+	// XXX procedures
+	{
+		i: `(equal? 'a 'a)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(equal? '(a) '(a))`,
+		v: Boolean(true),
+	},
+	{
+		i: `(equal? '(a (b) c) '(a (b) c))`,
+		v: Boolean(true),
+	},
+	{
+		i: `(equal? "abc" "abc")`,
+		v: Boolean(true),
+	},
+	{
+		i: `(equal? 2 2)`,
+		v: Boolean(true),
+	},
 }
 
 func TestVM(t *testing.T) {

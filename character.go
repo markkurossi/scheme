@@ -20,6 +20,11 @@ func (v Character) Scheme() string {
 	return CharacterToScheme(rune(v))
 }
 
+// Eq tests if the argument value is eq? to this value.
+func (v Character) Eq(o Value) bool {
+	return v.Equal(o)
+}
+
 // Equal tests if the argument value is equal to this value.
 func (v Character) Equal(o Value) bool {
 	ch, ok := o.(Character)

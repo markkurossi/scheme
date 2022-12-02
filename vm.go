@@ -360,6 +360,11 @@ func (f *Frame) Scheme() string {
 	return f.String()
 }
 
+// Eq tests if the argument value is eq? to this value.
+func (f *Frame) Eq(o Value) bool {
+	return f == o
+}
+
 // Equal tests if the argument value is equal to this value.
 func (f *Frame) Equal(o Value) bool {
 	ov, ok := o.(*Frame)

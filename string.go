@@ -19,6 +19,18 @@ func (v String) Scheme() string {
 	return StringToScheme(string(v))
 }
 
+// Eq tests if the argument value is eq? to this value.
+func (v String) Eq(o Value) bool {
+	ov, ok := o.(String)
+	if !ok {
+		return false
+	}
+	if len(v) == 0 && len(ov) == 0 {
+		return true
+	}
+	return false
+}
+
 // Equal tests if the argument value is equal to this value.
 func (v String) Equal(o Value) bool {
 	ov, ok := o.(String)
@@ -79,6 +91,14 @@ func StringToScheme(s string) string {
 }
 
 var stringBuiltins = []Builtin{
+	{
+		Name: "string?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			_, ok := args[0].(String)
+			return Boolean(ok), nil
+		},
+	},
 	{
 		Name: "string-length",
 		Args: []string{"string"},
