@@ -38,6 +38,7 @@ func New() (*Scheme, error) {
 	}
 
 	scm.DefineBuiltins(booleanBuiltins)
+	scm.DefineBuiltins(characterBuiltins)
 	scm.DefineBuiltins(debugBuiltins)
 	scm.DefineBuiltins(listBuiltins)
 	scm.DefineBuiltins(numberBuiltins)
