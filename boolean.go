@@ -85,14 +85,14 @@ var booleanBuiltins = []Builtin{
 	{
 		Name: "not",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			return Boolean(!True(args[0])), nil
 		},
 	},
 	{
 		Name: "boolean?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			_, ok := args[0].(Boolean)
 			return Boolean(ok), nil
 		},
@@ -100,21 +100,21 @@ var booleanBuiltins = []Builtin{
 	{
 		Name: "eqv?",
 		Args: []string{"obj1", "obj2"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			return Boolean(Eq(args[0], args[1])), nil
 		},
 	},
 	{
 		Name: "eq?",
 		Args: []string{"obj1", "obj2"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			return Boolean(Eq(args[0], args[1])), nil
 		},
 	},
 	{
 		Name: "equal?",
 		Args: []string{"obj1", "obj2"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			return Boolean(Equal(args[0], args[1])), nil
 		},
 	},

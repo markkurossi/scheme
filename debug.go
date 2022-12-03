@@ -14,7 +14,7 @@ import (
 var debugBuiltins = []Builtin{
 	{
 		Name: "print-env",
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			var names []string
 			for k, v := range scm.symbols {
 				if v.Global != nil {
@@ -32,7 +32,7 @@ var debugBuiltins = []Builtin{
 	{
 		Name: "disassemble",
 		Args: []string{"value"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			switch arg := args[0].(type) {
 			case *Lambda:
 				fmt.Fprintf(scm.Stdout, "lambda: %v\n", arg)

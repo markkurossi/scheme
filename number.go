@@ -274,14 +274,14 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "+",
 		Args: []string{"[z1]..."},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			sum := NewNumber(0, big.NewInt(0))
 			var err error
 
 			for _, arg := range args {
 				num, ok := arg.(Number)
 				if !ok {
-					return nil, fmt.Errorf("+: invalid argument %v", arg)
+					return nil, l.Errorf("invalid argument %v", arg)
 				}
 				sum, err = sum.Add(num)
 				if err != nil {
@@ -294,14 +294,14 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "-",
 		Args: []string{"z1", "[z2]..."},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			result := NewNumber(0, big.NewInt(0))
 			var err error
 
 			for idx, arg := range args {
 				num, ok := arg.(Number)
 				if !ok {
-					return nil, fmt.Errorf("-: invalid argument %v", arg)
+					return nil, l.Errorf("invalid argument %v", arg)
 				}
 				if idx == 0 && len(args) > 1 {
 					result = num
@@ -318,14 +318,14 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "*",
 		Args: []string{"[z1]..."},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			product := NewNumber(0, big.NewInt(1))
 			var err error
 
 			for _, arg := range args {
 				num, ok := arg.(Number)
 				if !ok {
-					return nil, fmt.Errorf("*: invalid argument %v", arg)
+					return nil, l.Errorf("invalid argument %v", arg)
 				}
 				product, err = product.Mul(num)
 				if err != nil {
@@ -338,13 +338,13 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "=",
 		Args: []string{"z1", "z2", "[z1]..."},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			var last Number
 
 			for idx, arg := range args {
 				num, ok := arg.(Number)
 				if !ok {
-					return nil, fmt.Errorf("=: invalid argument %v", arg)
+					return nil, l.Errorf("invalid argument %v", arg)
 				}
 				if idx > 0 && !last.Equal(num) {
 					return Boolean(false), nil
@@ -357,14 +357,14 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "expt",
 		Args: []string{"z1", "z2"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			z1, ok := args[0].(Number)
 			if !ok {
-				return nil, fmt.Errorf("expt: invalid argument %v", args[0])
+				return nil, l.Errorf("invalid argument %v", args[0])
 			}
 			z2, ok := args[1].(Number)
 			if !ok {
-				return nil, fmt.Errorf("expt: invalid argument %v", args[1])
+				return nil, l.Errorf("invalid argument %v", args[1])
 			}
 			return z1.Expt(z2)
 		},

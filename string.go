@@ -7,7 +7,6 @@
 package scheme
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -94,7 +93,7 @@ var stringBuiltins = []Builtin{
 	{
 		Name: "string?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			_, ok := args[0].(String)
 			return Boolean(ok), nil
 		},
@@ -102,23 +101,21 @@ var stringBuiltins = []Builtin{
 	{
 		Name: "make-string",
 		Args: []string{"k", "[char]"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			k, ok := args[0].(Number)
 			if !ok {
-				return nil, fmt.Errorf("make-string: invalid length: %v",
-					args[0])
+				return nil, l.Errorf("invalid length: %v", args[0])
 			}
 			length := k.Int64()
 			if length < 0 {
-				return nil, fmt.Errorf("make-string: negative length: %v", k)
+				return nil, l.Errorf("negative length: %v", k)
 			}
 
 			fill := byte(' ')
 			if len(args) == 2 {
 				ch, ok := args[1].(Character)
 				if !ok {
-					return nil, fmt.Errorf("make-string: invalid char: %v",
-						args[1])
+					return nil, l.Errorf("invalid char: %v", args[1])
 				}
 				fill = byte(ch)
 			}
@@ -133,15 +130,14 @@ var stringBuiltins = []Builtin{
 	{
 		Name: "string",
 		Args: []string{"char..."},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			length := len(args)
 			str := make([]byte, length, length)
 
 			for i := 0; i < length; i++ {
 				ch, ok := args[i].(Character)
 				if !ok {
-					return nil, fmt.Errorf("string: invalid character: %v",
-						args[i])
+					return nil, l.Errorf("invalid character: %v", args[i])
 				}
 				str[i] = byte(ch)
 			}
@@ -151,32 +147,31 @@ var stringBuiltins = []Builtin{
 	{
 		Name: "string-length",
 		Args: []string{"string"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			switch v := args[0].(type) {
 			case String:
 				return NewNumber(0, len(v)), nil
 
 			default:
-				return nil, fmt.Errorf("string-length: invalid argument")
+				return nil, l.Errorf("invalid argument")
 			}
 		},
 	},
 	{
 		Name: "string-ref",
 		Args: []string{"string", "k"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			str, ok := args[0].(String)
 			if !ok {
-				return nil, fmt.Errorf("string-ref: invalid string: %v",
-					args[0])
+				return nil, l.Errorf("invalid string: %v", args[0])
 			}
 			kn, ok := args[1].(Number)
 			if !ok {
-				return nil, fmt.Errorf("string-ref: invalid index: %v", args[1])
+				return nil, l.Errorf("invalid index: %v", args[1])
 			}
 			k := kn.Int64()
 			if k < 0 || k >= int64(len(str)) {
-				return nil, fmt.Errorf("string-ref: invalid index: %v", args[1])
+				return nil, l.Errorf("invalid index: %v", args[1])
 			}
 			return Character(str[k]), nil
 		},
@@ -197,11 +192,10 @@ var stringBuiltins = []Builtin{
 	{
 		Name: "string->list",
 		Args: []string{"string"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			str, ok := args[0].(String)
 			if !ok {
-				return nil, fmt.Errorf("string->list: invalid string: %v",
-					args[0])
+				return nil, l.Errorf("invalid string: %v", args[0])
 			}
 			var head, tail Pair
 			for i := 0; i < len(str); i++ {
@@ -219,12 +213,12 @@ var stringBuiltins = []Builtin{
 	{
 		Name: "list->string",
 		Args: []string{"chars"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			var str []byte
 			err := Map(func(idx int, v Value) error {
 				ch, ok := v.(Character)
 				if !ok {
-					return fmt.Errorf("list->string: invalid character: %v", v)
+					return l.Errorf("invalid character: %v", v)
 				}
 				str = append(str, byte(ch))
 				return nil
@@ -238,11 +232,10 @@ var stringBuiltins = []Builtin{
 	{
 		Name: "string-copy",
 		Args: []string{"string"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			str, ok := args[0].(String)
 			if !ok {
-				return nil, fmt.Errorf("string-copy: invalid string: %v",
-					args[0])
+				return nil, l.Errorf("invalid string: %v", args[0])
 			}
 			new := make([]byte, len(str), len(str))
 			copy(new, str)

@@ -223,7 +223,7 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 			scm.fp = stackTop - 1
 
 			if lambda.Native != nil {
-				scm.accu, err = callFrame.Lambda.Native(scm, args)
+				scm.accu, err = callFrame.Lambda.Native(scm, lambda, args)
 				if err != nil {
 					return nil, err
 				}

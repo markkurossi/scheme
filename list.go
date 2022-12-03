@@ -227,7 +227,7 @@ var listBuiltins = []Builtin{
 	{
 		Name: "pair?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			_, ok := args[0].(Pair)
 			return Boolean(ok), nil
 		},
@@ -235,17 +235,17 @@ var listBuiltins = []Builtin{
 	{
 		Name: "cons",
 		Args: []string{"obj1", "obj2"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			return NewPair(args[0], args[1]), nil
 		},
 	},
 	{
 		Name: "car",
 		Args: []string{"pair"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
-				return nil, fmt.Errorf("car: not a pair: %v", args[0])
+				return nil, l.Errorf("not a pair: %v", args[0])
 			}
 			return pair.Car(), nil
 		},
@@ -253,10 +253,10 @@ var listBuiltins = []Builtin{
 	{
 		Name: "cdr",
 		Args: []string{"pair"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
-				return nil, fmt.Errorf("cdr: not a pair: %v", args[0])
+				return nil, l.Errorf("not a pair: %v", args[0])
 			}
 			return pair.Cdr(), nil
 		},
@@ -264,10 +264,10 @@ var listBuiltins = []Builtin{
 	{
 		Name: "set-car!",
 		Args: []string{"pair", "obj"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
-				return nil, fmt.Errorf("set-car!: not a pair: %v", args[0])
+				return nil, l.Errorf("not a pair: %v", args[0])
 			}
 			err := pair.SetCar(args[1])
 			if err != nil {
@@ -279,10 +279,10 @@ var listBuiltins = []Builtin{
 	{
 		Name: "set-cdr!",
 		Args: []string{"pair", "obj"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
-				return nil, fmt.Errorf("set-cdr!: not a pair: %v", args[0])
+				return nil, l.Errorf("not a pair: %v", args[0])
 			}
 			err := pair.SetCdr(args[1])
 			if err != nil {
@@ -294,14 +294,14 @@ var listBuiltins = []Builtin{
 	{
 		Name: "null?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			return Boolean(args[0] == nil), nil
 		},
 	},
 	{
 		Name: "list?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			_, ok := ListLength(args[0])
 			return Boolean(ok), nil
 		},
@@ -309,7 +309,7 @@ var listBuiltins = []Builtin{
 	{
 		Name: "list",
 		Args: []string{"[obj]..."},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			var result Pair
 			for i := len(args) - 1; i >= 0; i-- {
 				result = NewPair(args[i], result)
@@ -320,10 +320,10 @@ var listBuiltins = []Builtin{
 	{
 		Name: "length",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			length, ok := ListLength(args[0])
 			if !ok {
-				return nil, fmt.Errorf("length: not a list: %v", args[0])
+				return nil, l.Errorf("not a list: %v", args[0])
 			}
 			return NewNumber(0, length), nil
 		},
@@ -332,7 +332,7 @@ var listBuiltins = []Builtin{
 	{
 		Name: "reverse",
 		Args: []string{"list"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			var result Pair
 
 			err := Map(func(idx int, v Value) error {
@@ -340,7 +340,7 @@ var listBuiltins = []Builtin{
 				return nil
 			}, args[0])
 			if err != nil {
-				return nil, fmt.Errorf("reverse: %v", err)
+				return nil, l.Errorf("%v", err)
 			}
 			return result, nil
 		},
@@ -348,10 +348,10 @@ var listBuiltins = []Builtin{
 	{
 		Name: "list-tail",
 		Args: []string{"list", "k"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			kn, ok := args[1].(Number)
 			if !ok {
-				return nil, fmt.Errorf("list-tail: invalid index: %v", args[1])
+				return nil, l.Errorf("invalid index: %v", args[1])
 			}
 			k := int(kn.Int64())
 			pair := args[0]
@@ -360,13 +360,12 @@ var listBuiltins = []Builtin{
 			for i = 0; i < k && pair != nil; i++ {
 				pair, ok = Cdr(pair, true)
 				if !ok {
-					return nil, fmt.Errorf("list-tail: invalid list: %v", pair)
+					return nil, l.Errorf("invalid list: %v", pair)
 				}
 			}
 			if i < k {
-				return nil,
-					fmt.Errorf("list-tail: index %v out of range for list %v",
-						k, args[0])
+				return nil, l.Errorf("index %v out of range for list %v",
+					k, args[0])
 			}
 
 			return pair, nil
@@ -375,10 +374,10 @@ var listBuiltins = []Builtin{
 	{
 		Name: "list-ref",
 		Args: []string{"list", "k"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			kn, ok := args[1].(Number)
 			if !ok {
-				return nil, fmt.Errorf("list-ref: invalid index: %v", args[1])
+				return nil, l.Errorf("invalid index: %v", args[1])
 			}
 			k := int(kn.Int64())
 			pair := args[0]
@@ -387,18 +386,17 @@ var listBuiltins = []Builtin{
 			for i = 0; i < k && pair != nil; i++ {
 				pair, ok = Cdr(pair, true)
 				if !ok {
-					return nil, fmt.Errorf("list-ref: invalid list: %v", pair)
+					return nil, l.Errorf("invalid list: %v", pair)
 				}
 			}
 			if pair == nil {
-				return nil,
-					fmt.Errorf("list-ref: index %v out of range for list %v",
-						k, args[0])
+				return nil, l.Errorf("index %v out of range for list %v",
+					k, args[0])
 			}
 
 			result, ok := Car(pair, true)
 			if !ok {
-				return nil, fmt.Errorf("list-ref: invalid list: %v", pair)
+				return nil, l.Errorf("invalid list: %v", pair)
 			}
 
 			return result, nil

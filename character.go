@@ -137,7 +137,7 @@ var characterBuiltins = []Builtin{
 	{
 		Name: "char?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			_, ok := args[0].(Character)
 			return Boolean(ok), nil
 		},
@@ -145,14 +145,14 @@ var characterBuiltins = []Builtin{
 	{
 		Name: "char=?",
 		Args: []string{"char1", "char2"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch1, ok := args[0].(Character)
 			if !ok {
-				return nil, fmt.Errorf("char=?: invalid character %v", args[0])
+				return nil, l.Errorf("invalid character %v", args[0])
 			}
 			ch2, ok := args[1].(Character)
 			if !ok {
-				return nil, fmt.Errorf("char=?: invalid character %v", args[1])
+				return nil, l.Errorf("invalid character %v", args[1])
 			}
 			return Boolean(ch1 == ch2), nil
 		},
@@ -160,14 +160,14 @@ var characterBuiltins = []Builtin{
 	{
 		Name: "char<?",
 		Args: []string{"char1", "char2"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch1, ok := args[0].(Character)
 			if !ok {
-				return nil, fmt.Errorf("char<?: invalid character %v", args[0])
+				return nil, l.Errorf("invalid character %v", args[0])
 			}
 			ch2, ok := args[1].(Character)
 			if !ok {
-				return nil, fmt.Errorf("char<?: invalid character %v", args[1])
+				return nil, l.Errorf("invalid character %v", args[1])
 			}
 			return Boolean(ch1 < ch2), nil
 		},
@@ -175,14 +175,14 @@ var characterBuiltins = []Builtin{
 	{
 		Name: "char>?",
 		Args: []string{"char1", "char2"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch1, ok := args[0].(Character)
 			if !ok {
-				return nil, fmt.Errorf("char>?: invalid character %v", args[0])
+				return nil, l.Errorf("invalid character %v", args[0])
 			}
 			ch2, ok := args[1].(Character)
 			if !ok {
-				return nil, fmt.Errorf("char>?: invalid character %v", args[1])
+				return nil, l.Errorf("invalid character %v", args[1])
 			}
 			return Boolean(ch1 > ch2), nil
 		},
@@ -190,14 +190,14 @@ var characterBuiltins = []Builtin{
 	{
 		Name: "char<=?",
 		Args: []string{"char1", "char2"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch1, ok := args[0].(Character)
 			if !ok {
-				return nil, fmt.Errorf("char<=?: invalid character %v", args[0])
+				return nil, l.Errorf("invalid character %v", args[0])
 			}
 			ch2, ok := args[1].(Character)
 			if !ok {
-				return nil, fmt.Errorf("char<=?: invalid character %v", args[1])
+				return nil, l.Errorf("invalid character %v", args[1])
 			}
 			return Boolean(ch1 <= ch2), nil
 		},
@@ -205,14 +205,14 @@ var characterBuiltins = []Builtin{
 	{
 		Name: "char>=?",
 		Args: []string{"char1", "char2"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch1, ok := args[0].(Character)
 			if !ok {
-				return nil, fmt.Errorf("char>=?: invalid character %v", args[0])
+				return nil, l.Errorf("invalid character %v", args[0])
 			}
 			ch2, ok := args[1].(Character)
 			if !ok {
-				return nil, fmt.Errorf("char>=?: invalid character %v", args[1])
+				return nil, l.Errorf("invalid character %v", args[1])
 			}
 			return Boolean(ch1 >= ch2), nil
 		},
@@ -220,16 +220,14 @@ var characterBuiltins = []Builtin{
 	{
 		Name: "char-ci=?",
 		Args: []string{"char1", "char2"},
-		Native: func(scm *Scheme, args []Value) (Value, error) {
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch1, ok := args[0].(Character)
 			if !ok {
-				return nil, fmt.Errorf("char-ci=?: invalid character %v",
-					args[0])
+				return nil, l.Errorf("invalid character %v", args[0])
 			}
 			ch2, ok := args[1].(Character)
 			if !ok {
-				return nil, fmt.Errorf("char-ci=?: invalid character %v",
-					args[1])
+				return nil, l.Errorf("invalid character %v", args[1])
 			}
 			return Boolean(unicode.ToLower(rune(ch1)) ==
 				unicode.ToLower(rune(ch2))), nil
