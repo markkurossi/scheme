@@ -233,4 +233,167 @@ var characterBuiltins = []Builtin{
 				unicode.ToLower(rune(ch2))), nil
 		},
 	},
+	{
+		Name: "char-ci<?",
+		Args: []string{"char1", "char2"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			ch1, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
+			}
+			ch2, ok := args[1].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[1])
+			}
+			return Boolean(unicode.ToLower(rune(ch1)) <
+				unicode.ToLower(rune(ch2))), nil
+		},
+	},
+	{
+		Name: "char-ci>?",
+		Args: []string{"char1", "char2"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			ch1, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
+			}
+			ch2, ok := args[1].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[1])
+			}
+			return Boolean(unicode.ToLower(rune(ch1)) >
+				unicode.ToLower(rune(ch2))), nil
+		},
+	},
+	{
+		Name: "char-ci<=?",
+		Args: []string{"char1", "char2"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			ch1, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
+			}
+			ch2, ok := args[1].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[1])
+			}
+			return Boolean(unicode.ToLower(rune(ch1)) <=
+				unicode.ToLower(rune(ch2))), nil
+		},
+	},
+	{
+		Name: "char-ci>=?",
+		Args: []string{"char1", "char2"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			ch1, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
+			}
+			ch2, ok := args[1].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[1])
+			}
+			return Boolean(unicode.ToLower(rune(ch1)) >=
+				unicode.ToLower(rune(ch2))), nil
+		},
+	},
+	{
+		Name: "char-alphabetic?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			ch, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
+			}
+			return Boolean(unicode.IsLetter(rune(ch))), nil
+		},
+	},
+	{
+		Name: "char-numeric?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			ch, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
+			}
+			return Boolean(unicode.IsDigit(rune(ch))), nil
+		},
+	},
+	{
+		Name: "char-whitespace?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			ch, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
+			}
+			return Boolean(unicode.IsSpace(rune(ch))), nil
+		},
+	},
+	{
+		Name: "char-upper-case?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			ch, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
+			}
+			return Boolean(unicode.IsUpper(rune(ch))), nil
+		},
+	},
+	{
+		Name: "char-lower-case?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			ch, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
+			}
+			return Boolean(unicode.IsLower(rune(ch))), nil
+		},
+	},
+	{
+		Name: "char->integer",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			ch, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
+			}
+			return NewNumber(0, int64(ch)), nil
+		},
+	},
+	{
+		Name: "integer->char",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			n, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid number %v", args[0])
+			}
+			return Character(rune(n.Int64())), nil
+		},
+	},
+	{
+		Name: "char-upcase",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			ch, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
+			}
+			return Character(unicode.ToUpper(rune(ch))), nil
+		},
+	},
+	{
+		Name: "char-downcase",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			ch, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
+			}
+			return Character(unicode.ToLower(rune(ch))), nil
+		},
+	},
 }
