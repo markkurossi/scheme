@@ -26,6 +26,7 @@ const (
 	OpPushF
 	OpPopF
 	OpPushS
+	OpPushA
 	OpPopS
 	OpCall
 	OpIf
@@ -46,6 +47,7 @@ var operands = map[Operand]string{
 	OpPushF:     "pushf",
 	OpPopF:      "popf",
 	OpPushS:     "pushs",
+	OpPushA:     "pusha",
 	OpPopS:      "pops",
 	OpCall:      "call",
 	OpIf:        "if",
@@ -199,6 +201,17 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 
 		case OpPushS:
 			scm.pushScope(instr.I)
+
+		case OpPushA:
+			var scope []Value
+			err = Map(func(idx int, v Value) error {
+				scope = append(scope, v)
+				return nil
+			}, scm.accu)
+			if err != nil {
+				return nil, fmt.Errorf("pusha: invalid arguments: %v", err)
+			}
+			scm.stack = append(scm.stack, scope)
 
 		case OpCall:
 			stackTop := len(scm.stack) - 1

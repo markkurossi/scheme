@@ -149,6 +149,12 @@ func (scm *Scheme) compileValue(value Value, tail bool) error {
 			scm.addInstr(OpConst, quoted, 0)
 			return nil
 		}
+		if isKeyword(v.Car(), KwSchemeApply) {
+			if length != 3 {
+				return fmt.Errorf("invalid scheme::apply: %v", v)
+			}
+			return scm.compileApply(v, tail)
+		}
 
 		// Function call.
 
@@ -449,6 +455,47 @@ func (scm *Scheme) compileIf(pair Pair, length int, tail bool) error {
 	}
 	if !tail {
 		scm.addLabel(labelEnd)
+	}
+
+	return nil
+}
+
+func (scm *Scheme) compileApply(pair Pair, tail bool) error {
+	f, ok := Car(pair.Cdr(), true)
+	if !ok {
+		return fmt.Errorf("scheme::apply: invalid list: %v", pair)
+	}
+	args, ok := Car(Cdr(pair.Cdr(), true))
+	if !ok {
+		return fmt.Errorf("scheme::apply: invalid list: %v", pair)
+	}
+
+	// Compile function.
+	err := scm.compileValue(f, false)
+	if err != nil {
+		return err
+	}
+
+	// Create a call frame.
+	scm.addInstr(OpPushF, scm.accu, 0)
+	scm.env.PushFrame()
+
+	// Compile arguments.
+	err = scm.compileValue(args, false)
+	if err != nil {
+		return err
+	}
+
+	// Push apply scope.
+	scm.addInstr(OpPushA, nil, 0)
+
+	// Pop call frame.
+	scm.env.PopFrame()
+
+	if tail {
+		scm.addInstr(OpCall, nil, 1)
+	} else {
+		scm.addInstr(OpCall, nil, 0)
 	}
 
 	return nil

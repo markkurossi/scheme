@@ -101,6 +101,7 @@ const (
 	KwDo
 	KwDelay
 	KwQuasiquote
+	KwSchemeApply
 )
 
 var keywords = map[Keyword]string{
@@ -124,6 +125,7 @@ var keywords = map[Keyword]string{
 	KwDo:              "do",
 	KwDelay:           "delay",
 	KwQuasiquote:      "quasiquote",
+	KwSchemeApply:     "scheme::apply",
 }
 
 var keywordNames map[string]Keyword
