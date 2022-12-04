@@ -24,10 +24,8 @@ const (
 	OpLocalSet
 	OpGlobalSet
 	OpPushF
-	OpPopF
 	OpPushS
 	OpPushA
-	OpPopS
 	OpCall
 	OpIf
 	OpJmp
@@ -45,10 +43,8 @@ var operands = map[Operand]string{
 	OpLocalSet:  "local!",
 	OpGlobalSet: "global!",
 	OpPushF:     "pushf",
-	OpPopF:      "popf",
 	OpPushS:     "pushs",
 	OpPushA:     "pusha",
-	OpPopS:      "pops",
 	OpCall:      "call",
 	OpIf:        "if",
 	OpJmp:       "jmp",
