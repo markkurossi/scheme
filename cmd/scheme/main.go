@@ -22,12 +22,13 @@ func main() {
 	log.SetFlags(0)
 
 	replp := flag.Bool("repl", false, "read-eval-print-loop")
+	verbose := flag.Bool("v", false, "verbose output")
 	bc := flag.Bool("bc", false, "compile scheme into bytecode")
 	flag.Parse()
 
 	fmt.Printf("Go Scheme Version 0.0\n")
 
-	scm, err := scheme.New()
+	scm, err := scheme.New(*verbose)
 	if err != nil {
 		fmt.Printf("scheme.New: %v\n", err)
 		return
@@ -74,8 +75,8 @@ func repl(scm *scheme.Scheme) {
 		input.count = 0
 		v, err := scm.Eval("input", input)
 		if err != nil {
-			fmt.Printf("scheme.Eval: %v\n", err)
-			return
+			fmt.Printf("%v\n", err)
+			continue
 		}
 		if scm.Parsing {
 			fmt.Println()

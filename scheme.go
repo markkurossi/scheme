@@ -7,17 +7,26 @@
 package scheme
 
 import (
+	"bytes"
+	"embed"
 	"fmt"
 	"io"
 	"math"
 	"os"
+	"path"
 	"strings"
 )
+
+// runtime holds runtime functions defined in Scheme.
+//
+//go:embed runtime/*.scm
+var runtime embed.FS
 
 // Scheme implements Scheme interpreter and virtual machine.
 type Scheme struct {
 	Stdout   io.Writer
 	Parsing  bool
+	verbose  bool
 	compiled Code
 	env      *Env
 	lambdas  []*LambdaBody
@@ -31,8 +40,9 @@ type Scheme struct {
 }
 
 // New creates a new Scheme interpreter.
-func New() (*Scheme, error) {
+func New(verbose bool) (*Scheme, error) {
 	scm := &Scheme{
+		verbose: verbose,
 		Stdout:  os.Stdout,
 		symbols: make(map[string]*Identifier),
 	}
@@ -45,7 +55,43 @@ func New() (*Scheme, error) {
 	scm.DefineBuiltins(outputBuiltins)
 	scm.DefineBuiltins(stringBuiltins)
 
+	err := scm.loadRuntime("runtime")
+	if err != nil {
+		return nil, err
+	}
+
 	return scm, nil
+}
+
+func (scm *Scheme) verbosef(format string, a ...interface{}) {
+	if scm.verbose {
+		fmt.Printf(format, a...)
+	}
+}
+
+func (scm *Scheme) loadRuntime(dir string) error {
+	entries, err := runtime.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	scm.verbosef("runtime:\n")
+	for idx, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".scm") {
+			continue
+		}
+		file := path.Join(dir, name)
+		scm.verbosef("%6d : %v\n", idx, file)
+		data, err := runtime.ReadFile(file)
+		if err != nil {
+			return err
+		}
+		_, err = scm.Eval(file, bytes.NewReader(data))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // DefineBuiltins defines the built-in functions, defined in the

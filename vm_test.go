@@ -315,7 +315,7 @@ Hello, world!
 
 func TestVM(t *testing.T) {
 	for idx, test := range vmTests {
-		scm, err := New()
+		scm, err := New(false)
 		if err != nil {
 			t.Fatalf("failed to create virtual machine: %v", err)
 		}
