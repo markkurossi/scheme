@@ -188,7 +188,22 @@ var stringBuiltins = []Builtin{
 	// XXX string-ci<=?
 	// XXX string-ci>=?
 	// XXX substring
-	// XXX string-append
+	{
+		Name: "string-append",
+		Args: []string{"string..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var str []byte
+
+			for i := 0; i < len(args); i++ {
+				s, ok := args[i].(String)
+				if !ok {
+					return nil, l.Errorf("invalid string: %v", args[i])
+				}
+				str = append(str, s...)
+			}
+			return String(str), nil
+		},
+	},
 	{
 		Name: "string->list",
 		Args: []string{"string"},
