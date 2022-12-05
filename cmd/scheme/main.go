@@ -40,9 +40,9 @@ func main() {
 		} else {
 			_, err = scm.EvalFile(arg)
 		}
-	}
-	if err != nil {
-		log.Fatalf("n%s\n", err)
+		if err != nil {
+			log.Fatalf("%s: %s\n", arg, err)
+		}
 	}
 	if *replp || len(flag.Args()) == 0 {
 		repl(scm)
