@@ -272,6 +272,14 @@ func (n Number) String() string {
 
 var numberBuiltins = []Builtin{
 	{
+		Name: "number?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			_, ok := args[0].(Number)
+			return Boolean(ok), nil
+		},
+	},
+	{
 		Name: "+",
 		Args: []string{"[z1]..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
