@@ -25,6 +25,7 @@ const (
 	OpGlobalSet
 	OpPushF
 	OpPushS
+	OpPopS
 	OpPushA
 	OpCall
 	OpIf
@@ -44,6 +45,7 @@ var operands = map[Operand]string{
 	OpGlobalSet: "global!",
 	OpPushF:     "pushf",
 	OpPushS:     "pushs",
+	OpPopS:      "pops",
 	OpPushA:     "pusha",
 	OpCall:      "call",
 	OpIf:        "if",
@@ -197,6 +199,9 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 
 		case OpPushS:
 			scm.pushScope(instr.I)
+
+		case OpPopS:
+			scm.popScope()
 
 		case OpPushA:
 			var scope []Value
