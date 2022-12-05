@@ -114,10 +114,12 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 	switch v := value.(type) {
 	case Pair:
-		length, ok := ListLength(v)
+		list, ok := ListSlice(v)
 		if !ok {
 			return fmt.Errorf("compile value: %v", v)
 		}
+		length := len(list)
+
 		if isKeyword(v.Car(), KwDefine) {
 			return scm.compileDefine(env, v, length)
 		}
@@ -126,6 +128,9 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 		}
 		if isKeyword(v.Car(), KwSet) {
 			return scm.compileSet(env, v, length)
+		}
+		if isKeyword(v.Car(), KwLet) {
+			return scm.compileLet(env, list, tail)
 		}
 		if isKeyword(v.Car(), KwBegin) {
 			return Map(func(idx int, v Value) error {
@@ -406,6 +411,57 @@ func (scm *Scheme) compileSet(env *Env, pair Pair, length int) error {
 	return nil
 }
 
+func (scm *Scheme) compileLet(env *Env, list []Value, tail bool) error {
+	if len(list) < 3 {
+		return fmt.Errorf("let: missing bindings or body")
+	}
+	bindings, ok := ListSlice(list[1])
+	if !ok {
+		return fmt.Errorf("let: invalid bindings: %v", list[1])
+	}
+
+	letEnv := env.Copy()
+	letEnv.PushFrame()
+
+	scm.addInstr(OpPushS, nil, len(bindings))
+
+	for _, binding := range bindings {
+		def, ok := ListSlice(binding)
+		if !ok || len(def) != 2 {
+			return fmt.Errorf("let: invalid init: %v", binding)
+		}
+
+		name, ok := def[0].(*Identifier)
+		if !ok {
+			return fmt.Errorf("let: invalid variable: %v", binding)
+		}
+		b, err := letEnv.Define(name.Name)
+		if err != nil {
+			return err
+		}
+
+		err = scm.compileValue(env, def[1], false)
+		if err != nil {
+			return err
+		}
+		instr := scm.addInstr(OpLocalSet, nil, b.Frame)
+		instr.J = b.Index
+	}
+
+	for i := 2; i < len(list); i++ {
+		err := scm.compileValue(letEnv, list[i], tail && i+1 >= len(list))
+		if err != nil {
+			return err
+		}
+	}
+
+	if !tail {
+		scm.addInstr(OpPopS, nil, 0)
+	}
+
+	return nil
+}
+
 func (scm *Scheme) compileIf(env *Env, pair Pair, length int, tail bool) error {
 	if length < 3 || length > 4 {
 		return fmt.Errorf("if: syntax error")
@@ -534,6 +590,17 @@ type Env struct {
 // NewEnv creates a new empty environment.
 func NewEnv() *Env {
 	return &Env{}
+}
+
+// Copy creates a new copy of the environment that shares the contents
+// of the environment frames.
+func (e *Env) Copy() *Env {
+	frames := make([]EnvFrame, len(e.Frames))
+	copy(frames, e.Frames)
+
+	return &Env{
+		Frames: frames,
+	}
 }
 
 // Print prints the environment to standard output.
