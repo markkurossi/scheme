@@ -165,6 +165,20 @@ func ListLength(list Value) (int, bool) {
 	return count, true
 }
 
+// ListSlice returns the list as []Value.
+func ListSlice(list Value) ([]Value, bool) {
+	var result []Value
+
+	err := Map(func(idx int, v Value) error {
+		result = append(result, v)
+		return nil
+	}, list)
+	if err != nil {
+		return nil, false
+	}
+	return result, true
+}
+
 // Map maps function for each element of the list. The function
 // returns nil if the argument list is a list and map functions
 // returns nil for each of its element.
