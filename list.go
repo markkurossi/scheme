@@ -165,8 +165,22 @@ func ListLength(list Value) (int, bool) {
 	return count, true
 }
 
-// ListSlice returns the list as []Value.
-func ListSlice(list Value) ([]Value, bool) {
+// ListPairs returns the list pairs as []Pair.
+func ListPairs(list Value) ([]Pair, bool) {
+	var result []Pair
+
+	err := MapPairs(func(idx int, p Pair) error {
+		result = append(result, p)
+		return nil
+	}, list)
+	if err != nil {
+		return nil, false
+	}
+	return result, true
+}
+
+// ListValues returns the list values as []Value.
+func ListValues(list Value) ([]Value, bool) {
 	var result []Value
 
 	err := Map(func(idx int, v Value) error {
@@ -183,6 +197,15 @@ func ListSlice(list Value) ([]Value, bool) {
 // returns nil if the argument list is a list and map functions
 // returns nil for each of its element.
 func Map(f func(idx int, v Value) error, list Value) error {
+	return MapPairs(func(idx int, p Pair) error {
+		return f(idx, p.Car())
+	}, list)
+}
+
+// MapPairs maps function for each pair of the list. The function
+// returns nil if the argument list is a list and map functions
+// returns nil for each of its element.
+func MapPairs(f func(idx int, p Pair) error, list Value) error {
 	if list == nil {
 		return nil
 	}
@@ -192,7 +215,7 @@ func Map(f func(idx int, v Value) error, list Value) error {
 	}
 
 	for idx := 0; pair != nil; idx++ {
-		if err := f(idx, pair.Car()); err != nil {
+		if err := f(idx, pair); err != nil {
 			point := pair.Location()
 			if point.Undefined() {
 				return err

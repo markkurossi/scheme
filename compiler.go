@@ -114,7 +114,7 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 	switch v := value.(type) {
 	case Pair:
-		list, ok := ListSlice(v)
+		list, ok := ListPairs(v)
 		if !ok {
 			return fmt.Errorf("compile value: %v", v)
 		}
@@ -411,13 +411,13 @@ func (scm *Scheme) compileSet(env *Env, pair Pair, length int) error {
 	return nil
 }
 
-func (scm *Scheme) compileLet(env *Env, list []Value, tail bool) error {
+func (scm *Scheme) compileLet(env *Env, list []Pair, tail bool) error {
 	if len(list) < 3 {
 		return fmt.Errorf("let: missing bindings or body")
 	}
-	bindings, ok := ListSlice(list[1])
+	bindings, ok := ListPairs(list[1].Car())
 	if !ok {
-		return fmt.Errorf("let: invalid bindings: %v", list[1])
+		return fmt.Errorf("let: invalid bindings: %v", list[1].Car())
 	}
 
 	letEnv := env.Copy()
@@ -426,12 +426,12 @@ func (scm *Scheme) compileLet(env *Env, list []Value, tail bool) error {
 	scm.addInstr(OpPushS, nil, len(bindings))
 
 	for _, binding := range bindings {
-		def, ok := ListSlice(binding)
+		def, ok := ListPairs(binding.Car())
 		if !ok || len(def) != 2 {
 			return fmt.Errorf("let: invalid init: %v", binding)
 		}
 
-		name, ok := def[0].(*Identifier)
+		name, ok := def[0].Car().(*Identifier)
 		if !ok {
 			return fmt.Errorf("let: invalid variable: %v", binding)
 		}
@@ -440,7 +440,7 @@ func (scm *Scheme) compileLet(env *Env, list []Value, tail bool) error {
 			return err
 		}
 
-		err = scm.compileValue(env, def[1], false)
+		err = scm.compileValue(env, def[1].Car(), false)
 		if err != nil {
 			return err
 		}
@@ -449,7 +449,7 @@ func (scm *Scheme) compileLet(env *Env, list []Value, tail bool) error {
 	}
 
 	for i := 2; i < len(list); i++ {
-		err := scm.compileValue(letEnv, list[i], tail && i+1 >= len(list))
+		err := scm.compileValue(letEnv, list[i].Car(), tail && i+1 >= len(list))
 		if err != nil {
 			return err
 		}
