@@ -28,9 +28,10 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 	parser := NewParser(source, in)
 
 	scm.compiled = nil
-	scm.env = NewEnv()
 	scm.lambdas = nil
 	scm.Parsing = true
+
+	env := NewEnv()
 
 	for {
 		v, err := parser.Next()
@@ -42,7 +43,7 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 		}
 		scm.Parsing = false
 
-		err = scm.compileValue(v, false)
+		err = scm.compileValue(env, v, false)
 		if err != nil {
 			return nil, err
 		}
@@ -52,8 +53,6 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 	// Compile lambdas.
 	for i := 0; i < len(scm.lambdas); i++ {
 		lambda := scm.lambdas[i]
-
-		scm.env = lambda.Env
 
 		// Lambda body starts after the label.
 		ofs := len(scm.compiled)
@@ -66,15 +65,13 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 
 		scm.addInstr(OpLabel, nil, lambda.Start)
 		err := Map(func(idx int, v Value) error {
-			return scm.compileValue(v, idx+1 >= length)
+			return scm.compileValue(lambda.Env, v, idx+1 >= length)
 		}, lambda.Body)
 		if err != nil {
 			return nil, err
 		}
 		scm.addInstr(OpReturn, nil, 0)
 		lambda.End = len(scm.compiled)
-
-		scm.env = nil
 	}
 
 	// Collect label offsets
@@ -114,7 +111,7 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 	return scm.compiled, nil
 }
 
-func (scm *Scheme) compileValue(value Value, tail bool) error {
+func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 	switch v := value.(type) {
 	case Pair:
 		length, ok := ListLength(v)
@@ -122,21 +119,21 @@ func (scm *Scheme) compileValue(value Value, tail bool) error {
 			return fmt.Errorf("compile value: %v", v)
 		}
 		if isKeyword(v.Car(), KwDefine) {
-			return scm.compileDefine(v, length)
+			return scm.compileDefine(env, v, length)
 		}
 		if isKeyword(v.Car(), KwLambda) {
-			return scm.compileLambda(false, v, length)
+			return scm.compileLambda(env, false, v, length)
 		}
 		if isKeyword(v.Car(), KwSet) {
-			return scm.compileSet(v, length)
+			return scm.compileSet(env, v, length)
 		}
 		if isKeyword(v.Car(), KwBegin) {
 			return Map(func(idx int, v Value) error {
-				return scm.compileValue(v, tail && idx+1 >= length-1)
+				return scm.compileValue(env, v, tail && idx+1 >= length-1)
 			}, v.Cdr())
 		}
 		if isKeyword(v.Car(), KwIf) {
-			return scm.compileIf(v, length, tail)
+			return scm.compileIf(env, v, length, tail)
 		}
 		if isKeyword(v.Car(), KwQuote) {
 			if length != 2 {
@@ -153,24 +150,24 @@ func (scm *Scheme) compileValue(value Value, tail bool) error {
 			if length != 3 {
 				return fmt.Errorf("invalid scheme::apply: %v", v)
 			}
-			return scm.compileApply(v, tail)
+			return scm.compileApply(env, v, tail)
 		}
 
 		// Function call.
 
 		// Compile function.
-		err := scm.compileValue(v.Car(), false)
+		err := scm.compileValue(env, v.Car(), false)
 		if err != nil {
 			return err
 		}
 
 		// Create a call frame.
 		scm.addInstr(OpPushF, scm.accu, 0)
-		scm.env.PushFrame()
+		env.PushFrame()
 
 		// Push argument scope.
 		scm.addInstr(OpPushS, nil, length-1)
-		scm.env.PushFrame()
+		env.PushFrame()
 
 		// Evaluate arguments.
 		li := v.Cdr()
@@ -179,20 +176,20 @@ func (scm *Scheme) compileValue(value Value, tail bool) error {
 			if !ok {
 				return fmt.Errorf("invalid list: %v", li)
 			}
-			err := scm.compileValue(pair.Car(), false)
+			err := scm.compileValue(env, pair.Car(), false)
 			if err != nil {
 				return err
 			}
 			li = pair.Cdr()
-			instr := scm.addInstr(OpLocalSet, nil, scm.env.Depth()-1)
+			instr := scm.addInstr(OpLocalSet, nil, env.Depth()-1)
 			instr.J = j
 		}
 
 		// Pop argument scope.
-		scm.env.PopFrame()
+		env.PopFrame()
 
 		// Pop call frame.
-		scm.env.PopFrame()
+		env.PopFrame()
 
 		if tail {
 			scm.addInstr(OpCall, nil, 1)
@@ -203,7 +200,7 @@ func (scm *Scheme) compileValue(value Value, tail bool) error {
 		return nil
 
 	case *Identifier:
-		b, ok := scm.env.Lookup(v.Name)
+		b, ok := env.Lookup(v.Name)
 		if ok {
 			instr := scm.addInstr(OpLocal, nil, b.Frame)
 			instr.J = b.Index
@@ -246,7 +243,7 @@ func (scm *Scheme) newLabel() *Instr {
 	}
 }
 
-func (scm *Scheme) compileDefine(pair Pair, length int) error {
+func (scm *Scheme) compileDefine(env *Env, pair Pair, length int) error {
 	// (define name value)
 	name, _, ok := isIdentifier(Car(Cdr(pair, true)))
 	if ok {
@@ -257,29 +254,29 @@ func (scm *Scheme) compileDefine(pair Pair, length int) error {
 		if !ok {
 			return fmt.Errorf("syntax error: %v", pair)
 		}
-		err := scm.compileValue(v, false)
+		err := scm.compileValue(env, v, false)
 		if err != nil {
 			return err
 		}
-		return scm.define(name.Name)
+		return scm.define(env, name.Name)
 	}
 
 	// (define (name args?) body)
-	return scm.compileLambda(true, pair, length)
+	return scm.compileLambda(env, true, pair, length)
 }
 
-func (scm *Scheme) define(name string) error {
+func (scm *Scheme) define(env *Env, name string) error {
 	nameSym := scm.Intern(name)
-	_, ok := scm.env.Lookup(name)
+	_, ok := env.Lookup(name)
 	if ok || nameSym.Global != nil {
 		return fmt.Errorf("symbol '%v' already defined", name)
 	}
 
-	if scm.env.Empty() {
+	if env.Empty() {
 		instr := scm.addInstr(OpDefine, nil, 0)
 		instr.Sym = nameSym
 	} else {
-		b, err := scm.env.Define(name)
+		b, err := env.Define(name)
 		if err != nil {
 			return err
 		}
@@ -289,7 +286,9 @@ func (scm *Scheme) define(name string) error {
 	return nil
 }
 
-func (scm *Scheme) compileLambda(define bool, pair Pair, length int) error {
+func (scm *Scheme) compileLambda(env *Env, define bool, pair Pair,
+	length int) error {
+
 	// (define (name args?) body)
 	// (lambda (args?) body)
 	lst, ok := Car(Cdr(pair, true))
@@ -351,32 +350,32 @@ func (scm *Scheme) compileLambda(define bool, pair Pair, length int) error {
 	//   n-1: let-frame-0
 	//     n: ctx-function-args
 
-	env := NewEnv()
+	capture := NewEnv()
 
-	env.PushFrame()
+	capture.PushFrame()
 	for _, arg := range args {
-		_, err = env.Define(arg.Name)
+		_, err = capture.Define(arg.Name)
 		if err != nil {
 			return err
 		}
 	}
-	env.Push(scm.env)
-	env.ShiftDown()
+	capture.Push(env)
+	capture.ShiftDown()
 
 	scm.addInstr(OpLambda, nil, len(scm.lambdas))
 	scm.lambdas = append(scm.lambdas, &LambdaBody{
 		Args: args,
 		Body: body,
-		Env:  env,
+		Env:  capture,
 	})
 	if define {
-		return scm.define(name.Name)
+		return scm.define(env, name.Name)
 	}
 
 	return nil
 }
 
-func (scm *Scheme) compileSet(pair Pair, length int) error {
+func (scm *Scheme) compileSet(env *Env, pair Pair, length int) error {
 	// (set! name value)
 	if length != 3 {
 		return fmt.Errorf("syntax error: %v", pair)
@@ -389,13 +388,13 @@ func (scm *Scheme) compileSet(pair Pair, length int) error {
 	if !ok {
 		return fmt.Errorf("syntax error: %v", pair)
 	}
-	err := scm.compileValue(v, false)
+	err := scm.compileValue(env, v, false)
 	if err != nil {
 		return err
 	}
 
 	nameSym := scm.Intern(name.Name)
-	b, ok := scm.env.Lookup(name.Name)
+	b, ok := env.Lookup(name.Name)
 	if ok {
 		instr := scm.addInstr(OpLocalSet, nil, b.Frame)
 		instr.J = b.Index
@@ -407,7 +406,7 @@ func (scm *Scheme) compileSet(pair Pair, length int) error {
 	return nil
 }
 
-func (scm *Scheme) compileIf(pair Pair, length int, tail bool) error {
+func (scm *Scheme) compileIf(env *Env, pair Pair, length int, tail bool) error {
 	if length < 3 || length > 4 {
 		return fmt.Errorf("if: syntax error")
 	}
@@ -430,7 +429,7 @@ func (scm *Scheme) compileIf(pair Pair, length int, tail bool) error {
 	labelTrue := scm.newLabel()
 	labelEnd := scm.newLabel()
 
-	err := scm.compileValue(cond, false)
+	err := scm.compileValue(env, cond, false)
 	if err != nil {
 		return err
 	}
@@ -438,7 +437,7 @@ func (scm *Scheme) compileIf(pair Pair, length int, tail bool) error {
 	instr.J = labelTrue.I
 
 	if length == 4 {
-		err = scm.compileValue(f, tail)
+		err = scm.compileValue(env, f, tail)
 		if err != nil {
 			return err
 		}
@@ -449,7 +448,7 @@ func (scm *Scheme) compileIf(pair Pair, length int, tail bool) error {
 	}
 
 	scm.addLabel(labelTrue)
-	err = scm.compileValue(t, tail)
+	err = scm.compileValue(env, t, tail)
 	if err != nil {
 		return err
 	}
@@ -460,7 +459,7 @@ func (scm *Scheme) compileIf(pair Pair, length int, tail bool) error {
 	return nil
 }
 
-func (scm *Scheme) compileApply(pair Pair, tail bool) error {
+func (scm *Scheme) compileApply(env *Env, pair Pair, tail bool) error {
 	f, ok := Car(pair.Cdr(), true)
 	if !ok {
 		return fmt.Errorf("scheme::apply: invalid list: %v", pair)
@@ -471,17 +470,17 @@ func (scm *Scheme) compileApply(pair Pair, tail bool) error {
 	}
 
 	// Compile function.
-	err := scm.compileValue(f, false)
+	err := scm.compileValue(env, f, false)
 	if err != nil {
 		return err
 	}
 
 	// Create a call frame.
 	scm.addInstr(OpPushF, scm.accu, 0)
-	scm.env.PushFrame()
+	env.PushFrame()
 
 	// Compile arguments.
-	err = scm.compileValue(args, false)
+	err = scm.compileValue(env, args, false)
 	if err != nil {
 		return err
 	}
@@ -490,7 +489,7 @@ func (scm *Scheme) compileApply(pair Pair, tail bool) error {
 	scm.addInstr(OpPushA, nil, 0)
 
 	// Pop call frame.
-	scm.env.PopFrame()
+	env.PopFrame()
 
 	if tail {
 		scm.addInstr(OpCall, nil, 1)

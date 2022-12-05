@@ -28,7 +28,6 @@ type Scheme struct {
 	Parsing  bool
 	verbose  bool
 	compiled Code
-	env      *Env
 	lambdas  []*LambdaBody
 
 	pc        int
