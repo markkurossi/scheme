@@ -12,39 +12,44 @@ import (
 )
 
 // Vector implements vector values.
-type Vector struct {
-	Elements []Value
-}
+type Vector []Value
 
 // Scheme returns the value as a Scheme string.
-func (v *Vector) Scheme() string {
+func (v Vector) Scheme() string {
 	return v.String()
 }
 
 // Eq tests if the argument value is eq? to this value.
-func (v *Vector) Eq(o Value) bool {
-	return v == o
+func (v Vector) Eq(o Value) bool {
+	ov, ok := o.(Vector)
+	if !ok {
+		return false
+	}
+	if len(v) == 0 && len(ov) == 0 {
+		return true
+	}
+	return false
 }
 
 // Equal tests if the argument value is equal to this value.
-func (v *Vector) Equal(o Value) bool {
-	ov, ok := o.(*Vector)
-	if !ok || len(v.Elements) != len(ov.Elements) {
+func (v Vector) Equal(o Value) bool {
+	ov, ok := o.(Vector)
+	if !ok || len(v) != len(ov) {
 		return false
 	}
-	for idx, v := range v.Elements {
-		if !v.Equal(ov.Elements[idx]) {
+	for idx, vv := range v {
+		if !vv.Equal(ov[idx]) {
 			return false
 		}
 	}
 	return true
 }
 
-func (v *Vector) String() string {
+func (v Vector) String() string {
 	var str strings.Builder
 	str.WriteString("#(")
 
-	for idx, el := range v.Elements {
+	for idx, el := range v {
 		if idx > 0 {
 			str.WriteRune(' ')
 		}
@@ -59,7 +64,7 @@ var vectorBuiltins = []Builtin{
 		Name: "vector?",
 		Args: []string{"obj"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			_, ok := args[0].(*Vector)
+			_, ok := args[0].(Vector)
 			return Boolean(ok), nil
 		},
 	},
@@ -85,40 +90,32 @@ var vectorBuiltins = []Builtin{
 				elements[i] = fill
 			}
 
-			return &Vector{
-				Elements: elements,
-			}, nil
+			return Vector(elements), nil
 		},
 	},
 	{
 		Name: "vector",
 		Args: []string{"[obj]..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var elements []Value
-			for i := 0; i < len(args); i++ {
-				elements = append(elements, args[i])
-			}
-			return &Vector{
-				Elements: elements,
-			}, nil
+			return Vector(args), nil
 		},
 	},
 	{
 		Name: "vector-length",
 		Args: []string{"vector"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			v, ok := args[0].(*Vector)
+			v, ok := args[0].(Vector)
 			if !ok {
 				return nil, l.Errorf("not a vector: %v", args[0])
 			}
-			return NewNumber(0, len(v.Elements)), nil
+			return NewNumber(0, len(v)), nil
 		},
 	},
 	{
 		Name: "vector-ref",
 		Args: []string{"vector", "k"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			vector, ok := args[0].(*Vector)
+			vector, ok := args[0].(Vector)
 			if !ok {
 				return nil, l.Errorf("invalid vector: %v", args[0])
 			}
@@ -127,18 +124,18 @@ var vectorBuiltins = []Builtin{
 				return nil, l.Errorf("invalid index: %v", args[1])
 			}
 			k := int(kn.Int64())
-			if k < 0 || k >= len(vector.Elements) {
+			if k < 0 || k >= len(vector) {
 				return nil, l.Errorf("index %v out of range for vector %v",
 					k, args[0])
 			}
-			return vector.Elements[k], nil
+			return vector[k], nil
 		},
 	},
 	{
 		Name: "vector-set!",
 		Args: []string{"vector", "k", "obj"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			vector, ok := args[0].(*Vector)
+			vector, ok := args[0].(Vector)
 			if !ok {
 				return nil, l.Errorf("invalid vector: %v", args[0])
 			}
@@ -147,11 +144,11 @@ var vectorBuiltins = []Builtin{
 				return nil, l.Errorf("invalid index: %v", args[1])
 			}
 			k := int(kn.Int64())
-			if k < 0 || k >= len(vector.Elements) {
+			if k < 0 || k >= len(vector) {
 				return nil, l.Errorf("index %v out of range for vector %v",
 					k, args[0])
 			}
-			vector.Elements[k] = args[2]
+			vector[k] = args[2]
 			return args[0], nil
 		},
 	},
@@ -159,14 +156,14 @@ var vectorBuiltins = []Builtin{
 		Name: "vector->list",
 		Args: []string{"vector"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			vector, ok := args[0].(*Vector)
+			vector, ok := args[0].(Vector)
 			if !ok {
 				return nil, l.Errorf("invalid vector: %v", args[0])
 			}
 			var pair Pair
 
-			for i := len(vector.Elements) - 1; i >= 0; i-- {
-				pair = NewPair(vector.Elements[i], pair)
+			for i := len(vector) - 1; i >= 0; i-- {
+				pair = NewPair(vector[i], pair)
 			}
 			return pair, nil
 		},
@@ -183,21 +180,19 @@ var vectorBuiltins = []Builtin{
 			if err != nil {
 				return nil, err
 			}
-			return &Vector{
-				Elements: elements,
-			}, nil
+			return Vector(elements), nil
 		},
 	},
 	{
 		Name: "vector-fill!",
 		Args: []string{"vector", "fill"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			vector, ok := args[0].(*Vector)
+			vector, ok := args[0].(Vector)
 			if !ok {
 				return nil, l.Errorf("invalid vector: %v", args[0])
 			}
-			for i := 0; i < len(vector.Elements); i++ {
-				vector.Elements[i] = args[1]
+			for i := 0; i < len(vector); i++ {
+				vector[i] = args[1]
 			}
 			return args[0], nil
 		},

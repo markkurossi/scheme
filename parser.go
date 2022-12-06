@@ -81,9 +81,7 @@ func (p *Parser) Next() (Value, error) {
 				return nil, err
 			}
 			if t.Type == ')' {
-				return &Vector{
-					Elements: elements,
-				}, nil
+				return Vector(elements), nil
 			}
 			p.lexer.Unget(t)
 

@@ -299,8 +299,8 @@ Hello, world!
 		v: Boolean(false),
 	},
 	{
-		i: `(vector-length (make-vector 3))`,
-		v: NewNumber(0, 3),
+		i: `(make-vector 3 #t)`,
+		v: Vector([]Value{Boolean(true), Boolean(true), Boolean(true)}),
 	},
 	{
 		i: `(vector-length #())`,
