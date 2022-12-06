@@ -363,6 +363,17 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
+		Name: "zero?",
+		Args: []string{"z"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			z, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument %v", args[0])
+			}
+			return Boolean(z.Equal(NewNumber(0, 0))), nil
+		},
+	},
+	{
 		Name: "expt",
 		Args: []string{"z1", "z2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
