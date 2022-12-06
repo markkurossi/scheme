@@ -130,7 +130,13 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 			return scm.compileSet(env, v, length)
 		}
 		if isKeyword(v.Car(), KwLet) {
-			return scm.compileLet(env, list, tail)
+			return scm.compileLet(KwLet, env, list, tail)
+		}
+		if isKeyword(v.Car(), KwLetStar) {
+			return scm.compileLet(KwLetStar, env, list, tail)
+		}
+		if isKeyword(v.Car(), KwLetrec) {
+			return scm.compileLet(KwLetrec, env, list, tail)
 		}
 		if isKeyword(v.Car(), KwBegin) {
 			return Map(func(idx int, v Value) error {
@@ -411,13 +417,15 @@ func (scm *Scheme) compileSet(env *Env, pair Pair, length int) error {
 	return nil
 }
 
-func (scm *Scheme) compileLet(env *Env, list []Pair, tail bool) error {
+func (scm *Scheme) compileLet(kind Keyword, env *Env, list []Pair,
+	tail bool) error {
+
 	if len(list) < 3 {
-		return fmt.Errorf("let: missing bindings or body")
+		return fmt.Errorf("%s: missing bindings or body", kind)
 	}
 	bindings, ok := ListPairs(list[1].Car())
 	if !ok {
-		return fmt.Errorf("let: invalid bindings: %v", list[1].Car())
+		return fmt.Errorf("%s: invalid bindings: %v", kind, list[1].Car())
 	}
 
 	letEnv := env.Copy()
@@ -425,29 +433,56 @@ func (scm *Scheme) compileLet(env *Env, list []Pair, tail bool) error {
 
 	scm.addInstr(OpPushS, nil, len(bindings))
 
+	var letBindings []*EnvBinding
+
 	for _, binding := range bindings {
 		def, ok := ListPairs(binding.Car())
 		if !ok || len(def) != 2 {
-			return fmt.Errorf("let: invalid init: %v", binding)
+			return fmt.Errorf("%s: invalid init: %v", kind, binding)
 		}
-
 		name, ok := def[0].Car().(*Identifier)
 		if !ok {
-			return fmt.Errorf("let: invalid variable: %v", binding)
+			return fmt.Errorf("%s: invalid variable: %v", kind, binding)
 		}
 		b, err := letEnv.Define(name.Name)
 		if err != nil {
 			return err
 		}
+		if kind != KwLetrec {
+			b.Disabled = true
+		}
+		letBindings = append(letBindings, b)
+	}
 
-		err = scm.compileValue(env, def[1].Car(), false)
+	for idx, binding := range bindings {
+		def, ok := ListPairs(binding.Car())
+		if !ok || len(def) != 2 {
+			return fmt.Errorf("%s: invalid init: %v", kind, binding)
+		}
+
+		// Compile init value.
+		err := scm.compileValue(letEnv, def[1].Car(), false)
 		if err != nil {
 			return err
 		}
+
+		b := letBindings[idx]
+
 		instr := scm.addInstr(OpLocalSet, nil, b.Frame)
 		instr.J = b.Index
+
+		if kind == KwLetStar {
+			b.Disabled = false
+		}
 	}
 
+	if kind == KwLet {
+		for i := 0; i < len(letBindings); i++ {
+			letBindings[i].Disabled = false
+		}
+	}
+
+	// Compile body.
 	for i := 2; i < len(list); i++ {
 		err := scm.compileValue(letEnv, list[i].Car(), tail && i+1 >= len(list))
 		if err != nil {
@@ -607,13 +642,13 @@ func (e *Env) Copy() *Env {
 func (e *Env) Print() {
 	fmt.Printf("Env:    depth=%v\n", len(e.Frames))
 	for i := len(e.Frames) - 1; i >= 0; i-- {
-		fmt.Printf("%7d", i)
+		fmt.Printf("| %5d", i)
 		for k, v := range e.Frames[i] {
-			fmt.Printf(" %v=%d.%d", k, v.Frame, v.Index)
+			fmt.Printf(" %v=%d.%d(%v)", k, v.Frame, v.Index, v.Disabled)
 		}
 		fmt.Println()
 	}
-	fmt.Printf("-------\n")
+	fmt.Printf("+-----^\n")
 }
 
 // Empty tests if the environment is empty.
@@ -648,13 +683,13 @@ func (e *Env) ShiftDown() {
 }
 
 // Define defines the named symbol in the environment.
-func (e *Env) Define(name string) (EnvBinding, error) {
+func (e *Env) Define(name string) (*EnvBinding, error) {
 	top := len(e.Frames) - 1
 	_, ok := e.Frames[top][name]
 	if ok {
-		return EnvBinding{}, fmt.Errorf("symbol %s already defined", name)
+		return nil, fmt.Errorf("symbol %s already defined", name)
 	}
-	b := EnvBinding{
+	b := &EnvBinding{
 		Frame: top,
 		Index: len(e.Frames[top]),
 	}
@@ -663,14 +698,14 @@ func (e *Env) Define(name string) (EnvBinding, error) {
 }
 
 // Lookup finds the symbol from the environment.
-func (e *Env) Lookup(name string) (EnvBinding, bool) {
+func (e *Env) Lookup(name string) (*EnvBinding, bool) {
 	for i := len(e.Frames) - 1; i >= 0; i-- {
 		b, ok := e.Frames[i][name]
-		if ok {
+		if ok && !b.Disabled {
 			return b, true
 		}
 	}
-	return EnvBinding{}, false
+	return nil, false
 }
 
 // Push pushes the frames of the argument environment to the top of
@@ -693,10 +728,11 @@ func (e *Env) Push(o *Env) {
 }
 
 // EnvFrame implements an environment frame.
-type EnvFrame map[string]EnvBinding
+type EnvFrame map[string]*EnvBinding
 
 // EnvBinding defines symbol's location in the environment.
 type EnvBinding struct {
-	Frame int
-	Index int
+	Disabled bool
+	Frame    int
+	Index    int
 }

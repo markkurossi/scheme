@@ -14,7 +14,7 @@ structured data operations.
 # TODO
 
  - [ ] Compiler
-   - [ ] let syntax
+   - [X] let syntax
    - [X] Lambda environment capture
    - [X] Store lexical locations into values
  - [ ] VM

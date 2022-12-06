@@ -311,6 +311,50 @@ Hello, world!
 		i: `(equal? 2 2)`,
 		v: Boolean(true),
 	},
+	{
+		i: `
+(let ((x 2)
+      (y 3))
+  (* x y))
+`,
+		v: NewNumber(0, 6),
+	},
+	{
+		i: `
+(let ((x 2)
+      (y 3))
+  (let ((x 7)
+        (z (+ x y)))
+    (* z x)))
+`,
+		v: NewNumber(0, 35),
+	},
+	{
+		i: `
+(let ((x 2)
+      (y 3))
+  (let* ((x 7)
+         (z (+ x y)))
+    (* z x)))
+`,
+		v: NewNumber(0, 70),
+	},
+	{
+		i: `
+(letrec ((even?
+          (lambda (n)
+            (if (zero? n)
+                #t
+                (odd? (- n 1)))))
+         (odd?
+          (lambda (n)
+            (if (zero? n)
+                #f
+                (even? (- n 1))))))
+  (even? 88))
+`,
+		v: Boolean(true),
+	},
 }
 
 func TestVM(t *testing.T) {
