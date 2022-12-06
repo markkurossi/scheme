@@ -289,7 +289,24 @@ Hello, world!
 		i: `(eq? (cons 1 2) (cons 1 2))`,
 		v: Boolean(false),
 	},
-	// XXX pairs, vectors, strings
+	// XXX pairs
+	{
+		i: `(vector? #(1 2 3))`,
+		v: Boolean(true),
+	},
+	{
+		i: `(vector? 1)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(vector-length #())`,
+		v: NewNumber(0, 0),
+	},
+	{
+		i: `(vector-length #(1 2 3))`,
+		v: NewNumber(0, 3),
+	},
+	// XXX strings
 	// XXX procedures
 	{
 		i: `(equal? 'a 'a)`,

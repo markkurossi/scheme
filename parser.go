@@ -73,6 +73,27 @@ func (p *Parser) Next() (Value, error) {
 			}
 		}
 
+	case THashLPar:
+		var elements []Value
+		for {
+			t, err = p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			if t.Type == ')' {
+				return &Vector{
+					Elements: elements,
+				}, nil
+			}
+			p.lexer.Unget(t)
+
+			v, err := p.Next()
+			if err != nil {
+				return nil, err
+			}
+			elements = append(elements, v)
+		}
+
 	case TIdentifier:
 		return &Identifier{
 			Name: t.Identifier,
@@ -94,6 +115,6 @@ func (p *Parser) Next() (Value, error) {
 		return t.Keyword, nil
 
 	default:
-		return nil, fmt.Errorf("unexpected token: %v", t)
+		return nil, fmt.Errorf("%s: unexpected token: %v", t.From, t)
 	}
 }

@@ -223,7 +223,7 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 	case Keyword:
 		return fmt.Errorf("unexpected keyword: %s", v)
 
-	case Boolean, String, Character, Number:
+	case *Vector, Boolean, String, Character, Number:
 		scm.addInstr(OpConst, v, 0)
 
 	default:

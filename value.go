@@ -31,49 +31,6 @@ type Value interface {
 	Equal(o Value) bool
 }
 
-// Vector implements vector values.
-type Vector struct {
-	Elements []Value
-}
-
-// Scheme returns the value as a Scheme string.
-func (v *Vector) Scheme() string {
-	return v.String()
-}
-
-// Eq tests if the argument value is eq? to this value.
-func (v *Vector) Eq(o Value) bool {
-	return v == o
-}
-
-// Equal tests if the argument value is equal to this value.
-func (v *Vector) Equal(o Value) bool {
-	ov, ok := o.(*Vector)
-	if !ok || len(v.Elements) != len(ov.Elements) {
-		return false
-	}
-	for idx, v := range v.Elements {
-		if !v.Equal(ov.Elements[idx]) {
-			return false
-		}
-	}
-	return true
-}
-
-func (v *Vector) String() string {
-	var str strings.Builder
-	str.WriteString("#(")
-
-	for idx, el := range v.Elements {
-		if idx > 0 {
-			str.WriteRune(' ')
-		}
-		str.WriteString(fmt.Sprintf("%v", el))
-	}
-	str.WriteRune(')')
-	return str.String()
-}
-
 // Identifier implements identifier values.
 type Identifier struct {
 	Name   string

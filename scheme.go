@@ -53,6 +53,7 @@ func New(verbose bool) (*Scheme, error) {
 	scm.DefineBuiltins(numberBuiltins)
 	scm.DefineBuiltins(outputBuiltins)
 	scm.DefineBuiltins(stringBuiltins)
+	scm.DefineBuiltins(vectorBuiltins)
 
 	err := scm.loadRuntime("runtime")
 	if err != nil {
