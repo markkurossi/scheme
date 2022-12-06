@@ -63,8 +63,46 @@ var vectorBuiltins = []Builtin{
 			return Boolean(ok), nil
 		},
 	},
-	// XXX make-vector
-	// XXX vector
+	{
+		Name: "make-vector",
+		Args: []string{"k", "[fill]"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			k, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid length: %v", args[0])
+			}
+			length := k.Int64()
+			if length < 0 {
+				return nil, l.Errorf("negative length: %v", k)
+			}
+
+			var fill Value
+			if len(args) == 2 {
+				fill = args[1]
+			}
+			elements := make([]Value, length, length)
+			for i := 0; i < int(length); i++ {
+				elements[i] = fill
+			}
+
+			return &Vector{
+				Elements: elements,
+			}, nil
+		},
+	},
+	{
+		Name: "vector",
+		Args: []string{"[obj]..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var elements []Value
+			for i := 0; i < len(args); i++ {
+				elements = append(elements, args[i])
+			}
+			return &Vector{
+				Elements: elements,
+			}, nil
+		},
+	},
 	{
 		Name: "vector-length",
 		Args: []string{"obj"},
@@ -74,6 +112,26 @@ var vectorBuiltins = []Builtin{
 				return nil, l.Errorf("not a vector: %v", args[0])
 			}
 			return NewNumber(0, len(v.Elements)), nil
+		},
+	},
+	{
+		Name: "vector-ref",
+		Args: []string{"vector", "k"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			vector, ok := args[0].(*Vector)
+			if !ok {
+				return nil, l.Errorf("invalid vector: %v", args[0])
+			}
+			kn, ok := args[1].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid index: %v", args[1])
+			}
+			k := int(kn.Int64())
+			if k < 0 || k >= len(vector.Elements) {
+				return nil, l.Errorf("index %v out of range for vector %v",
+					k, args[0])
+			}
+			return vector.Elements[k], nil
 		},
 	},
 }

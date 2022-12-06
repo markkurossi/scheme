@@ -101,11 +101,11 @@ structured data operations.
 	 - [ ] substring
 	 - [ ] string-fill!
    - [ ] 6.8. Vectors
-     - [ ] vector?
-     - [ ] make-vector
-     - [ ] vector
-     - [ ] vector-length
-     - [ ] vector-ref
+     - [X] vector?
+     - [X] make-vector
+     - [X] vector
+     - [X] vector-length
+     - [X] vector-ref
      - [ ] vector-set!
      - [ ] vector->list
      - [ ] list->vector

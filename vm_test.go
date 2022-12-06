@@ -299,6 +299,10 @@ Hello, world!
 		v: Boolean(false),
 	},
 	{
+		i: `(vector-length (make-vector 3))`,
+		v: NewNumber(0, 3),
+	},
+	{
 		i: `(vector-length #())`,
 		v: NewNumber(0, 0),
 	},
