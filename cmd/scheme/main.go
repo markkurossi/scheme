@@ -23,12 +23,16 @@ func main() {
 
 	replp := flag.Bool("repl", false, "read-eval-print-loop")
 	verbose := flag.Bool("v", false, "verbose output")
+	noRuntime := flag.Bool("no-runtime", false, "do not load Scheme runtime")
 	bc := flag.Bool("bc", false, "compile scheme into bytecode")
 	flag.Parse()
 
 	fmt.Printf("Go Scheme Version 0.0\n")
 
-	scm, err := scheme.New(*verbose)
+	scm, err := scheme.NewWithParams(scheme.Params{
+		Verbose:   *verbose,
+		NoRuntime: *noRuntime,
+	})
 	if err != nil {
 		fmt.Printf("scheme.New: %v\n", err)
 		return

@@ -105,7 +105,7 @@ var vectorBuiltins = []Builtin{
 	},
 	{
 		Name: "vector-length",
-		Args: []string{"obj"},
+		Args: []string{"vector"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			v, ok := args[0].(*Vector)
 			if !ok {
@@ -132,6 +132,74 @@ var vectorBuiltins = []Builtin{
 					k, args[0])
 			}
 			return vector.Elements[k], nil
+		},
+	},
+	{
+		Name: "vector-set!",
+		Args: []string{"vector", "k", "obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			vector, ok := args[0].(*Vector)
+			if !ok {
+				return nil, l.Errorf("invalid vector: %v", args[0])
+			}
+			kn, ok := args[1].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid index: %v", args[1])
+			}
+			k := int(kn.Int64())
+			if k < 0 || k >= len(vector.Elements) {
+				return nil, l.Errorf("index %v out of range for vector %v",
+					k, args[0])
+			}
+			vector.Elements[k] = args[2]
+			return args[0], nil
+		},
+	},
+	{
+		Name: "vector->list",
+		Args: []string{"vector"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			vector, ok := args[0].(*Vector)
+			if !ok {
+				return nil, l.Errorf("invalid vector: %v", args[0])
+			}
+			var pair Pair
+
+			for i := len(vector.Elements) - 1; i >= 0; i-- {
+				pair = NewPair(vector.Elements[i], pair)
+			}
+			return pair, nil
+		},
+	},
+	{
+		Name: "list->vector",
+		Args: []string{"list"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var elements []Value
+			err := Map(func(idx int, v Value) error {
+				elements = append(elements, v)
+				return nil
+			}, args[0])
+			if err != nil {
+				return nil, err
+			}
+			return &Vector{
+				Elements: elements,
+			}, nil
+		},
+	},
+	{
+		Name: "vector-fill!",
+		Args: []string{"vector", "fill"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			vector, ok := args[0].(*Vector)
+			if !ok {
+				return nil, l.Errorf("invalid vector: %v", args[0])
+			}
+			for i := 0; i < len(vector.Elements); i++ {
+				vector.Elements[i] = args[1]
+			}
+			return args[0], nil
 		},
 	},
 }

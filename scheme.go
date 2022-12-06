@@ -24,6 +24,7 @@ var runtime embed.FS
 
 // Scheme implements Scheme interpreter and virtual machine.
 type Scheme struct {
+	Params   Params
 	Stdout   io.Writer
 	Parsing  bool
 	verbose  bool
@@ -38,10 +39,25 @@ type Scheme struct {
 	nextLabel int
 }
 
+// Params define the configuration parameters for Scheme.
+type Params struct {
+	// Verbose output.
+	Verbose bool
+
+	// NoRuntime specifies if the Scheme-implemented runtime is
+	// initialized.
+	NoRuntime bool
+}
+
 // New creates a new Scheme interpreter.
-func New(verbose bool) (*Scheme, error) {
+func New() (*Scheme, error) {
+	return NewWithParams(Params{})
+}
+
+// NewWithParams creates a new Scheme interpreter with the parameters.
+func NewWithParams(params Params) (*Scheme, error) {
 	scm := &Scheme{
-		verbose: verbose,
+		Params:  params,
 		Stdout:  os.Stdout,
 		symbols: make(map[string]*Identifier),
 	}
@@ -55,9 +71,11 @@ func New(verbose bool) (*Scheme, error) {
 	scm.DefineBuiltins(stringBuiltins)
 	scm.DefineBuiltins(vectorBuiltins)
 
-	err := scm.loadRuntime("runtime")
-	if err != nil {
-		return nil, err
+	if !scm.Params.NoRuntime {
+		err := scm.loadRuntime("runtime")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return scm, nil
