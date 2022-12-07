@@ -60,7 +60,7 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 
 		length, ok := ListLength(lambda.Body)
 		if !ok {
-			return nil, fmt.Errorf("invalid lambda body")
+			return nil, lambda.Body.Errorf("invalid lambda body")
 		}
 
 		scm.addInstr(OpLabel, nil, lambda.Start)
@@ -116,7 +116,7 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 	case Pair:
 		list, ok := ListPairs(v)
 		if !ok {
-			return fmt.Errorf("compile value: %v", v)
+			return v.Errorf("unexpected value: %v", v)
 		}
 		length := len(list)
 
@@ -148,18 +148,18 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 		}
 		if isKeyword(v.Car(), KwQuote) {
 			if length != 2 {
-				return fmt.Errorf("invalid quote: %v", v)
+				return v.Errorf("invalid quote: %v", v)
 			}
 			quoted, ok := Car(v.Cdr(), true)
 			if !ok {
-				return fmt.Errorf("invalid quote: %v", v)
+				return v.Errorf("invalid quote: %v", v)
 			}
 			scm.addInstr(OpConst, quoted, 0)
 			return nil
 		}
 		if isKeyword(v.Car(), KwSchemeApply) {
 			if length != 3 {
-				return fmt.Errorf("invalid scheme::apply: %v", v)
+				return v.Errorf("invalid scheme::apply: %v", v)
 			}
 			return scm.compileApply(env, v, tail)
 		}
@@ -185,7 +185,7 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 		for j := 0; li != nil; j++ {
 			pair, ok := li.(Pair)
 			if !ok {
-				return fmt.Errorf("invalid list: %v", li)
+				return v.Errorf("invalid list: %v", li)
 			}
 			err := scm.compileValue(env, pair.Car(), false)
 			if err != nil {
@@ -259,11 +259,11 @@ func (scm *Scheme) compileDefine(env *Env, pair Pair, length int) error {
 	name, _, ok := isIdentifier(Car(Cdr(pair, true)))
 	if ok {
 		if length != 3 {
-			return fmt.Errorf("syntax error: %v", pair)
+			return pair.Errorf("syntax error: %v", pair)
 		}
 		v, ok := Car(Cdr(Cdr(pair, true)))
 		if !ok {
-			return fmt.Errorf("syntax error: %v", pair)
+			return pair.Errorf("syntax error: %v", pair)
 		}
 		err := scm.compileValue(env, v, false)
 		if err != nil {
@@ -279,6 +279,8 @@ func (scm *Scheme) compileDefine(env *Env, pair Pair, length int) error {
 func (scm *Scheme) define(env *Env, name string) error {
 	nameSym := scm.Intern(name)
 	_, ok := env.Lookup(name)
+
+	// XXX nameSym.Global must be a runtime check.
 	if ok || nameSym.Global != nil {
 		return fmt.Errorf("symbol '%v' already defined", name)
 	}
@@ -304,20 +306,20 @@ func (scm *Scheme) compileLambda(env *Env, define bool, pair Pair,
 	// (lambda (args?) body)
 	lst, ok := Car(Cdr(pair, true))
 	if !ok {
-		return fmt.Errorf("syntax error: %v", pair)
+		return pair.Errorf("syntax error: %v", pair)
 	}
 	_, ok = ListLength(lst)
 	if !ok {
-		return fmt.Errorf("syntax error: %v", pair)
+		return pair.Errorf("syntax error: %v", pair)
 	}
 
 	var name *Identifier
 	var args []*Identifier
 
-	err := Map(func(idx int, v Value) error {
-		id, ok := v.(*Identifier)
+	err := MapPairs(func(idx int, p Pair) error {
+		id, ok := p.Car().(*Identifier)
 		if !ok {
-			return fmt.Errorf("lambda: arguments must be identifiers")
+			return p.Errorf("lambda: invalid argument: %v", p.Car())
 		}
 		if define && name == nil {
 			name = id
@@ -330,18 +332,18 @@ func (scm *Scheme) compileLambda(env *Env, define bool, pair Pair,
 		return err
 	}
 	if define && name == nil {
-		return fmt.Errorf("function name not define")
+		return pair.Errorf("function name not defined")
 	}
 
 	lst, ok = Cdr(Cdr(pair, true))
 	if !ok {
-		return fmt.Errorf("invalid function body")
+		return pair.Errorf("invalid function body")
 	}
 
 	var body Pair
 	body, ok = lst.(Pair)
 	if !ok {
-		return fmt.Errorf("invalid function body")
+		return pair.Errorf("invalid function body")
 	}
 
 	// The environment (below) is converted to lambda capture:
@@ -389,15 +391,15 @@ func (scm *Scheme) compileLambda(env *Env, define bool, pair Pair,
 func (scm *Scheme) compileSet(env *Env, pair Pair, length int) error {
 	// (set! name value)
 	if length != 3 {
-		return fmt.Errorf("syntax error: %v", pair)
+		return pair.Errorf("syntax error: %v", pair)
 	}
 	name, nameV, ok := isIdentifier(Car(Cdr(pair, true)))
 	if !ok {
-		return fmt.Errorf("set!: expected variable name: %v", nameV)
+		return pair.Errorf("set!: expected variable name: %v", nameV)
 	}
 	v, ok := Car(Cdr(Cdr(pair, true)))
 	if !ok {
-		return fmt.Errorf("syntax error: %v", pair)
+		return pair.Errorf("syntax error: %v", pair)
 	}
 	err := scm.compileValue(env, v, false)
 	if err != nil {
@@ -421,11 +423,11 @@ func (scm *Scheme) compileLet(kind Keyword, env *Env, list []Pair,
 	tail bool) error {
 
 	if len(list) < 3 {
-		return fmt.Errorf("%s: missing bindings or body", kind)
+		return list[0].Errorf("%s: missing bindings or body", kind)
 	}
 	bindings, ok := ListPairs(list[1].Car())
 	if !ok {
-		return fmt.Errorf("%s: invalid bindings: %v", kind, list[1].Car())
+		return list[1].Errorf("%s: invalid bindings: %v", kind, list[1].Car())
 	}
 
 	letEnv := env.Copy()
@@ -438,11 +440,11 @@ func (scm *Scheme) compileLet(kind Keyword, env *Env, list []Pair,
 	for _, binding := range bindings {
 		def, ok := ListPairs(binding.Car())
 		if !ok || len(def) != 2 {
-			return fmt.Errorf("%s: invalid init: %v", kind, binding)
+			return list[1].Errorf("%s: invalid init: %v", kind, binding)
 		}
 		name, ok := def[0].Car().(*Identifier)
 		if !ok {
-			return fmt.Errorf("%s: invalid variable: %v", kind, binding)
+			return def[0].Errorf("%s: invalid variable: %v", kind, binding)
 		}
 		b, err := letEnv.Define(name.Name)
 		if err != nil {
@@ -457,7 +459,7 @@ func (scm *Scheme) compileLet(kind Keyword, env *Env, list []Pair,
 	for idx, binding := range bindings {
 		def, ok := ListPairs(binding.Car())
 		if !ok || len(def) != 2 {
-			return fmt.Errorf("%s: invalid init: %v", kind, binding)
+			return list[1].Errorf("%s: invalid init: %v", kind, binding)
 		}
 
 		// Compile init value.
@@ -499,21 +501,21 @@ func (scm *Scheme) compileLet(kind Keyword, env *Env, list []Pair,
 
 func (scm *Scheme) compileIf(env *Env, pair Pair, length int, tail bool) error {
 	if length < 3 || length > 4 {
-		return fmt.Errorf("if: syntax error")
+		return pair.Errorf("if: syntax error")
 	}
 	cond, ok := Car(Cdr(pair, true))
 	if !ok {
-		return fmt.Errorf("if: syntax error")
+		return pair.Errorf("if: syntax error")
 	}
 	t, ok := Car(Cdr(Cdr(pair, true)))
 	if !ok {
-		return fmt.Errorf("if: syntax error: consequent")
+		return pair.Errorf("if: syntax error: consequent")
 	}
 	var f Value
 	if length == 4 {
 		f, ok = Car(Cdr(Cdr(Cdr(pair, true))))
 		if !ok {
-			return fmt.Errorf("if: syntax error: alternate")
+			return pair.Errorf("if: syntax error: alternate")
 		}
 	}
 
@@ -553,11 +555,11 @@ func (scm *Scheme) compileIf(env *Env, pair Pair, length int, tail bool) error {
 func (scm *Scheme) compileApply(env *Env, pair Pair, tail bool) error {
 	f, ok := Car(pair.Cdr(), true)
 	if !ok {
-		return fmt.Errorf("scheme::apply: invalid list: %v", pair)
+		return pair.Errorf("scheme::apply: invalid list: %v", pair)
 	}
 	args, ok := Car(Cdr(pair.Cdr(), true))
 	if !ok {
-		return fmt.Errorf("scheme::apply: invalid list: %v", pair)
+		return pair.Errorf("scheme::apply: invalid list: %v", pair)
 	}
 
 	// Compile function.

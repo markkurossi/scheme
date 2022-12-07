@@ -147,6 +147,7 @@ type Point struct {
 // Locator interface a source location.
 type Locator interface {
 	Location() Point
+	Errorf(format string, a ...interface{}) error
 }
 
 func (p Point) String() string {

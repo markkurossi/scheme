@@ -44,9 +44,14 @@ func NewPair(car, cdr Value) Pair {
 	}
 }
 
-// Location implements the Locator interface.
+// Location returns pair's location.
 func (pair *PlainPair) Location() Point {
 	return Point{}
+}
+
+// Errorf returns an error message with the pair's location.
+func (pair *PlainPair) Errorf(format string, a ...interface{}) error {
+	return fmt.Errorf(format, a...)
 }
 
 // Car returns the pair's car value.
@@ -129,9 +134,15 @@ type LocationPair struct {
 	PlainPair
 }
 
-// Location implements the Locator interface.
+// Location returns pair's location.
 func (pair *LocationPair) Location() Point {
 	return pair.Point
+}
+
+// Errorf returns an error message with the pair's location.
+func (pair *LocationPair) Errorf(format string, a ...interface{}) error {
+	msg := fmt.Sprintf(format, a...)
+	return fmt.Errorf("%s: %s", pair.Point, msg)
 }
 
 func (pair *LocationPair) String() string {
