@@ -7,7 +7,6 @@
 package scheme
 
 import (
-	"fmt"
 	"io"
 )
 
@@ -57,8 +56,7 @@ func (p *Parser) Next() (Value, error) {
 				return list, nil
 			} else if t.Type == '.' {
 				if cursor == nil {
-					return nil, fmt.Errorf("%s: unexpected token: %v",
-						t.From, t)
+					return nil, t.Errorf("unexpected token: %v", t)
 				}
 				v, err := p.Next()
 				if err != nil {
@@ -71,8 +69,7 @@ func (p *Parser) Next() (Value, error) {
 					return nil, err
 				}
 				if t.Type != ')' {
-					return nil, fmt.Errorf("%s: invalid input %v, expected: )",
-						t.From, t)
+					return nil, t.Errorf("unexpected input %v, expected: )", t)
 				}
 				return list, nil
 			}
@@ -133,6 +130,6 @@ func (p *Parser) Next() (Value, error) {
 		return t.Keyword, nil
 
 	default:
-		return nil, fmt.Errorf("%s: unexpected token: %v", t.From, t)
+		return nil, t.Errorf("unexpected token: %v", t)
 	}
 }

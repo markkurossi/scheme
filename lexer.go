@@ -171,6 +171,12 @@ type Token struct {
 	Keyword    Keyword
 }
 
+// Errorf formats a error message with the token location information.
+func (t *Token) Errorf(format string, a ...interface{}) error {
+	msg := fmt.Sprintf(format, a...)
+	return fmt.Errorf("%s: %s", t.From, msg)
+}
+
 // Equal tests if the argument token is equal to this token.
 func (t *Token) Equal(o *Token) bool {
 	if t.Type != o.Type {
@@ -254,7 +260,7 @@ func NewLexer(source string, in io.Reader) *Lexer {
 	}
 }
 
-func (l *Lexer) err(format string, a ...interface{}) error {
+func (l *Lexer) errf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 	return fmt.Errorf("%s: %s", l.point, msg)
 }
@@ -425,7 +431,7 @@ func (l *Lexer) Get() (*Token, error) {
 						r = 0
 
 					default:
-						return nil, l.err("invalid escape: \\%c", r)
+						return nil, l.errf("invalid escape: \\%c", r)
 					}
 				}
 				str.WriteRune(r)
@@ -484,7 +490,7 @@ func (l *Lexer) Get() (*Token, error) {
 				return l.newNumber(false, 0, val)
 			}
 			l.UnreadRune()
-			return nil, l.err("unexpected character: %c", r)
+			return nil, l.errf("unexpected character: %c", r)
 		}
 	}
 }
@@ -546,7 +552,7 @@ func (l *Lexer) parseNumber() (*Token, error) {
 
 		default:
 			l.UnreadRune()
-			return nil, l.err("unexpected character: %c", r)
+			return nil, l.errf("unexpected character: %c", r)
 		}
 
 		r, _, err = l.ReadRune()
@@ -565,7 +571,7 @@ func (l *Lexer) parseNumber() (*Token, error) {
 			return l.newNumber(exact, 0, val)
 		} else {
 			l.UnreadRune()
-			return nil, l.err("unexpected character: %c", r)
+			return nil, l.errf("unexpected character: %c", r)
 		}
 	}
 }
@@ -619,7 +625,7 @@ func (l *Lexer) parseDigit(base int64) (*big.Int, error) {
 			}
 
 		default:
-			return nil, l.err("invalid base %v", base)
+			return nil, l.errf("invalid base %v", base)
 		}
 		if done {
 			l.UnreadRune()
@@ -630,7 +636,7 @@ func (l *Lexer) parseDigit(base int64) (*big.Int, error) {
 		count++
 	}
 	if count == 0 {
-		return nil, l.err("unexpected EOF")
+		return nil, l.errf("unexpected EOF")
 	}
 
 	return result, nil
