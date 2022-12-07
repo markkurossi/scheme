@@ -30,7 +30,6 @@ structured data operations.
    - [ ] Call with current continuation
  - [ ] Runtime
    - [ ] 6.3. Pairs and lists
-     - [ ] (a . b) syntax
      - [ ] append
      - [ ] memq, memv, member
      - [ ] assq, assv, assoc

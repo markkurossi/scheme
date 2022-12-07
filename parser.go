@@ -55,6 +55,26 @@ func (p *Parser) Next() (Value, error) {
 			}
 			if t.Type == ')' {
 				return list, nil
+			} else if t.Type == '.' {
+				if cursor == nil {
+					return nil, fmt.Errorf("%s: unexpected token: %v",
+						t.From, t)
+				}
+				v, err := p.Next()
+				if err != nil {
+					return nil, err
+				}
+				cursor.SetCdr(v)
+
+				t, err = p.lexer.Get()
+				if err != nil {
+					return nil, err
+				}
+				if t.Type != ')' {
+					return nil, fmt.Errorf("%s: invalid input %v, expected: )",
+						t.From, t)
+				}
+				return list, nil
 			}
 			p.lexer.Unget(t)
 
