@@ -110,27 +110,30 @@ func (args Args) Equal(o Args) bool {
 
 // Init initializes argument limits and checks that all argument names
 // are unique.
-func (args *Args) Init() error {
+func (args *Args) Init() {
 	args.Min = len(args.Fixed)
 	if args.Rest != nil {
 		args.Max = math.MaxInt
 	} else {
 		args.Max = args.Min
 	}
-	seen := make(map[string]bool)
-	for _, name := range args.Fixed {
-		_, ok := seen[name.Name]
-		if ok {
-			return fmt.Errorf("argument '%s' already defined", name.Name)
-		}
-		seen[name.Name] = true
+}
+
+// Seen implements uniqueness checker for argument names.
+type Seen map[string]bool
+
+// NewSeen creates a new argument name checker.
+func NewSeen() Seen {
+	return make(Seen)
+}
+
+// Add adds the argument name to the name checker.
+func (seen Seen) Add(name string) error {
+	_, ok := seen[name]
+	if ok {
+		return fmt.Errorf("argument '%s' already seen", name)
 	}
-	if args.Rest != nil {
-		_, ok := seen[args.Rest.Name]
-		if ok {
-			return fmt.Errorf("argument '%s' already defined", args.Rest.Name)
-		}
-	}
+	seen[name] = true
 	return nil
 }
 

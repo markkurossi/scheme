@@ -298,10 +298,16 @@ func (scm *Scheme) compileLambda(env *Env, define bool, list []Pair) error {
 	var name *Identifier
 	var args Args
 
+	seen := NewSeen()
+
 	arg, ok := isIdentifier(list[1].Car())
 	if ok {
 		if define {
 			return list[1].Errorf("invalid define: %v", list[0])
+		}
+		err := seen.Add(arg.Name)
+		if err != nil {
+			return list[1].Errorf("%v", err)
 		}
 		args.Rest = arg
 	} else {
@@ -317,12 +323,20 @@ func (scm *Scheme) compileLambda(env *Env, define bool, list []Pair) error {
 			if define && name == nil {
 				name = arg
 			} else {
+				err := seen.Add(arg.Name)
+				if err != nil {
+					return pair.Errorf("%v", err)
+				}
 				args.Fixed = append(args.Fixed, arg)
 			}
 
 			arg, ok = isIdentifier(pair.Cdr())
 			if ok {
 				// Rest arguments.
+				err := seen.Add(arg.Name)
+				if err != nil {
+					return pair.Errorf("%v", err)
+				}
 				args.Rest = arg
 				break
 			}
@@ -333,10 +347,7 @@ func (scm *Scheme) compileLambda(env *Env, define bool, list []Pair) error {
 			pair = next
 		}
 	}
-	err := args.Init()
-	if err != nil {
-		return list[1].Errorf("invalid arguments: %v", err)
-	}
+	args.Init()
 
 	if define && name == nil {
 		return list[0].Errorf("define: name not defined: %v", list[0])
