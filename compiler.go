@@ -543,10 +543,8 @@ func (scm *Scheme) compileIf(env *Env, pair Pair, length int, tail bool) error {
 		if err != nil {
 			return err
 		}
-		if !tail {
-			instr = scm.addInstr(OpJmp, nil, 0)
-			instr.J = labelEnd.I
-		}
+		instr = scm.addInstr(OpJmp, nil, 0)
+		instr.J = labelEnd.I
 	}
 
 	scm.addLabel(labelTrue)
@@ -554,9 +552,8 @@ func (scm *Scheme) compileIf(env *Env, pair Pair, length int, tail bool) error {
 	if err != nil {
 		return err
 	}
-	if !tail {
-		scm.addLabel(labelEnd)
-	}
+
+	scm.addLabel(labelEnd)
 
 	return nil
 }
