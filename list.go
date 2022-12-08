@@ -376,7 +376,39 @@ var listBuiltins = []Builtin{
 			return NewNumber(0, length), nil
 		},
 	},
-	// XXX append
+	{
+		Name: "append",
+		Args: []string{"list", "list..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var result Pair
+			var tail Pair
+
+			for i := 0; i < len(args); i++ {
+				if i+1 >= len(args) {
+					if tail == nil {
+						return args[i], nil
+					}
+					tail.SetCdr(args[i])
+				} else {
+					err := Map(func(idx int, v Value) error {
+						if tail == nil {
+							result = NewPair(v, nil)
+							tail = result
+						} else {
+							next := NewPair(v, nil)
+							tail.SetCdr(next)
+							tail = next
+						}
+						return nil
+					}, args[i])
+					if err != nil {
+						return nil, l.Errorf("invalid list: %v", args[i])
+					}
+				}
+			}
+			return result, nil
+		},
+	},
 	{
 		Name: "reverse",
 		Args: []string{"list"},
