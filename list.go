@@ -356,7 +356,7 @@ var listBuiltins = []Builtin{
 	},
 	{
 		Name: "list",
-		Args: []string{"[obj]..."},
+		Args: []string{"obj..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			var result Pair
 			for i := len(args) - 1; i >= 0; i-- {

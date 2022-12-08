@@ -9,6 +9,7 @@ package scheme
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -60,14 +61,77 @@ func (v *Identifier) String() string {
 // Lambda implements lambda values.
 type Lambda struct {
 	Name    string
-	MinArgs int
-	MaxArgs int
-	Args    []*Identifier
+	Args    Args
 	Capture int
 	Locals  [][]Value
 	Native  Native
 	Code    Code
-	Body    Pair
+	Body    []Pair
+}
+
+// Args specify lambda arguments.
+type Args struct {
+	Min   int
+	Max   int
+	Fixed []*Identifier
+	Rest  *Identifier
+}
+
+func (args Args) String() string {
+	if len(args.Fixed) == 0 {
+		if args.Rest == nil {
+			return ""
+		}
+		return args.Rest.Name
+	}
+
+	var str strings.Builder
+
+	str.WriteRune('(')
+
+	for idx, arg := range args.Fixed {
+		if idx > 0 {
+			str.WriteRune(' ')
+		}
+		str.WriteString(arg.Name)
+	}
+	if args.Rest != nil {
+		str.WriteString(" . ")
+		str.WriteString(args.Rest.Name)
+	}
+	str.WriteRune(')')
+	return str.String()
+}
+
+// Equal tests if the arguments are equal.
+func (args Args) Equal(o Args) bool {
+	return args.Min == o.Min && args.Max == o.Max
+}
+
+// Init initializes argument limits and checks that all argument names
+// are unique.
+func (args *Args) Init() error {
+	args.Min = len(args.Fixed)
+	if args.Rest != nil {
+		args.Max = math.MaxInt
+	} else {
+		args.Max = args.Min
+	}
+	seen := make(map[string]bool)
+	for _, name := range args.Fixed {
+		_, ok := seen[name.Name]
+		if ok {
+			return fmt.Errorf("argument '%s' already defined", name.Name)
+		}
+		seen[name.Name] = true
+	}
+	if args.Rest != nil {
+		_, ok := seen[args.Rest.Name]
+		if ok {
+			return fmt.Errorf("argument '%s' already defined", args.Rest.Name)
+		}
+	}
+	return nil
 }
 
 // Scheme returns the value as a Scheme string.
@@ -86,7 +150,7 @@ func (v *Lambda) Equal(o Value) bool {
 	if !ok {
 		return false
 	}
-	if len(v.Args) != len(ov.Args) {
+	if !v.Args.Equal(ov.Args) {
 		return false
 	}
 	if v.Capture != ov.Capture {
@@ -98,7 +162,15 @@ func (v *Lambda) Equal(o Value) bool {
 	if v.Native != nil && ov.Native == nil {
 		return false
 	}
-	return v.Body.Equal(ov.Body)
+	if len(v.Body) != len(ov.Body) {
+		return false
+	}
+	for idx, vv := range v.Body {
+		if !vv.Equal(ov.Body[idx]) {
+			return false
+		}
+	}
+	return true
 }
 
 func (v *Lambda) String() string {
@@ -107,26 +179,19 @@ func (v *Lambda) String() string {
 	if v.Native != nil {
 		str.WriteRune('(')
 		str.WriteString(v.Name)
-		str.WriteString(" (")
+		str.WriteString(" ")
 	} else {
-		str.WriteString("(lambda (")
+		str.WriteString("(lambda ")
 	}
-	for idx, arg := range v.Args {
-		if idx > 0 {
-			str.WriteRune(' ')
-		}
-		str.WriteString(arg.Name)
-	}
-	str.WriteRune(')')
+	str.WriteString(v.Args.String())
 
 	if v.Native != nil {
 		str.WriteString(" {native}")
 	} else {
-		Map(func(idx int, v Value) error {
+		for _, pair := range v.Body {
 			str.WriteRune(' ')
-			str.WriteString(fmt.Sprintf("%v", v))
-			return nil
-		}, v.Body)
+			str.WriteString(fmt.Sprintf("%v", pair.Car()))
+		}
 	}
 	str.WriteRune(')')
 

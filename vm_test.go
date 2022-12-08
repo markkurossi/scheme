@@ -128,6 +128,20 @@ Hello, world!
 		v: NewPair(NewNumber(0, 1), NewNumber(0, 42)),
 	},
 	{
+		i: `((lambda x x) 3 4 5 6)`,
+		v: NewPair(NewNumber(0, 3),
+			NewPair(NewNumber(0, 4),
+				NewPair(NewNumber(0, 5),
+					NewPair(NewNumber(0, 6),
+						nil)))),
+	},
+	{
+		i: `((lambda (x y . z) z) 3 4 5 6)`,
+		v: NewPair(NewNumber(0, 5),
+			NewPair(NewNumber(0, 6),
+				nil)),
+	},
+	{
 		i: `(null? (list))`,
 		v: Boolean(true),
 	},

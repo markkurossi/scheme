@@ -58,17 +58,13 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 		ofs := len(scm.compiled)
 		lambda.Start = ofs + 1
 
-		length, ok := ListLength(lambda.Body)
-		if !ok {
-			return nil, lambda.Body.Errorf("invalid lambda body")
-		}
-
 		scm.addInstr(OpLabel, nil, lambda.Start)
-		err := Map(func(idx int, v Value) error {
-			return scm.compileValue(lambda.Env, v, idx+1 >= length)
-		}, lambda.Body)
-		if err != nil {
-			return nil, err
+		for idx := 0; idx < len(lambda.Body); idx++ {
+			err := scm.compileValue(lambda.Env, lambda.Body[idx].Car(),
+				idx+1 >= len(lambda.Body))
+			if err != nil {
+				return nil, err
+			}
 		}
 		scm.addInstr(OpReturn, nil, 0)
 		lambda.End = len(scm.compiled)
@@ -91,8 +87,6 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 			instr.I = def.Start
 			instr.J = def.End
 			instr.V = &Lambda{
-				MinArgs: len(def.Args),
-				MaxArgs: len(def.Args),
 				Args:    def.Args,
 				Code:    scm.compiled[def.Start:def.End],
 				Body:    def.Body,
@@ -121,13 +115,13 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 		length := len(list)
 
 		if isKeyword(v.Car(), KwDefine) {
-			return scm.compileDefine(env, v, length)
+			return scm.compileDefine(env, list)
 		}
 		if isKeyword(v.Car(), KwLambda) {
-			return scm.compileLambda(env, false, v, length)
+			return scm.compileLambda(env, false, list)
 		}
 		if isKeyword(v.Car(), KwSet) {
-			return scm.compileSet(env, v, length)
+			return scm.compileSet(env, list)
 		}
 		if isKeyword(v.Car(), KwLet) {
 			return scm.compileLet(KwLet, env, list, tail)
@@ -254,18 +248,14 @@ func (scm *Scheme) newLabel() *Instr {
 	}
 }
 
-func (scm *Scheme) compileDefine(env *Env, pair Pair, length int) error {
+func (scm *Scheme) compileDefine(env *Env, list []Pair) error {
+	if len(list) < 3 {
+		return list[0].Errorf("syntax error: %v", list[0])
+	}
 	// (define name value)
-	name, _, ok := isIdentifier(Car(Cdr(pair, true)))
+	name, ok := isIdentifier(list[1].Car())
 	if ok {
-		if length != 3 {
-			return pair.Errorf("syntax error: %v", pair)
-		}
-		v, ok := Car(Cdr(Cdr(pair, true)))
-		if !ok {
-			return pair.Errorf("syntax error: %v", pair)
-		}
-		err := scm.compileValue(env, v, false)
+		err := scm.compileValue(env, list[2].Car(), false)
 		if err != nil {
 			return err
 		}
@@ -273,7 +263,7 @@ func (scm *Scheme) compileDefine(env *Env, pair Pair, length int) error {
 	}
 
 	// (define (name args?) body)
-	return scm.compileLambda(env, true, pair, length)
+	return scm.compileLambda(env, true, list)
 }
 
 func (scm *Scheme) define(env *Env, name string) error {
@@ -299,51 +289,57 @@ func (scm *Scheme) define(env *Env, name string) error {
 	return nil
 }
 
-func (scm *Scheme) compileLambda(env *Env, define bool, pair Pair,
-	length int) error {
+func (scm *Scheme) compileLambda(env *Env, define bool, list []Pair) error {
 
 	// (define (name args?) body)
 	// (lambda (args?) body)
-	lst, ok := Car(Cdr(pair, true))
-	if !ok {
-		return pair.Errorf("syntax error: %v", pair)
-	}
-	_, ok = ListLength(lst)
-	if !ok {
-		return pair.Errorf("syntax error: %v", pair)
-	}
+	// (lambda args body)
 
 	var name *Identifier
-	var args []*Identifier
+	var args Args
 
-	err := MapPairs(func(idx int, p Pair) error {
-		id, ok := p.Car().(*Identifier)
+	arg, ok := isIdentifier(list[1].Car())
+	if ok {
+		if define {
+			return list[1].Errorf("invalid define: %v", list[0])
+		}
+		args.Rest = arg
+	} else {
+		pair, ok := list[1].Car().(Pair)
 		if !ok {
-			return p.Errorf("lambda: invalid argument: %v", p.Car())
+			list[0].Errorf("invalid arguments: %v", list[1].Car())
 		}
-		if define && name == nil {
-			name = id
-		} else {
-			args = append(args, id)
+		for pair != nil {
+			arg, ok = isIdentifier(pair.Car())
+			if !ok {
+				return pair.Errorf("invalid argument: %v", pair.Car())
+			}
+			if define && name == nil {
+				name = arg
+			} else {
+				args.Fixed = append(args.Fixed, arg)
+			}
+
+			arg, ok = isIdentifier(pair.Cdr())
+			if ok {
+				// Rest arguments.
+				args.Rest = arg
+				break
+			}
+			next, ok := pair.Cdr().(Pair)
+			if !ok {
+				pair.Errorf("invalid argument: %v", pair)
+			}
+			pair = next
 		}
-		return nil
-	}, lst)
+	}
+	err := args.Init()
 	if err != nil {
-		return err
+		return list[1].Errorf("invalid arguments: %v", err)
 	}
+
 	if define && name == nil {
-		return pair.Errorf("function name not defined")
-	}
-
-	lst, ok = Cdr(Cdr(pair, true))
-	if !ok {
-		return pair.Errorf("invalid function body")
-	}
-
-	var body Pair
-	body, ok = lst.(Pair)
-	if !ok {
-		return pair.Errorf("invalid function body")
+		return list[0].Errorf("define: name not defined: %v", list[0])
 	}
 
 	// The environment (below) is converted to lambda capture:
@@ -366,8 +362,14 @@ func (scm *Scheme) compileLambda(env *Env, define bool, pair Pair,
 	capture := NewEnv()
 
 	capture.PushFrame()
-	for _, arg := range args {
-		_, err = capture.Define(arg.Name)
+	for _, arg := range args.Fixed {
+		_, err := capture.Define(arg.Name)
+		if err != nil {
+			return err
+		}
+	}
+	if args.Rest != nil {
+		_, err := capture.Define(args.Rest.Name)
 		if err != nil {
 			return err
 		}
@@ -378,7 +380,7 @@ func (scm *Scheme) compileLambda(env *Env, define bool, pair Pair,
 	scm.addInstr(OpLambda, nil, len(scm.lambdas))
 	scm.lambdas = append(scm.lambdas, &LambdaBody{
 		Args: args,
-		Body: body,
+		Body: list[2:],
 		Env:  capture,
 	})
 	if define {
@@ -388,20 +390,16 @@ func (scm *Scheme) compileLambda(env *Env, define bool, pair Pair,
 	return nil
 }
 
-func (scm *Scheme) compileSet(env *Env, pair Pair, length int) error {
+func (scm *Scheme) compileSet(env *Env, list []Pair) error {
 	// (set! name value)
-	if length != 3 {
-		return pair.Errorf("syntax error: %v", pair)
+	if len(list) != 3 {
+		return list[0].Errorf("syntax error: %v", list[0])
 	}
-	name, nameV, ok := isIdentifier(Car(Cdr(pair, true)))
+	name, ok := isIdentifier(list[1].Car())
 	if !ok {
-		return pair.Errorf("set!: expected variable name: %v", nameV)
+		return list[1].Errorf("set!: expected variable name: %v", list[1].Car())
 	}
-	v, ok := Car(Cdr(Cdr(pair, true)))
-	if !ok {
-		return pair.Errorf("syntax error: %v", pair)
-	}
-	err := scm.compileValue(env, v, false)
+	err := scm.compileValue(env, list[2].Car(), false)
 	if err != nil {
 		return err
 	}
@@ -601,12 +599,9 @@ func isKeyword(value Value, keyword Keyword) bool {
 	return kw == keyword
 }
 
-func isIdentifier(value Value, ok bool) (*Identifier, Value, bool) {
-	if !ok {
-		return nil, value, ok
-	}
+func isIdentifier(value Value) (*Identifier, bool) {
 	id, ok := value.(*Identifier)
-	return id, value, ok
+	return id, ok
 }
 
 // LambdaBody defines the lambda body and its location in the compiled
@@ -614,8 +609,8 @@ func isIdentifier(value Value, ok bool) (*Identifier, Value, bool) {
 type LambdaBody struct {
 	Start int
 	End   int
-	Args  []*Identifier
-	Body  Pair
+	Args  Args
+	Body  []Pair
 	Env   *Env
 }
 

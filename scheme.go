@@ -132,7 +132,7 @@ func (scm *Scheme) DefineBuiltin(name string, args []string, native Native) {
 			Name: arg,
 		})
 		maxArgs++
-		if arg[0] != '[' {
+		if arg[0] != '[' && !strings.HasSuffix(arg, "...") {
 			minArgs++
 		}
 		if strings.HasSuffix(arg, "...") {
@@ -145,11 +145,13 @@ func (scm *Scheme) DefineBuiltin(name string, args []string, native Native) {
 
 	sym := scm.Intern(name)
 	sym.Global = &Lambda{
-		Name:    name,
-		Args:    usage,
-		MinArgs: minArgs,
-		MaxArgs: maxArgs,
-		Native:  native,
+		Name: name,
+		Args: Args{
+			Min:   minArgs,
+			Max:   maxArgs,
+			Fixed: usage,
+		},
+		Native: native,
 	}
 }
 

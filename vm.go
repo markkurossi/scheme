@@ -153,8 +153,6 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 				return nil, fmt.Errorf("lambda: invalid argument: %V", instr.V)
 			}
 			lambda := &Lambda{
-				MinArgs: tmpl.MinArgs,
-				MaxArgs: tmpl.MaxArgs,
 				Args:    tmpl.Args,
 				Capture: tmpl.Capture,
 				Native:  tmpl.Native,
@@ -224,13 +222,13 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 			}
 			lambda := callFrame.Lambda
 
-			if len(args) < lambda.MinArgs {
+			if len(args) < lambda.Args.Min {
 				return nil, fmt.Errorf("too few arguments: got %v, need %v",
-					len(args), lambda.MinArgs)
+					len(args), lambda.Args.Min)
 			}
-			if len(args) > lambda.MaxArgs {
+			if len(args) > lambda.Args.Max {
 				return nil, fmt.Errorf("too many arguments: got %v, max %v",
-					len(args), lambda.MaxArgs)
+					len(args), lambda.Args.Max)
 			}
 
 			// Set fp for the call.
@@ -243,7 +241,20 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 				}
 				scm.popFrame()
 			} else {
+				// Handle rest arguments.
+				if lambda.Args.Rest != nil {
+					var rest Pair
+					for i := len(args) - 1; i >= lambda.Args.Min; i-- {
+						rest = NewPair(args[i], rest)
+					}
+					args = args[:lambda.Args.Min]
+					args = append(args, rest)
+					scm.stack[stackTop] = args
+				}
+
 				if instr.I != 0 {
+					// Tail-call.
+
 					next := callFrame.Next
 
 					nextFrame, ok := scm.stack[next][0].(*Frame)

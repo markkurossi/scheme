@@ -281,7 +281,7 @@ var numberBuiltins = []Builtin{
 	},
 	{
 		Name: "+",
-		Args: []string{"[z1]..."},
+		Args: []string{"z1..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			sum := NewNumber(0, big.NewInt(0))
 			var err error
@@ -301,7 +301,7 @@ var numberBuiltins = []Builtin{
 	},
 	{
 		Name: "-",
-		Args: []string{"z1", "[z2]..."},
+		Args: []string{"z1", "z2..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			result := NewNumber(0, big.NewInt(0))
 			var err error
@@ -325,7 +325,7 @@ var numberBuiltins = []Builtin{
 	},
 	{
 		Name: "*",
-		Args: []string{"[z1]..."},
+		Args: []string{"z1..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			product := NewNumber(0, big.NewInt(1))
 			var err error
@@ -345,7 +345,7 @@ var numberBuiltins = []Builtin{
 	},
 	{
 		Name: "=",
-		Args: []string{"z1", "z2", "[z1]..."},
+		Args: []string{"z1", "z2", "z1..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			var last Number
 
