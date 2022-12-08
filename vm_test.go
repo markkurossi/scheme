@@ -407,7 +407,9 @@ func TestVM(t *testing.T) {
 			t.Fatalf("Test %d: Eval failed: %v", idx, err)
 		}
 		if !Equal(v, test.v) {
-			t.Errorf("Eval failed: got %v, expected %v", v, test.v)
+			fmt.Printf("Test %d:\n%s\n", idx, vmTests[idx].i)
+			t.Errorf("Test %d: Eval failed: got %v, expected %v",
+				idx, v, test.v)
 		}
 		output := stdout.String()
 		if output != test.o {

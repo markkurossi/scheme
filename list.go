@@ -44,8 +44,13 @@ func NewPair(car, cdr Value) Pair {
 	}
 }
 
-// Location returns pair's location.
-func (pair *PlainPair) Location() Point {
+// From returns pair's start location.
+func (pair *PlainPair) From() Point {
+	return Point{}
+}
+
+// To returns pair's end location.
+func (pair *PlainPair) To() Point {
 	return Point{}
 }
 
@@ -130,35 +135,42 @@ loop:
 
 // LocationPair implements a Scheme pair with location information.
 type LocationPair struct {
-	Point
+	from Point
+	to   Point
 	PlainPair
-}
-
-// Location returns pair's location.
-func (pair *LocationPair) Location() Point {
-	return pair.Point
-}
-
-// Errorf returns an error message with the pair's location.
-func (pair *LocationPair) Errorf(format string, a ...interface{}) error {
-	msg := fmt.Sprintf(format, a...)
-	return fmt.Errorf("%s: %s", pair.Point, msg)
-}
-
-func (pair *LocationPair) String() string {
-	return pair.PlainPair.String()
 }
 
 // NewLocationPair creates a new pair with the car and cdr values and
 // location information.
-func NewLocationPair(point Point, car, cdr Value) Pair {
+func NewLocationPair(from, to Point, car, cdr Value) Pair {
 	return &LocationPair{
-		Point: point,
+		from: from,
+		to:   to,
 		PlainPair: PlainPair{
 			car: car,
 			cdr: cdr,
 		},
 	}
+}
+
+// From returns pair's start location.
+func (pair *LocationPair) From() Point {
+	return pair.from
+}
+
+// To returns pair's end location.
+func (pair *LocationPair) To() Point {
+	return pair.to
+}
+
+// Errorf returns an error message with the pair's location.
+func (pair *LocationPair) Errorf(format string, a ...interface{}) error {
+	msg := fmt.Sprintf(format, a...)
+	return fmt.Errorf("%s: %s", pair.from, msg)
+}
+
+func (pair *LocationPair) String() string {
+	return pair.PlainPair.String()
 }
 
 // ErrorInvalidList is used to indicate when a malformed or otherwise
@@ -227,7 +239,7 @@ func MapPairs(f func(idx int, p Pair) error, list Value) error {
 
 	for idx := 0; pair != nil; idx++ {
 		if err := f(idx, pair); err != nil {
-			point := pair.Location()
+			point := pair.From()
 			if point.Undefined() {
 				return err
 			}

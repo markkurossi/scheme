@@ -146,7 +146,8 @@ type Point struct {
 
 // Locator interface a source location.
 type Locator interface {
-	Location() Point
+	From() Point
+	To() Point
 	Errorf(format string, a ...interface{}) error
 }
 

@@ -38,12 +38,12 @@ func (p *Parser) Next() (Value, error) {
 		var next Value
 		locator, ok := v.(Locator)
 		if ok {
-			next = NewLocationPair(locator.Location(), v, nil)
+			next = NewLocationPair(locator.From(), locator.To(), v, nil)
 		} else {
 			next = NewPair(v, nil)
 		}
 
-		return NewLocationPair(t.From, KwQuote, next), nil
+		return NewLocationPair(t.From, t.To, KwQuote, next), nil
 
 	case '(':
 		var list, cursor Pair
@@ -81,10 +81,10 @@ func (p *Parser) Next() (Value, error) {
 			}
 
 			if cursor == nil {
-				cursor = NewLocationPair(t.From, v, nil)
+				cursor = NewLocationPair(t.From, t.To, v, nil)
 				list = cursor
 			} else {
-				cdr := NewLocationPair(t.From, v, nil)
+				cdr := NewLocationPair(t.From, t.To, v, nil)
 				cursor.SetCdr(cdr)
 				cursor = cdr
 			}
