@@ -115,6 +115,80 @@ func (n Number) Equal(o Value) bool {
 	}
 }
 
+// Lt tests if the number is smaller than the argument value.
+func (n Number) Lt(o Value) bool {
+	on, ok := o.(Number)
+	if !ok {
+		return false
+	}
+
+	switch v := n.Value.(type) {
+	case int64:
+		switch ov := on.Value.(type) {
+		case int64:
+			return v < ov
+
+		case *big.Int:
+			return ov.Cmp(big.NewInt(v)) == -1
+
+		default:
+			panic(fmt.Sprintf("uint64: o type %T not implemented", on.Value))
+		}
+
+	case *big.Int:
+		switch ov := on.Value.(type) {
+		case int64:
+			return v.Cmp(big.NewInt(ov)) == -1
+
+		case *big.Int:
+			return v.Cmp(ov) == -1
+
+		default:
+			panic(fmt.Sprintf("*big.Int: o type %T not implemented", on.Value))
+		}
+
+	default:
+		panic(fmt.Sprintf("n type %T not implemented", n.Value))
+	}
+}
+
+// Gt tests if the number is smaller than the argument value.
+func (n Number) Gt(o Value) bool {
+	on, ok := o.(Number)
+	if !ok {
+		return false
+	}
+
+	switch v := n.Value.(type) {
+	case int64:
+		switch ov := on.Value.(type) {
+		case int64:
+			return v > ov
+
+		case *big.Int:
+			return ov.Cmp(big.NewInt(v)) == 1
+
+		default:
+			panic(fmt.Sprintf("uint64: o type %T not implemented", on.Value))
+		}
+
+	case *big.Int:
+		switch ov := on.Value.(type) {
+		case int64:
+			return v.Cmp(big.NewInt(ov)) == 1
+
+		case *big.Int:
+			return v.Cmp(ov) == 1
+
+		default:
+			panic(fmt.Sprintf("*big.Int: o type %T not implemented", on.Value))
+		}
+
+	default:
+		panic(fmt.Sprintf("n type %T not implemented", n.Value))
+	}
+}
+
 // Int64 returns the number as int64 value.
 func (n Number) Int64() int64 {
 	switch v := n.Value.(type) {
@@ -355,6 +429,44 @@ var numberBuiltins = []Builtin{
 					return nil, l.Errorf("invalid argument %v", arg)
 				}
 				if idx > 0 && !last.Equal(num) {
+					return Boolean(false), nil
+				}
+				last = num
+			}
+			return Boolean(true), nil
+		},
+	},
+	{
+		Name: "<",
+		Args: []string{"z1", "z2", "z1..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var last Number
+
+			for idx, arg := range args {
+				num, ok := arg.(Number)
+				if !ok {
+					return nil, l.Errorf("invalid argument %v", arg)
+				}
+				if idx > 0 && !last.Lt(num) {
+					return Boolean(false), nil
+				}
+				last = num
+			}
+			return Boolean(true), nil
+		},
+	},
+	{
+		Name: ">",
+		Args: []string{"z1", "z2", "z1..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var last Number
+
+			for idx, arg := range args {
+				num, ok := arg.(Number)
+				if !ok {
+					return nil, l.Errorf("invalid argument %v", arg)
+				}
+				if idx > 0 && !last.Gt(num) {
 					return Boolean(false), nil
 				}
 				last = num
