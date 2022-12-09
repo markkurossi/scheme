@@ -93,7 +93,7 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 				Capture: def.Env.Depth() - 1,
 			}
 
-		case OpIf, OpJmp:
+		case OpIf, OpIfNot, OpJmp:
 			ofs, ok := labels[instr.J]
 			if !ok {
 				return nil, fmt.Errorf("Label l%v not defined", instr.J)
@@ -156,6 +156,9 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 				return v.Errorf("invalid scheme::apply: %v", v)
 			}
 			return scm.compileApply(env, v, tail)
+		}
+		if isKeyword(v.Car(), KwCond) {
+			return scm.compileCond(env, list, tail)
 		}
 
 		// Function call.
@@ -592,6 +595,68 @@ func (scm *Scheme) compileApply(env *Env, pair Pair, tail bool) error {
 	} else {
 		scm.addInstr(OpCall, nil, 0)
 	}
+
+	return nil
+}
+
+func (scm *Scheme) compileCond(env *Env, list []Pair, tail bool) error {
+	if len(list) < 2 {
+		return list[0].Errorf("cond: no clauses")
+	}
+	labelEnd := scm.newLabel()
+
+	var labelClause *Instr
+
+	for i := 1; i < len(list); i++ {
+		if labelClause != nil {
+			scm.addLabel(labelClause)
+		}
+
+		var next *Instr
+		if i+1 < len(list) {
+			next = scm.newLabel()
+			labelClause = next
+		} else {
+			next = labelEnd
+		}
+
+		clause, ok := ListPairs(list[i].Car())
+		if !ok || len(clause) < 2 {
+			list[i].Errorf("cond: invalid clause: %v", list[i])
+		}
+
+		var isElse bool
+		if isKeyword(clause[0].Car(), KwElse) {
+			if i+1 < len(list) {
+				return clause[0].Errorf("cond: else must be the last clause")
+			}
+			isElse = true
+		}
+
+		if !isElse {
+			// Compile condition.
+			err := scm.compileValue(env, clause[0].Car(), false)
+			if err != nil {
+				return err
+			}
+			instr := scm.addInstr(OpIfNot, nil, 0)
+			instr.J = next.I
+		}
+
+		// Compile expressions.
+		for j := 1; j < len(clause); j++ {
+			last := j+1 >= len(clause)
+			err := scm.compileValue(env, clause[j].Car(), tail && last)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Jump to end.
+		instr := scm.addInstr(OpJmp, nil, 0)
+		instr.J = labelEnd.I
+	}
+	scm.addLabel(labelEnd)
 
 	return nil
 }

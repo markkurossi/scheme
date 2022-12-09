@@ -390,6 +390,21 @@ Hello, world!
 `,
 		v: Boolean(true),
 	},
+	{
+		i: `(cond ((> 3 2) 'greater)
+                  ((< 3 2) 'less))`,
+		v: &Identifier{
+			Name: "greater",
+		},
+	},
+	{
+		i: `(cond ((> 3 3) 'greater)
+                  ((< 3 3) 'less)
+                  (else 'equal))`,
+		v: &Identifier{
+			Name: "equal",
+		},
+	},
 }
 
 func TestVM(t *testing.T) {

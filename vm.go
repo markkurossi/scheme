@@ -29,6 +29,7 @@ const (
 	OpPushA
 	OpCall
 	OpIf
+	OpIfNot
 	OpJmp
 	OpReturn
 	OpHalt
@@ -49,6 +50,7 @@ var operands = map[Operand]string{
 	OpPushA:     "pusha",
 	OpCall:      "call",
 	OpIf:        "if",
+	OpIfNot:     "ifnot",
 	OpJmp:       "jmp",
 	OpReturn:    "return",
 	OpHalt:      "halt",
@@ -100,7 +102,7 @@ func (i Instr) String() string {
 	case OpGlobal, OpGlobalSet, OpDefine:
 		return fmt.Sprintf("\t%s\t%v", i.Op, i.Sym)
 
-	case OpIf, OpJmp:
+	case OpIf, OpIfNot, OpJmp:
 		return fmt.Sprintf("\t%s\t%v\t; l%v", i.Op, i.I, i.J)
 
 	case OpCall:
@@ -293,6 +295,11 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 
 		case OpIf:
 			if True(scm.accu) {
+				scm.pc += instr.I
+			}
+
+		case OpIfNot:
+			if !True(scm.accu) {
 				scm.pc += instr.I
 			}
 
