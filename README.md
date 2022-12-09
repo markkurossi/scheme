@@ -101,9 +101,6 @@ structured data operations.
 	 - [ ] string-fill!
    - [ ] 6.9. Control features
      - [ ] procedure?
-     - [ ] (apply proc arg1 ... args)
-     - [ ] map
-     - [ ] for-each
      - [ ] force
    - [ ] 6.10.1. Ports
      - [ ] call-with-input-file
