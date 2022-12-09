@@ -148,6 +148,7 @@ type Point struct {
 type Locator interface {
 	From() Point
 	To() Point
+	SetTo(p Point)
 	Errorf(format string, a ...interface{}) error
 }
 

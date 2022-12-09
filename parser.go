@@ -58,11 +58,18 @@ func (p *Parser) Next() (Value, error) {
 				if cursor == nil {
 					return nil, t.Errorf("unexpected token: %v", t)
 				}
+				t, err = p.lexer.Get()
+				if err != nil {
+					return nil, err
+				}
+				p.lexer.Unget(t)
+
 				v, err := p.Next()
 				if err != nil {
 					return nil, err
 				}
 				cursor.SetCdr(v)
+				cursor.SetTo(t.From)
 
 				t, err = p.lexer.Get()
 				if err != nil {

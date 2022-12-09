@@ -335,7 +335,7 @@ func (scm *Scheme) compileLambda(env *Env, define bool, list []Pair) error {
 				// Rest arguments.
 				err := seen.Add(arg.Name)
 				if err != nil {
-					return pair.Errorf("%v", err)
+					return fmt.Errorf("%s: %v", pair.To(), err)
 				}
 				args.Rest = arg
 				break

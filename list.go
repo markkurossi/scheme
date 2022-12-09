@@ -54,6 +54,10 @@ func (pair *PlainPair) To() Point {
 	return Point{}
 }
 
+// SetTo sets pair's end location.
+func (pair *PlainPair) SetTo(p Point) {
+}
+
 // Errorf returns an error message with the pair's location.
 func (pair *PlainPair) Errorf(format string, a ...interface{}) error {
 	return fmt.Errorf(format, a...)
@@ -161,6 +165,11 @@ func (pair *LocationPair) From() Point {
 // To returns pair's end location.
 func (pair *LocationPair) To() Point {
 	return pair.to
+}
+
+// SetTo sets pair's end location.
+func (pair *LocationPair) SetTo(p Point) {
+	pair.to = p
 }
 
 // Errorf returns an error message with the pair's location.
