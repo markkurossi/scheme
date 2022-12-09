@@ -105,10 +105,10 @@ structured data operations.
    - [ ] 6.10.1. Ports
      - [ ] call-with-input-file
      - [ ] call-with-output-file
-     - [ ] input-port?
-     - [ ] output-port?
+     - [X] input-port?
+     - [X] output-port?
      - [ ] current-input-port
-     - [ ] current-output-port
+     - [X] current-output-port
      - [ ] with-input-from-file
      - [ ] with-output-to-file
      - [ ] open-input-file

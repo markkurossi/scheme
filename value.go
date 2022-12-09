@@ -23,6 +23,7 @@ var (
 	_ Value = Character('@')
 	_ Value = &Lambda{}
 	_ Value = &Frame{}
+	_ Value = &Port{}
 )
 
 // Value implements a Scheme value.

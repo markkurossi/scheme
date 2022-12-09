@@ -399,7 +399,7 @@ func TestVM(t *testing.T) {
 			t.Fatalf("failed to create virtual machine: %v", err)
 		}
 		stdout := &strings.Builder{}
-		scm.Stdout = stdout
+		scm.Stdout = NewPort(stdout)
 
 		v, err := scm.Eval(fmt.Sprintf("test-%d", idx),
 			strings.NewReader(test.i))

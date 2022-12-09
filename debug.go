@@ -35,15 +35,15 @@ var debugBuiltins = []Builtin{
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			switch arg := args[0].(type) {
 			case *Lambda:
-				fmt.Fprintf(scm.Stdout, "lambda: %v\n", arg)
+				scm.Stdout.Printf("lambda: %v\n", arg)
 				if arg.Native == nil {
 					for _, c := range arg.Code {
-						fmt.Printf("%s\n", c)
+						scm.Stdout.Printf("%s\n", c)
 					}
 				}
 
 			default:
-				fmt.Fprintf(scm.Stdout, "value: %v\n", arg)
+				scm.Stdout.Printf("value: %v\n", arg)
 			}
 			return nil, nil
 		},
