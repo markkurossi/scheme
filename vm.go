@@ -145,7 +145,12 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 			scm.accu = instr.V
 
 		case OpDefine:
+			if instr.Sym.Flags&FlagDefined != 0 {
+				return nil, fmt.Errorf("symbol '%s' already defined",
+					instr.Sym.Name)
+			}
 			instr.Sym.Global = scm.accu
+			instr.Sym.Flags |= FlagDefined
 
 		case OpLambda:
 			tmpl, ok := instr.V.(*Lambda)
@@ -172,6 +177,9 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 			scm.accu = scm.stack[scm.fp+1+instr.I][instr.J]
 
 		case OpGlobal:
+			if instr.Sym.Flags&FlagDefined == 0 {
+				return nil, fmt.Errorf("undefined symbol '%s' ", instr.Sym.Name)
+			}
 			scm.accu = instr.Sym.Global
 
 		case OpLocalSet:

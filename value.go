@@ -32,10 +32,20 @@ type Value interface {
 	Equal(o Value) bool
 }
 
+// Flags define symbol flags.
+type Flags int
+
+// Symbol flags.
+const (
+	FlagDefined Flags = 1 << iota
+	FlagFinal
+)
+
 // Identifier implements identifier values.
 type Identifier struct {
 	Name   string
 	Global Value
+	Flags  Flags
 }
 
 // Scheme returns the value as a Scheme string.

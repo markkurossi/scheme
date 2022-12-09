@@ -230,7 +230,7 @@ Hello, world!
 		v: Boolean(false),
 	},
 	{
-		i: `(not nil)`,
+		i: `(not '())`,
 		v: Boolean(false),
 	},
 	{

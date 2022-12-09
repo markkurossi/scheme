@@ -153,6 +153,7 @@ func (scm *Scheme) DefineBuiltin(name string, args []string, native Native) {
 		},
 		Native: native,
 	}
+	sym.Flags |= FlagDefined
 }
 
 // EvalFile evaluates the scheme file.

@@ -267,17 +267,14 @@ func (scm *Scheme) compileDefine(env *Env, list []Pair) error {
 }
 
 func (scm *Scheme) define(env *Env, name string) error {
-	nameSym := scm.Intern(name)
 	_, ok := env.Lookup(name)
-
-	// XXX nameSym.Global must be a runtime check.
-	if ok || nameSym.Global != nil {
+	if ok {
 		return fmt.Errorf("symbol '%v' already defined", name)
 	}
 
 	if env.Empty() {
 		instr := scm.addInstr(OpDefine, nil, 0)
-		instr.Sym = nameSym
+		instr.Sym = scm.Intern(name)
 	} else {
 		b, err := env.Define(name)
 		if err != nil {
