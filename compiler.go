@@ -138,7 +138,7 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 			}, v.Cdr())
 		}
 		if isKeyword(v.Car(), KwIf) {
-			return scm.compileIf(env, v, length, tail)
+			return scm.compileIf(env, list, tail)
 		}
 		if isKeyword(v.Car(), KwQuote) {
 			if length != 2 {
@@ -508,49 +508,44 @@ func (scm *Scheme) compileLet(kind Keyword, env *Env, list []Pair,
 	return nil
 }
 
-func (scm *Scheme) compileIf(env *Env, pair Pair, length int, tail bool) error {
-	if length < 3 || length > 4 {
-		return pair.Errorf("if: syntax error")
-	}
-	cond, ok := Car(Cdr(pair, true))
-	if !ok {
-		return pair.Errorf("if: syntax error")
-	}
-	t, ok := Car(Cdr(Cdr(pair, true)))
-	if !ok {
-		return pair.Errorf("if: syntax error: consequent")
-	}
-	var f Value
-	if length == 4 {
-		f, ok = Car(Cdr(Cdr(Cdr(pair, true))))
-		if !ok {
-			return pair.Errorf("if: syntax error: alternate")
-		}
+func (scm *Scheme) compileIf(env *Env, list []Pair, tail bool) error {
+	if len(list) < 3 || len(list) > 4 {
+		return list[0].Errorf("if: syntax error")
 	}
 
-	labelTrue := scm.newLabel()
+	labelFalse := scm.newLabel()
 	labelEnd := scm.newLabel()
 
-	err := scm.compileValue(env, cond, false)
+	err := scm.compileValue(env, list[1].Car(), false)
 	if err != nil {
 		return err
 	}
-	instr := scm.addInstr(OpIf, nil, 0)
-	instr.J = labelTrue.I
+	if len(list) == 3 {
+		// (if cond t)
+		instr := scm.addInstr(OpIfNot, nil, 0)
+		instr.J = labelEnd.I
 
-	if length == 4 {
-		err = scm.compileValue(env, f, tail)
+		err = scm.compileValue(env, list[2].Car(), tail)
+		if err != nil {
+			return err
+		}
+	} else {
+		// (if cond t f)
+		instr := scm.addInstr(OpIfNot, nil, 0)
+		instr.J = labelFalse.I
+
+		err = scm.compileValue(env, list[2].Car(), tail)
 		if err != nil {
 			return err
 		}
 		instr = scm.addInstr(OpJmp, nil, 0)
 		instr.J = labelEnd.I
-	}
 
-	scm.addLabel(labelTrue)
-	err = scm.compileValue(env, t, tail)
-	if err != nil {
-		return err
+		scm.addLabel(labelFalse)
+		err = scm.compileValue(env, list[3].Car(), tail)
+		if err != nil {
+			return err
+		}
 	}
 
 	scm.addLabel(labelEnd)

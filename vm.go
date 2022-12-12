@@ -201,7 +201,8 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 			// i.I != 0 for toplevel frames.
 			lambda, ok := scm.accu.(*Lambda)
 			if !ok {
-				return nil, fmt.Errorf("invalid function: %v", scm.accu)
+				return nil, fmt.Errorf("pushf: invalid function: %v(%T)",
+					scm.accu, scm.accu)
 			}
 			scm.pushFrame(lambda, instr.I != 0)
 
@@ -228,7 +229,7 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 
 			callFrame, ok := scm.stack[stackTop-1][0].(*Frame)
 			if !ok || callFrame.Lambda == nil {
-				return nil, fmt.Errorf("invalid function: %v", scm.accu)
+				return nil, fmt.Errorf("call: invalid function: %v", scm.accu)
 			}
 			lambda := callFrame.Lambda
 
@@ -309,7 +310,7 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 		case OpReturn:
 			frame, ok := scm.stack[scm.fp][0].(*Frame)
 			if !ok {
-				return nil, fmt.Errorf("invalid function: %v", scm.accu)
+				return nil, fmt.Errorf("return: invalid function: %v", scm.accu)
 			}
 			scm.pc = frame.PC
 			code = frame.Code
