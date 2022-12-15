@@ -13,23 +13,59 @@ import (
 	"sort"
 )
 
+// Compiler implements the byte-code compiler.
+type Compiler struct {
+	scm       *Scheme
+	source    string
+	code      Code
+	pcmap     []PCMap
+	lambdas   []*LambdaBody
+	nextLabel int
+}
+
+// PCMap maps program counter values to line numbers.
+type PCMap struct {
+	PC   int
+	Line int
+}
+
+// Code implements scheme bytecode.
+type Code []*Instr
+
+// Print prints the code to standard output.
+func (code Code) Print() {
+	for idx, c := range code {
+		fmt.Printf("%v\t%s\n", idx, c)
+	}
+}
+
+// NewCompiler creates a new bytecode compiler.
+func NewCompiler(scm *Scheme) *Compiler {
+	return &Compiler{
+		scm: scm,
+	}
+}
+
 // CompileFile compiles the Scheme file.
-func (scm *Scheme) CompileFile(file string) (Code, error) {
+func (c *Compiler) CompileFile(file string) (Code, error) {
 	in, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
 	defer in.Close()
-	return scm.Compile(file, in)
+	return c.Compile(file, in)
 }
 
 // Compile compiles the scheme source.
-func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
+func (c *Compiler) Compile(source string, in io.Reader) (Code, error) {
 	parser := NewParser(source, in)
 
-	scm.compiled = nil
-	scm.lambdas = nil
-	scm.Parsing = true
+	c.source = source
+	c.code = nil
+	c.pcmap = nil
+	c.lambdas = nil
+	c.nextLabel = 0
+	c.scm.Parsing = true
 
 	env := NewEnv()
 
@@ -41,54 +77,67 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 			}
 			break
 		}
-		scm.Parsing = false
+		c.scm.Parsing = false
 
-		err = scm.compileValue(env, v, false)
+		err = c.compileValue(env, v, false)
 		if err != nil {
 			return nil, err
 		}
 	}
-	scm.addInstr(OpHalt, nil, 0)
+	c.addInstr(nil, OpHalt, nil, 0)
 
 	// Compile lambdas.
-	for i := 0; i < len(scm.lambdas); i++ {
-		lambda := scm.lambdas[i]
+
+	var pcmaps [][]PCMap
+
+	for i := 0; i < len(c.lambdas); i++ {
+		lambda := c.lambdas[i]
+		pcmapStart := len(c.pcmap)
 
 		// Lambda body starts after the label.
-		ofs := len(scm.compiled)
+		ofs := len(c.code)
 		lambda.Start = ofs + 1
 
-		scm.addInstr(OpLabel, nil, lambda.Start)
+		c.addInstr(nil, OpLabel, nil, lambda.Start)
 		for idx := 0; idx < len(lambda.Body); idx++ {
-			err := scm.compileValue(lambda.Env, lambda.Body[idx].Car(),
+			err := c.compileValue(lambda.Env, lambda.Body[idx].Car(),
 				idx+1 >= len(lambda.Body))
 			if err != nil {
 				return nil, err
 			}
 		}
-		scm.addInstr(OpReturn, nil, 0)
-		lambda.End = len(scm.compiled)
+		c.addInstr(nil, OpReturn, nil, 0)
+		lambda.End = len(c.code)
+
+		pcmap := c.pcmap[pcmapStart:len(c.pcmap)]
+		for i := 0; i < len(pcmap); i++ {
+			pcmap[i].PC -= lambda.Start
+		}
+		pcmaps = append(pcmaps, pcmap)
 	}
 
 	// Collect label offsets
 	labels := make(map[int]int)
-	for idx, c := range scm.compiled {
+	for idx, c := range c.code {
 		if c.Op == OpLabel {
 			labels[c.I] = idx
 		}
 	}
 
 	// Patch code offsets.
-	for i := 0; i < len(scm.compiled); i++ {
-		instr := scm.compiled[i]
+	for i := 0; i < len(c.code); i++ {
+		instr := c.code[i]
 		switch instr.Op {
 		case OpLambda:
-			def := scm.lambdas[instr.I]
+			pcmap := pcmaps[instr.I]
+			def := c.lambdas[instr.I]
 			instr.I = def.Start
 			instr.J = def.End
 			instr.V = &Lambda{
 				Args:    def.Args,
-				Code:    scm.compiled[def.Start:def.End],
+				Source:  c.source,
+				Code:    c.code[def.Start:def.End],
+				PCMap:   pcmap,
 				Body:    def.Body,
 				Capture: def.Env.Depth() - 1,
 			}
@@ -102,10 +151,10 @@ func (scm *Scheme) Compile(source string, in io.Reader) (Code, error) {
 		}
 	}
 
-	return scm.compiled, nil
+	return c.code, nil
 }
 
-func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
+func (c *Compiler) compileValue(env *Env, value Value, tail bool) error {
 	switch v := value.(type) {
 	case Pair:
 		list, ok := ListPairs(v)
@@ -115,30 +164,30 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 		length := len(list)
 
 		if isKeyword(v.Car(), KwDefine) {
-			return scm.compileDefine(env, list)
+			return c.compileDefine(env, list)
 		}
 		if isKeyword(v.Car(), KwLambda) {
-			return scm.compileLambda(env, false, list)
+			return c.compileLambda(env, false, list)
 		}
 		if isKeyword(v.Car(), KwSet) {
-			return scm.compileSet(env, list)
+			return c.compileSet(env, list)
 		}
 		if isKeyword(v.Car(), KwLet) {
-			return scm.compileLet(KwLet, env, list, tail)
+			return c.compileLet(KwLet, env, list, tail)
 		}
 		if isKeyword(v.Car(), KwLetStar) {
-			return scm.compileLet(KwLetStar, env, list, tail)
+			return c.compileLet(KwLetStar, env, list, tail)
 		}
 		if isKeyword(v.Car(), KwLetrec) {
-			return scm.compileLet(KwLetrec, env, list, tail)
+			return c.compileLet(KwLetrec, env, list, tail)
 		}
 		if isKeyword(v.Car(), KwBegin) {
 			return Map(func(idx int, v Value) error {
-				return scm.compileValue(env, v, tail && idx+1 >= length-1)
+				return c.compileValue(env, v, tail && idx+1 >= length-1)
 			}, v.Cdr())
 		}
 		if isKeyword(v.Car(), KwIf) {
-			return scm.compileIf(env, list, tail)
+			return c.compileIf(env, list, tail)
 		}
 		if isKeyword(v.Car(), KwQuote) {
 			if length != 2 {
@@ -148,33 +197,33 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 			if !ok {
 				return v.Errorf("invalid quote: %v", v)
 			}
-			scm.addInstr(OpConst, quoted, 0)
+			c.addInstr(v, OpConst, quoted, 0)
 			return nil
 		}
 		if isKeyword(v.Car(), KwSchemeApply) {
 			if length != 3 {
 				return v.Errorf("invalid scheme::apply: %v", v)
 			}
-			return scm.compileApply(env, v, tail)
+			return c.compileApply(env, v, tail)
 		}
 		if isKeyword(v.Car(), KwCond) {
-			return scm.compileCond(env, list, tail)
+			return c.compileCond(env, list, tail)
 		}
 
 		// Function call.
 
 		// Compile function.
-		err := scm.compileValue(env, v.Car(), false)
+		err := c.compileValue(env, v.Car(), false)
 		if err != nil {
 			return err
 		}
 
 		// Create a call frame.
-		scm.addInstr(OpPushF, scm.accu, 0)
+		c.addInstr(v, OpPushF, nil, 0)
 		env.PushFrame()
 
 		// Push argument scope.
-		scm.addInstr(OpPushS, nil, length-1)
+		c.addInstr(v, OpPushS, nil, length-1)
 		env.PushFrame()
 
 		// Evaluate arguments.
@@ -184,12 +233,12 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 			if !ok {
 				return v.Errorf("invalid list: %v", li)
 			}
-			err := scm.compileValue(env, pair.Car(), false)
+			err := c.compileValue(env, pair.Car(), false)
 			if err != nil {
 				return err
 			}
 			li = pair.Cdr()
-			instr := scm.addInstr(OpLocalSet, nil, env.Depth()-1)
+			instr := c.addInstr(pair, OpLocalSet, nil, env.Depth()-1)
 			instr.J = j
 		}
 
@@ -200,9 +249,9 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 		env.PopFrame()
 
 		if tail {
-			scm.addInstr(OpCall, nil, 1)
+			c.addInstr(nil, OpCall, nil, 1)
 		} else {
-			scm.addInstr(OpCall, nil, 0)
+			c.addInstr(nil, OpCall, nil, 0)
 		}
 
 		return nil
@@ -210,18 +259,18 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 	case *Identifier:
 		b, ok := env.Lookup(v.Name)
 		if ok {
-			instr := scm.addInstr(OpLocal, nil, b.Frame)
+			instr := c.addInstr(nil, OpLocal, nil, b.Frame)
 			instr.J = b.Index
 		} else {
-			instr := scm.addInstr(OpGlobal, nil, 0)
-			instr.Sym = scm.Intern(v.Name)
+			instr := c.addInstr(nil, OpGlobal, nil, 0)
+			instr.Sym = c.scm.Intern(v.Name)
 		}
 
 	case Keyword:
 		return fmt.Errorf("unexpected keyword: %s", v)
 
 	case Vector, Boolean, String, Character, Number:
-		scm.addInstr(OpConst, v, 0)
+		c.addInstr(nil, OpConst, v, 0)
 
 	default:
 		return fmt.Errorf("compile value: %v(%T)", v, v)
@@ -229,67 +278,76 @@ func (scm *Scheme) compileValue(env *Env, value Value, tail bool) error {
 	return nil
 }
 
-func (scm *Scheme) addInstr(op Operand, v Value, i int) *Instr {
+func (c *Compiler) addInstr(from Locator, op Operand, v Value, i int) *Instr {
 	instr := &Instr{
 		Op: op,
 		V:  v,
 		I:  i,
 	}
-	scm.compiled = append(scm.compiled, instr)
+	if from != nil {
+		p := from.From()
+		if len(c.pcmap) == 0 || c.pcmap[len(c.pcmap)-1].Line != p.Line {
+			c.pcmap = append(c.pcmap, PCMap{
+				PC:   len(c.code),
+				Line: p.Line,
+			})
+		}
+	}
+	c.code = append(c.code, instr)
 	return instr
 }
 
-func (scm *Scheme) addLabel(l *Instr) {
-	scm.compiled = append(scm.compiled, l)
+func (c *Compiler) addLabel(l *Instr) {
+	c.code = append(c.code, l)
 }
 
-func (scm *Scheme) newLabel() *Instr {
-	scm.nextLabel++
+func (c *Compiler) newLabel() *Instr {
+	c.nextLabel++
 	return &Instr{
 		Op: OpLabel,
-		I:  scm.nextLabel - 1,
+		I:  c.nextLabel - 1,
 	}
 }
 
-func (scm *Scheme) compileDefine(env *Env, list []Pair) error {
+func (c *Compiler) compileDefine(env *Env, list []Pair) error {
 	if len(list) < 3 {
 		return list[0].Errorf("syntax error: %v", list[0])
 	}
 	// (define name value)
 	name, ok := isIdentifier(list[1].Car())
 	if ok {
-		err := scm.compileValue(env, list[2].Car(), false)
+		err := c.compileValue(env, list[2].Car(), false)
 		if err != nil {
 			return err
 		}
-		return scm.define(env, name.Name)
+		return c.define(env, name.Name)
 	}
 
 	// (define (name args?) body)
-	return scm.compileLambda(env, true, list)
+	return c.compileLambda(env, true, list)
 }
 
-func (scm *Scheme) define(env *Env, name string) error {
+func (c *Compiler) define(env *Env, name string) error {
 	_, ok := env.Lookup(name)
 	if ok {
 		return fmt.Errorf("symbol '%v' already defined", name)
 	}
 
 	if env.Empty() {
-		instr := scm.addInstr(OpDefine, nil, 0)
-		instr.Sym = scm.Intern(name)
+		instr := c.addInstr(nil, OpDefine, nil, 0)
+		instr.Sym = c.scm.Intern(name)
 	} else {
 		b, err := env.Define(name)
 		if err != nil {
 			return err
 		}
-		instr := scm.addInstr(OpLocalSet, nil, b.Frame)
+		instr := c.addInstr(nil, OpLocalSet, nil, b.Frame)
 		instr.J = b.Index
 	}
 	return nil
 }
 
-func (scm *Scheme) compileLambda(env *Env, define bool, list []Pair) error {
+func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 
 	// (define (name args?) body)
 	// (lambda (args?) body)
@@ -388,20 +446,20 @@ func (scm *Scheme) compileLambda(env *Env, define bool, list []Pair) error {
 	capture.Push(env)
 	capture.ShiftDown()
 
-	scm.addInstr(OpLambda, nil, len(scm.lambdas))
-	scm.lambdas = append(scm.lambdas, &LambdaBody{
+	c.addInstr(nil, OpLambda, nil, len(c.lambdas))
+	c.lambdas = append(c.lambdas, &LambdaBody{
 		Args: args,
 		Body: list[2:],
 		Env:  capture,
 	})
 	if define {
-		return scm.define(env, name.Name)
+		return c.define(env, name.Name)
 	}
 
 	return nil
 }
 
-func (scm *Scheme) compileSet(env *Env, list []Pair) error {
+func (c *Compiler) compileSet(env *Env, list []Pair) error {
 	// (set! name value)
 	if len(list) != 3 {
 		return list[0].Errorf("syntax error: %v", list[0])
@@ -410,25 +468,25 @@ func (scm *Scheme) compileSet(env *Env, list []Pair) error {
 	if !ok {
 		return list[1].Errorf("set!: expected variable name: %v", list[1].Car())
 	}
-	err := scm.compileValue(env, list[2].Car(), false)
+	err := c.compileValue(env, list[2].Car(), false)
 	if err != nil {
 		return err
 	}
 
-	nameSym := scm.Intern(name.Name)
+	nameSym := c.scm.Intern(name.Name)
 	b, ok := env.Lookup(name.Name)
 	if ok {
-		instr := scm.addInstr(OpLocalSet, nil, b.Frame)
+		instr := c.addInstr(nil, OpLocalSet, nil, b.Frame)
 		instr.J = b.Index
 	} else {
-		instr := scm.addInstr(OpGlobalSet, nil, 0)
+		instr := c.addInstr(nil, OpGlobalSet, nil, 0)
 		instr.Sym = nameSym
 	}
 
 	return nil
 }
 
-func (scm *Scheme) compileLet(kind Keyword, env *Env, list []Pair,
+func (c *Compiler) compileLet(kind Keyword, env *Env, list []Pair,
 	tail bool) error {
 
 	if len(list) < 3 {
@@ -442,7 +500,7 @@ func (scm *Scheme) compileLet(kind Keyword, env *Env, list []Pair,
 	letEnv := env.Copy()
 	letEnv.PushFrame()
 
-	scm.addInstr(OpPushS, nil, len(bindings))
+	c.addInstr(list[0], OpPushS, nil, len(bindings))
 
 	var letBindings []*EnvBinding
 
@@ -472,14 +530,14 @@ func (scm *Scheme) compileLet(kind Keyword, env *Env, list []Pair,
 		}
 
 		// Compile init value.
-		err := scm.compileValue(letEnv, def[1].Car(), false)
+		err := c.compileValue(letEnv, def[1].Car(), false)
 		if err != nil {
 			return err
 		}
 
 		b := letBindings[idx]
 
-		instr := scm.addInstr(OpLocalSet, nil, b.Frame)
+		instr := c.addInstr(def[1], OpLocalSet, nil, b.Frame)
 		instr.J = b.Index
 
 		if kind == KwLetStar {
@@ -495,65 +553,65 @@ func (scm *Scheme) compileLet(kind Keyword, env *Env, list []Pair,
 
 	// Compile body.
 	for i := 2; i < len(list); i++ {
-		err := scm.compileValue(letEnv, list[i].Car(), tail && i+1 >= len(list))
+		err := c.compileValue(letEnv, list[i].Car(), tail && i+1 >= len(list))
 		if err != nil {
 			return err
 		}
 	}
 
 	if !tail {
-		scm.addInstr(OpPopS, nil, 0)
+		c.addInstr(nil, OpPopS, nil, 0)
 	}
 
 	return nil
 }
 
-func (scm *Scheme) compileIf(env *Env, list []Pair, tail bool) error {
+func (c *Compiler) compileIf(env *Env, list []Pair, tail bool) error {
 	if len(list) < 3 || len(list) > 4 {
 		return list[0].Errorf("if: syntax error")
 	}
 
-	labelFalse := scm.newLabel()
-	labelEnd := scm.newLabel()
+	labelFalse := c.newLabel()
+	labelEnd := c.newLabel()
 
-	err := scm.compileValue(env, list[1].Car(), false)
+	err := c.compileValue(env, list[1].Car(), false)
 	if err != nil {
 		return err
 	}
 	if len(list) == 3 {
 		// (if cond t)
-		instr := scm.addInstr(OpIfNot, nil, 0)
+		instr := c.addInstr(list[0], OpIfNot, nil, 0)
 		instr.J = labelEnd.I
 
-		err = scm.compileValue(env, list[2].Car(), tail)
+		err = c.compileValue(env, list[2].Car(), tail)
 		if err != nil {
 			return err
 		}
 	} else {
 		// (if cond t f)
-		instr := scm.addInstr(OpIfNot, nil, 0)
+		instr := c.addInstr(list[0], OpIfNot, nil, 0)
 		instr.J = labelFalse.I
 
-		err = scm.compileValue(env, list[2].Car(), tail)
+		err = c.compileValue(env, list[2].Car(), tail)
 		if err != nil {
 			return err
 		}
-		instr = scm.addInstr(OpJmp, nil, 0)
+		instr = c.addInstr(nil, OpJmp, nil, 0)
 		instr.J = labelEnd.I
 
-		scm.addLabel(labelFalse)
-		err = scm.compileValue(env, list[3].Car(), tail)
+		c.addLabel(labelFalse)
+		err = c.compileValue(env, list[3].Car(), tail)
 		if err != nil {
 			return err
 		}
 	}
 
-	scm.addLabel(labelEnd)
+	c.addLabel(labelEnd)
 
 	return nil
 }
 
-func (scm *Scheme) compileApply(env *Env, pair Pair, tail bool) error {
+func (c *Compiler) compileApply(env *Env, pair Pair, tail bool) error {
 	f, ok := Car(pair.Cdr(), true)
 	if !ok {
 		return pair.Errorf("scheme::apply: invalid list: %v", pair)
@@ -564,52 +622,52 @@ func (scm *Scheme) compileApply(env *Env, pair Pair, tail bool) error {
 	}
 
 	// Compile function.
-	err := scm.compileValue(env, f, false)
+	err := c.compileValue(env, f, false)
 	if err != nil {
 		return err
 	}
 
 	// Create a call frame.
-	scm.addInstr(OpPushF, scm.accu, 0)
+	c.addInstr(nil, OpPushF, nil, 0)
 	env.PushFrame()
 
 	// Compile arguments.
-	err = scm.compileValue(env, args, false)
+	err = c.compileValue(env, args, false)
 	if err != nil {
 		return err
 	}
 
 	// Push apply scope.
-	scm.addInstr(OpPushA, nil, 0)
+	c.addInstr(nil, OpPushA, nil, 0)
 
 	// Pop call frame.
 	env.PopFrame()
 
 	if tail {
-		scm.addInstr(OpCall, nil, 1)
+		c.addInstr(nil, OpCall, nil, 1)
 	} else {
-		scm.addInstr(OpCall, nil, 0)
+		c.addInstr(nil, OpCall, nil, 0)
 	}
 
 	return nil
 }
 
-func (scm *Scheme) compileCond(env *Env, list []Pair, tail bool) error {
+func (c *Compiler) compileCond(env *Env, list []Pair, tail bool) error {
 	if len(list) < 2 {
 		return list[0].Errorf("cond: no clauses")
 	}
-	labelEnd := scm.newLabel()
+	labelEnd := c.newLabel()
 
 	var labelClause *Instr
 
 	for i := 1; i < len(list); i++ {
 		if labelClause != nil {
-			scm.addLabel(labelClause)
+			c.addLabel(labelClause)
 		}
 
 		var next *Instr
 		if i+1 < len(list) {
-			next = scm.newLabel()
+			next = c.newLabel()
 			labelClause = next
 		} else {
 			next = labelEnd
@@ -630,28 +688,28 @@ func (scm *Scheme) compileCond(env *Env, list []Pair, tail bool) error {
 
 		if !isElse {
 			// Compile condition.
-			err := scm.compileValue(env, clause[0].Car(), false)
+			err := c.compileValue(env, clause[0].Car(), false)
 			if err != nil {
 				return err
 			}
-			instr := scm.addInstr(OpIfNot, nil, 0)
+			instr := c.addInstr(nil, OpIfNot, nil, 0)
 			instr.J = next.I
 		}
 
 		// Compile expressions.
 		for j := 1; j < len(clause); j++ {
 			last := j+1 >= len(clause)
-			err := scm.compileValue(env, clause[j].Car(), tail && last)
+			err := c.compileValue(env, clause[j].Car(), tail && last)
 			if err != nil {
 				return err
 			}
 		}
 
 		// Jump to end.
-		instr := scm.addInstr(OpJmp, nil, 0)
+		instr := c.addInstr(nil, OpJmp, nil, 0)
 		instr.J = labelEnd.I
 	}
-	scm.addLabel(labelEnd)
+	c.addLabel(labelEnd)
 
 	return nil
 }

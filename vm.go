@@ -7,6 +7,7 @@
 package scheme
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -117,16 +118,6 @@ func (i Instr) String() string {
 	}
 }
 
-// Code implements scheme bytecode.
-type Code []*Instr
-
-// Print prints the code to standard output.
-func (code Code) Print() {
-	for _, c := range code {
-		fmt.Printf("%s\n", c)
-	}
-}
-
 // Execute runs the code.
 func (scm *Scheme) Execute(code Code) (Value, error) {
 
@@ -163,7 +154,9 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 				Args:    tmpl.Args,
 				Capture: tmpl.Capture,
 				Native:  tmpl.Native,
+				Source:  tmpl.Source,
 				Code:    tmpl.Code,
+				PCMap:   tmpl.PCMap,
 				Body:    tmpl.Body,
 			}
 			for i := len(scm.stack) - tmpl.Capture; i < len(scm.stack); i++ {
@@ -180,7 +173,8 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 
 		case OpGlobal:
 			if instr.Sym.Flags&FlagDefined == 0 {
-				return nil, fmt.Errorf("undefined symbol '%s' ", instr.Sym.Name)
+				return nil, scm.Breakpointf("undefined symbol '%s' ",
+					instr.Sym.Name)
 			}
 			scm.accu = instr.Sym.Global
 
@@ -323,6 +317,63 @@ func (scm *Scheme) Execute(code Code) (Value, error) {
 		default:
 			return nil, fmt.Errorf("%s: not implemented", instr.Op)
 		}
+	}
+}
+
+// Breakpointf breaks the program execution with the error.
+func (scm *Scheme) Breakpointf(format string, a ...interface{}) error {
+	err := scm.VMErrorf(format, a...)
+	if true {
+		fmt.Printf("%s\n", err.Error())
+		scm.StackTrace()
+	}
+	return err
+}
+
+// VMErrorf creates a virtual machine error.
+func (scm *Scheme) VMErrorf(format string, a ...interface{}) error {
+	msg := fmt.Sprintf(format, a...)
+
+	frame, ok := scm.stack[scm.fp][0].(*Frame)
+	if !ok || frame.Toplevel {
+		return errors.New(msg)
+	}
+	source, line := frame.Lambda.MapPC(scm.pc)
+	if line == 0 && len(source) == 0 {
+		return errors.New(msg)
+	} else if line == 0 {
+		return fmt.Errorf("%s: %s", source, msg)
+	}
+	return fmt.Errorf("%s:%v: %s", source, line, msg)
+}
+
+// StackTrace prints the virtual machine stack.
+func (scm *Scheme) StackTrace() {
+	var prev int
+
+	fp := scm.fp
+	pc := scm.pc
+
+	for fp != prev {
+		frame, ok := scm.stack[fp][0].(*Frame)
+		if !ok {
+			panic("corrupted stack")
+		}
+
+		if frame.Toplevel {
+			fmt.Printf("--- toplevel ---\n")
+		} else {
+			source, line := frame.Lambda.MapPC(pc)
+			if line > 0 {
+				fmt.Printf("\t%s:%d: ", source, line)
+			}
+			fmt.Printf("\u03BB=%v, pc=%v\n", frame.Lambda.Signature(false), pc)
+		}
+
+		prev = fp
+
+		fp = frame.Next
+		pc = frame.PC
 	}
 }
 

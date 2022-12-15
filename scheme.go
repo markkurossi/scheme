@@ -24,20 +24,17 @@ var runtime embed.FS
 
 // Scheme implements Scheme interpreter and virtual machine.
 type Scheme struct {
-	Params   Params
-	Stdout   *Port
-	Stderr   *Port
-	Parsing  bool
-	verbose  bool
-	compiled Code
-	lambdas  []*LambdaBody
+	Params  Params
+	Stdout  *Port
+	Stderr  *Port
+	Parsing bool
+	verbose bool
 
-	pc        int
-	fp        int
-	accu      Value
-	stack     [][]Value
-	symbols   map[string]*Identifier
-	nextLabel int
+	pc      int
+	fp      int
+	accu    Value
+	stack   [][]Value
+	symbols map[string]*Identifier
 }
 
 // Params define the configuration parameters for Scheme.
@@ -171,7 +168,9 @@ func (scm *Scheme) EvalFile(file string) (Value, error) {
 
 // Eval evaluates the scheme source.
 func (scm *Scheme) Eval(source string, in io.Reader) (Value, error) {
-	code, err := scm.Compile(source, in)
+	c := NewCompiler(scm)
+
+	code, err := c.Compile(source, in)
 	if err != nil {
 		return nil, err
 	}

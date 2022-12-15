@@ -76,7 +76,9 @@ type Lambda struct {
 	Capture int
 	Locals  [][]Value
 	Native  Native
+	Source  string
 	Code    Code
+	PCMap   []PCMap
 	Body    []Pair
 }
 
@@ -188,6 +190,11 @@ func (v *Lambda) Equal(o Value) bool {
 }
 
 func (v *Lambda) String() string {
+	return v.Signature(true)
+}
+
+// Signature prints the lambda signature with optional lambda body.
+func (v *Lambda) Signature(body bool) string {
 	var str strings.Builder
 
 	if v.Native != nil {
@@ -201,11 +208,13 @@ func (v *Lambda) String() string {
 
 	if v.Native != nil {
 		str.WriteString(" {native}")
-	} else {
+	} else if body {
 		for _, pair := range v.Body {
 			str.WriteRune(' ')
 			str.WriteString(fmt.Sprintf("%v", pair.Car()))
 		}
+	} else if len(v.Body) > 0 {
+		str.WriteString(" ...")
 	}
 	str.WriteRune(')')
 
@@ -219,6 +228,29 @@ func (v *Lambda) Errorf(format string, a ...interface{}) error {
 		return fmt.Errorf("%s: %s", v.Name, msg)
 	}
 	return errors.New(msg)
+}
+
+// MapPC maps the program counter value to the source location.
+func (v *Lambda) MapPC(pc int) (source string, line int) {
+	source = v.Source
+
+	if false {
+		fmt.Printf("MapPC: %v:%v\n", source, pc)
+		for idx, pm := range v.PCMap {
+			fmt.Printf(" - %v\tPC=%v, Line=%v\n", idx, pm.PC, pm.Line)
+		}
+		v.Code.Print()
+	}
+
+	for _, pm := range v.PCMap {
+		if pc >= pm.PC {
+			line = pm.Line
+		}
+		if pc <= pm.PC {
+			break
+		}
+	}
+	return
 }
 
 // Native implements native functions.

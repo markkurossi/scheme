@@ -60,7 +60,9 @@ func bytecode(scm *scheme.Scheme, file string) error {
 	}
 	defer in.Close()
 
-	code, err := scm.Compile(file, in)
+	c := scheme.NewCompiler(scm)
+
+	code, err := c.Compile(file, in)
 	if err != nil {
 		return err
 	}
