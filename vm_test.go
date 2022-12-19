@@ -100,6 +100,102 @@ Hello, world!
 		o: ``,
 	},
 	{
+		i: `(< 4 5)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(< 4 4)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(< 4 3)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(< #e4 #e5)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(< #e4 #e4)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(< #e4 #e3)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(< 4 #e5)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(< 4 #e4)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(< 4 #e3)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(< #e4 5)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(< #e4 4)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(< #e4 3)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(> 4 5)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(> 4 4)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(> 4 3)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(> #e4 #e5)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(> #e4 #e4)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(> #e4 #e3)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(> 4 #e5)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(> 4 #e4)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(> 4 #e3)`,
+		v: Boolean(true),
+	},
+	{
+		i: `(> #e4 5)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(> #e4 4)`,
+		v: Boolean(false),
+	},
+	{
+		i: `(> #e4 3)`,
+		v: Boolean(true),
+	},
+	{
 		i: `(pair? (cons 1 2))`,
 		v: Boolean(true),
 	},

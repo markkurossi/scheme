@@ -46,6 +46,26 @@ func NewNumber(base int, value interface{}) Number {
 	}
 }
 
+// Copy creates a new independent copy of the number.
+func (n Number) Copy() Number {
+	result := Number{
+		Base: n.Base,
+	}
+	switch v := n.Value.(type) {
+	case int64:
+		result.Value = v
+
+	case *big.Int:
+		i := big.NewInt(0)
+		result.Value = i.Set(v)
+
+	default:
+		panic(fmt.Sprintf("n type %T not implemented", n.Value))
+	}
+
+	return result
+}
+
 // Scheme returns the value as a Scheme string.
 func (n Number) Scheme() string {
 	return n.String()
@@ -129,7 +149,7 @@ func (n Number) Lt(o Value) bool {
 			return v < ov
 
 		case *big.Int:
-			return ov.Cmp(big.NewInt(v)) == -1
+			return big.NewInt(v).Cmp(ov) == -1
 
 		default:
 			panic(fmt.Sprintf("uint64: o type %T not implemented", on.Value))
@@ -166,7 +186,7 @@ func (n Number) Gt(o Value) bool {
 			return v > ov
 
 		case *big.Int:
-			return ov.Cmp(big.NewInt(v)) == 1
+			return big.NewInt(v).Cmp(ov) == 1
 
 		default:
 			panic(fmt.Sprintf("uint64: o type %T not implemented", on.Value))
@@ -386,7 +406,7 @@ var numberBuiltins = []Builtin{
 					return nil, l.Errorf("invalid argument %v", arg)
 				}
 				if idx == 0 && len(args) > 1 {
-					result = num
+					result = num.Copy()
 				} else {
 					result, err = result.Sub(num)
 					if err != nil {
