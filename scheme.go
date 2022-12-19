@@ -170,15 +170,15 @@ func (scm *Scheme) EvalFile(file string) (Value, error) {
 func (scm *Scheme) Eval(source string, in io.Reader) (Value, error) {
 	c := NewCompiler(scm)
 
-	code, err := c.Compile(source, in)
+	module, err := c.Compile(source, in)
 	if err != nil {
 		return nil, err
 	}
 	if false {
 		fmt.Printf("Code:\n")
-		for _, c := range code {
+		for _, c := range module.Init {
 			fmt.Printf("%s\n", c)
 		}
 	}
-	return scm.Execute(code)
+	return scm.Execute(module)
 }

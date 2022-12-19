@@ -118,16 +118,18 @@ func (i Instr) String() string {
 	}
 }
 
-// Execute runs the code.
-func (scm *Scheme) Execute(code Code) (Value, error) {
+// Execute runs the module.
+func (scm *Scheme) Execute(module *Module) (Value, error) {
 
 	scm.pc = 0
 	scm.accu = nil
 
 	frame := scm.pushFrame(nil, true)
+	frame.Module = module
 	scm.fp = frame.Index
 
 	var err error
+	code := module.Init
 
 	for {
 		instr := code[scm.pc]
@@ -335,10 +337,10 @@ func (scm *Scheme) VMErrorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 
 	frame, ok := scm.stack[scm.fp][0].(*Frame)
-	if !ok || frame.Toplevel {
+	if !ok {
 		return errors.New(msg)
 	}
-	source, line := frame.Lambda.MapPC(scm.pc)
+	source, line := frame.MapPC(scm.pc)
 	if line == 0 && len(source) == 0 {
 		return errors.New(msg)
 	} else if line == 0 {
@@ -354,7 +356,7 @@ func (scm *Scheme) StackTrace() {
 	fp := scm.fp
 	pc := scm.pc
 
-	for fp != prev {
+	for {
 		frame, ok := scm.stack[fp][0].(*Frame)
 		if !ok {
 			panic("corrupted stack")
@@ -374,6 +376,10 @@ func (scm *Scheme) StackTrace() {
 
 		fp = frame.Next
 		pc = frame.PC
+
+		if fp == prev {
+			break
+		}
 	}
 }
 
@@ -443,6 +449,7 @@ type Frame struct {
 	Toplevel bool
 
 	Lambda *Lambda
+	Module *Module
 	PC     int
 	Code   Code
 }
@@ -450,6 +457,17 @@ type Frame struct {
 // Scheme returns the value as a Scheme string.
 func (f *Frame) Scheme() string {
 	return f.String()
+}
+
+// MapPC maps the program counter value to the source location.
+func (f *Frame) MapPC(pc int) (source string, line int) {
+	if f.Lambda != nil {
+		return f.Lambda.MapPC(pc)
+	}
+	if f.Module != nil {
+		return f.Module.MapPC(pc)
+	}
+	return
 }
 
 // Eq tests if the argument value is eq? to this value.

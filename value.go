@@ -78,7 +78,7 @@ type Lambda struct {
 	Native  Native
 	Source  string
 	Code    Code
-	PCMap   []PCMap
+	PCMap   PCMap
 	Body    []Pair
 }
 
@@ -242,14 +242,7 @@ func (v *Lambda) MapPC(pc int) (source string, line int) {
 		v.Code.Print()
 	}
 
-	for _, pm := range v.PCMap {
-		if pc >= pm.PC {
-			line = pm.Line
-		}
-		if pc <= pm.PC {
-			break
-		}
-	}
+	line = v.PCMap.MapPC(pc)
 	return
 }
 

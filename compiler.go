@@ -18,13 +18,53 @@ type Compiler struct {
 	scm       *Scheme
 	source    string
 	code      Code
-	pcmap     []PCMap
+	pcmap     PCMap
 	lambdas   []*LambdaBody
 	nextLabel int
 }
 
-// PCMap maps program counter values to line numbers.
-type PCMap struct {
+// Module implements a Scheme compilation unit.
+type Module struct {
+	Source string
+	Init   Code
+	PCMap  PCMap
+}
+
+// MapPC maps the program counter value to the source location.
+func (m *Module) MapPC(pc int) (source string, line int) {
+	source = m.Source
+
+	if false {
+		fmt.Printf("Module.MapPC: %v:%v\n", source, pc)
+		for idx, pm := range m.PCMap {
+			fmt.Printf(" - %v\tPC=%v, Line=%v\n", idx, pm.PC, pm.Line)
+		}
+		m.Init.Print()
+	}
+
+	line = m.PCMap.MapPC(pc)
+	return
+}
+
+// PCMap implements mapping from program counter values to source line
+// numbers.
+type PCMap []PCLine
+
+// MapPC maps the program counter value to the source line number.
+func (pcmap PCMap) MapPC(pc int) (line int) {
+	for _, pm := range pcmap {
+		if pc >= pm.PC {
+			line = pm.Line
+		}
+		if pc <= pm.PC {
+			break
+		}
+	}
+	return
+}
+
+// PCLine maps program counter values to line numbers.
+type PCLine struct {
 	PC   int
 	Line int
 }
@@ -47,7 +87,7 @@ func NewCompiler(scm *Scheme) *Compiler {
 }
 
 // CompileFile compiles the Scheme file.
-func (c *Compiler) CompileFile(file string) (Code, error) {
+func (c *Compiler) CompileFile(file string) (*Module, error) {
 	in, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -57,7 +97,7 @@ func (c *Compiler) CompileFile(file string) (Code, error) {
 }
 
 // Compile compiles the scheme source.
-func (c *Compiler) Compile(source string, in io.Reader) (Code, error) {
+func (c *Compiler) Compile(source string, in io.Reader) (*Module, error) {
 	parser := NewParser(source, in)
 
 	c.source = source
@@ -84,11 +124,16 @@ func (c *Compiler) Compile(source string, in io.Reader) (Code, error) {
 			return nil, err
 		}
 	}
-	c.addInstr(nil, OpHalt, nil, 0)
+	c.addInstr(parser, OpHalt, nil, 0)
+
+	module := &Module{
+		Source: source,
+		PCMap:  c.pcmap,
+	}
 
 	// Compile lambdas.
 
-	var pcmaps [][]PCMap
+	var pcmaps []PCMap
 
 	for i := 0; i < len(c.lambdas); i++ {
 		lambda := c.lambdas[i]
@@ -151,7 +196,9 @@ func (c *Compiler) Compile(source string, in io.Reader) (Code, error) {
 		}
 	}
 
-	return c.code, nil
+	module.Init = c.code
+
+	return module, nil
 }
 
 func (c *Compiler) compileValue(env *Env, value Value, tail bool) error {
@@ -287,7 +334,7 @@ func (c *Compiler) addInstr(from Locator, op Operand, v Value, i int) *Instr {
 	if from != nil {
 		p := from.From()
 		if len(c.pcmap) == 0 || c.pcmap[len(c.pcmap)-1].Line != p.Line {
-			c.pcmap = append(c.pcmap, PCMap{
+			c.pcmap = append(c.pcmap, PCLine{
 				PC:   len(c.code),
 				Line: p.Line,
 			})

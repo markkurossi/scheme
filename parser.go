@@ -7,6 +7,7 @@
 package scheme
 
 import (
+	"fmt"
 	"io"
 )
 
@@ -20,6 +21,26 @@ func NewParser(source string, in io.Reader) *Parser {
 	return &Parser{
 		lexer: NewLexer(source, in),
 	}
+}
+
+// From returns the parser's current location.
+func (p *Parser) From() Point {
+	return p.lexer.point
+}
+
+// To returns the parser's current location.
+func (p *Parser) To() Point {
+	return p.lexer.point
+}
+
+// SetTo does nothing on parser.
+func (p *Parser) SetTo(point Point) {
+}
+
+// Errorf returns an error message with the location information.
+func (p *Parser) Errorf(format string, a ...interface{}) error {
+	msg := fmt.Sprintf(format, a...)
+	return fmt.Errorf("%s: %s", p.From(), msg)
 }
 
 // Next parses the next value.

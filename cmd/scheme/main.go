@@ -45,7 +45,7 @@ func main() {
 			_, err = scm.EvalFile(arg)
 		}
 		if err != nil {
-			log.Fatalf("%s: %s\n", arg, err)
+			log.Fatalf("%s\n", err)
 		}
 	}
 	if *replp || len(flag.Args()) == 0 {
@@ -62,11 +62,11 @@ func bytecode(scm *scheme.Scheme, file string) error {
 
 	c := scheme.NewCompiler(scm)
 
-	code, err := c.Compile(file, in)
+	module, err := c.Compile(file, in)
 	if err != nil {
 		return err
 	}
-	code.Print()
+	module.Init.Print()
 	return nil
 }
 
