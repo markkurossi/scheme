@@ -141,7 +141,7 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 
 		case OpDefine:
 			if instr.Sym.Flags&FlagDefined != 0 {
-				return nil, fmt.Errorf("symbol '%s' already defined",
+				return nil, scm.Breakf("symbol '%s' already defined",
 					instr.Sym.Name)
 			}
 			instr.Sym.Global = scm.accu
@@ -150,7 +150,7 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 		case OpLambda:
 			tmpl, ok := instr.V.(*Lambda)
 			if !ok {
-				return nil, fmt.Errorf("lambda: invalid argument: %V", instr.V)
+				return nil, scm.Breakf("lambda: invalid argument: %V", instr.V)
 			}
 			lambda := &Lambda{
 				Args:    tmpl.Args,
@@ -175,8 +175,7 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 
 		case OpGlobal:
 			if instr.Sym.Flags&FlagDefined == 0 {
-				return nil, scm.Breakpointf("undefined symbol '%s' ",
-					instr.Sym.Name)
+				return nil, scm.Breakf("undefined symbol '%s' ", instr.Sym.Name)
 			}
 			scm.accu = instr.Sym.Global
 
@@ -189,7 +188,7 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 
 		case OpGlobalSet:
 			if instr.Sym.Global == nil {
-				return nil, fmt.Errorf("undefined symbol '%s'", instr.Sym.Name)
+				return nil, scm.Breakf("undefined symbol '%s'", instr.Sym.Name)
 			}
 			instr.Sym.Global = scm.accu
 
@@ -197,7 +196,7 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 			// i.I != 0 for toplevel frames.
 			lambda, ok := scm.accu.(*Lambda)
 			if !ok {
-				return nil, fmt.Errorf("pushf: invalid function: %v(%T)",
+				return nil, scm.Breakf("pushf: invalid function: %v(%T)",
 					scm.accu, scm.accu)
 			}
 			scm.pushFrame(lambda, instr.I != 0)
@@ -215,7 +214,7 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 				return nil
 			}, scm.accu)
 			if err != nil {
-				return nil, fmt.Errorf("pusha: invalid arguments: %v", err)
+				return nil, scm.Breakf("pusha: invalid arguments: %v", err)
 			}
 			scm.stack = append(scm.stack, scope)
 
@@ -225,16 +224,16 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 
 			callFrame, ok := scm.stack[stackTop-1][0].(*Frame)
 			if !ok || callFrame.Lambda == nil {
-				return nil, fmt.Errorf("call: invalid function: %v", scm.accu)
+				return nil, scm.Breakf("call: invalid function: %v", scm.accu)
 			}
 			lambda := callFrame.Lambda
 
 			if len(args) < lambda.Args.Min {
-				return nil, fmt.Errorf("too few arguments: got %v, need %v",
+				return nil, scm.Breakf("too few arguments: got %v, need %v",
 					len(args), lambda.Args.Min)
 			}
 			if len(args) > lambda.Args.Max {
-				return nil, fmt.Errorf("too many arguments: got %v, max %v",
+				return nil, scm.Breakf("too many arguments: got %v, max %v",
 					len(args), lambda.Args.Max)
 			}
 
@@ -244,7 +243,7 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 			if lambda.Native != nil {
 				scm.accu, err = callFrame.Lambda.Native(scm, lambda, args)
 				if err != nil {
-					return nil, err
+					return nil, scm.Breakf("%v", err)
 				}
 				scm.popFrame()
 			} else {
@@ -306,7 +305,7 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 		case OpReturn:
 			frame, ok := scm.stack[scm.fp][0].(*Frame)
 			if !ok {
-				return nil, fmt.Errorf("return: invalid function: %v", scm.accu)
+				return nil, scm.Breakf("return: invalid function: %v", scm.accu)
 			}
 			scm.pc = frame.PC
 			code = frame.Code
@@ -317,13 +316,13 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 			return scm.accu, nil
 
 		default:
-			return nil, fmt.Errorf("%s: not implemented", instr.Op)
+			return nil, scm.Breakf("%s: not implemented", instr.Op)
 		}
 	}
 }
 
-// Breakpointf breaks the program execution with the error.
-func (scm *Scheme) Breakpointf(format string, a ...interface{}) error {
+// Breakf breaks the program execution with the error.
+func (scm *Scheme) Breakf(format string, a ...interface{}) error {
 	err := scm.VMErrorf(format, a...)
 	if true {
 		fmt.Printf("%s\n", err.Error())
@@ -362,9 +361,10 @@ func (scm *Scheme) StackTrace() {
 			panic("corrupted stack")
 		}
 
+		fmt.Print("\t")
 		source, line := frame.MapPC(pc)
 		if line > 0 {
-			fmt.Printf("\t%s:%d: ", source, line)
+			fmt.Printf("%s:%d: ", source, line)
 		}
 		if frame.Module != nil {
 			fmt.Printf("\u25A1=%v", frame.Module.Source)
