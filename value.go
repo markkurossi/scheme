@@ -45,6 +45,7 @@ const (
 // Identifier implements identifier values.
 type Identifier struct {
 	Name   string
+	Point  Point
 	Global Value
 	Flags  Flags
 }
@@ -221,7 +222,7 @@ func (v *Lambda) Signature(body bool) string {
 	return str.String()
 }
 
-// Errorf creates an error with information about the lambda function.
+// Errorf returns an error with information about the lambda function.
 func (v *Lambda) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 	if len(v.Name) != 0 {

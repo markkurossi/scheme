@@ -58,7 +58,7 @@ func (pair *PlainPair) To() Point {
 func (pair *PlainPair) SetTo(p Point) {
 }
 
-// Errorf returns an error message with the pair's location.
+// Errorf returns an error with the pair's location.
 func (pair *PlainPair) Errorf(format string, a ...interface{}) error {
 	return fmt.Errorf(format, a...)
 }
@@ -172,7 +172,7 @@ func (pair *LocationPair) SetTo(p Point) {
 	pair.to = p
 }
 
-// Errorf returns an error message with the pair's location.
+// Errorf returns an error with the pair's location.
 func (pair *LocationPair) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 	return fmt.Errorf("%s: %s", pair.from, msg)

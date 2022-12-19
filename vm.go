@@ -362,15 +362,18 @@ func (scm *Scheme) StackTrace() {
 			panic("corrupted stack")
 		}
 
-		if frame.Toplevel {
-			fmt.Printf("--- toplevel ---\n")
-		} else {
-			source, line := frame.Lambda.MapPC(pc)
-			if line > 0 {
-				fmt.Printf("\t%s:%d: ", source, line)
-			}
-			fmt.Printf("\u03BB=%v, pc=%v\n", frame.Lambda.Signature(false), pc)
+		source, line := frame.MapPC(pc)
+		if line > 0 {
+			fmt.Printf("\t%s:%d: ", source, line)
 		}
+		if frame.Module != nil {
+			fmt.Printf("\u25A1=%v", frame.Module.Source)
+		} else if frame.Lambda != nil {
+			fmt.Printf("\u03BB=%v", frame.Lambda.Signature(false))
+		} else {
+			fmt.Printf("???")
+		}
+		fmt.Printf(", pc=%v\n", pc)
 
 		prev = fp
 

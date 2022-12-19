@@ -144,6 +144,26 @@ type Point struct {
 	Col    int // 0-based
 }
 
+// From returns the point.
+func (p Point) From() Point {
+	return p
+}
+
+// To returns the point.
+func (p Point) To() Point {
+	return p
+}
+
+// SetTo does nothing on point.
+func (p Point) SetTo(point Point) {
+}
+
+// Errorf returns an error with the location information.
+func (p Point) Errorf(format string, a ...interface{}) error {
+	msg := fmt.Sprintf(format, a...)
+	return fmt.Errorf("%s: %s", p, msg)
+}
+
 // Locator interface a source location.
 type Locator interface {
 	From() Point
@@ -151,6 +171,13 @@ type Locator interface {
 	SetTo(p Point)
 	Errorf(format string, a ...interface{}) error
 }
+
+var (
+	_ Locator = Point{}
+	_ Locator = &PlainPair{}
+	_ Locator = &LocationPair{}
+	_ Locator = &Parser{}
+)
 
 func (p Point) String() string {
 	return fmt.Sprintf("%s:%d:%d", p.Source, p.Line, p.Col)
@@ -174,7 +201,7 @@ type Token struct {
 	Keyword    Keyword
 }
 
-// Errorf formats a error message with the token location information.
+// Errorf returns an error with the token location information.
 func (t *Token) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 	return fmt.Errorf("%s: %s", t.From, msg)

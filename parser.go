@@ -37,7 +37,7 @@ func (p *Parser) To() Point {
 func (p *Parser) SetTo(point Point) {
 }
 
-// Errorf returns an error message with the location information.
+// Errorf returns an error with the location information.
 func (p *Parser) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 	return fmt.Errorf("%s: %s", p.From(), msg)
@@ -139,7 +139,8 @@ func (p *Parser) Next() (Value, error) {
 
 	case TIdentifier:
 		return &Identifier{
-			Name: t.Identifier,
+			Name:  t.Identifier,
+			Point: t.From,
 		}, nil
 
 	case TBoolean:

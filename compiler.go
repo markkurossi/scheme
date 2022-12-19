@@ -306,10 +306,10 @@ func (c *Compiler) compileValue(env *Env, value Value, tail bool) error {
 	case *Identifier:
 		b, ok := env.Lookup(v.Name)
 		if ok {
-			instr := c.addInstr(nil, OpLocal, nil, b.Frame)
+			instr := c.addInstr(v.Point, OpLocal, nil, b.Frame)
 			instr.J = b.Index
 		} else {
-			instr := c.addInstr(nil, OpGlobal, nil, 0)
+			instr := c.addInstr(v.Point, OpGlobal, nil, 0)
 			instr.Sym = c.scm.Intern(v.Name)
 		}
 
