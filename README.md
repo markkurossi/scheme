@@ -15,7 +15,7 @@ structured data operations.
 
  - [ ] Compiler
    - [ ] 4.2.1. Conditionals
-     - [ ] cond
+     - [X] cond
      - [ ] case
      - [ ] and
      - [ ] or
