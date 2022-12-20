@@ -53,7 +53,7 @@ type PCMap []PCLine
 // MapPC maps the program counter value to the source line number.
 func (pcmap PCMap) MapPC(pc int) (line int) {
 	for _, pm := range pcmap {
-		if pc >= pm.PC {
+		if pc > pm.PC {
 			line = pm.Line
 		}
 		if pc <= pm.PC {

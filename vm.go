@@ -240,6 +240,10 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 			// Set fp for the call.
 			scm.fp = stackTop - 1
 
+			// Save current excursion.
+			callFrame.PC = scm.pc
+			callFrame.Code = code
+
 			if lambda.Native != nil {
 				scm.accu, err = callFrame.Lambda.Native(scm, lambda, args)
 				if err != nil {
@@ -265,8 +269,8 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 
 					nextFrame, ok := scm.stack[next][0].(*Frame)
 					if !ok {
-						panic(fmt.Sprintf("invalid next frame: %v",
-							scm.stack[callFrame.Next]))
+						return nil, scm.Breakf("invalid next frame: %v",
+							scm.stack[callFrame.Next])
 					}
 
 					nextFrame.Lambda = callFrame.Lambda
@@ -281,10 +285,7 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 					}
 				}
 
-				// Save current excursion.
-				callFrame.PC = scm.pc
-				callFrame.Code = code
-
+				// Jump to lambda code.
 				code = lambda.Code
 				scm.pc = 0
 			}
@@ -331,16 +332,37 @@ func (scm *Scheme) Breakf(format string, a ...interface{}) error {
 	return err
 }
 
+// Location returns the source file location of the current VM
+// continuation.
+func (scm *Scheme) Location() (source string, line int, err error) {
+	fp := scm.fp
+	pc := scm.pc
+
+	for {
+		frame, ok := scm.stack[fp][0].(*Frame)
+		if !ok {
+			err = errors.New("no stack")
+			return
+		}
+		source, line = frame.MapPC(pc)
+		if line > 0 {
+			return
+		}
+		if frame.Next == fp {
+			break
+		}
+		fp = frame.Next
+		pc = frame.PC
+	}
+	return
+}
+
 // VMErrorf creates a virtual machine error.
 func (scm *Scheme) VMErrorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 
-	frame, ok := scm.stack[scm.fp][0].(*Frame)
-	if !ok {
-		return errors.New(msg)
-	}
-	source, line := frame.MapPC(scm.pc)
-	if line == 0 && len(source) == 0 {
+	source, line, err := scm.Location()
+	if err != nil || line == 0 || len(source) == 0 {
 		return errors.New(msg)
 	} else if line == 0 {
 		return fmt.Errorf("%s: %s", source, msg)
@@ -350,8 +372,6 @@ func (scm *Scheme) VMErrorf(format string, a ...interface{}) error {
 
 // StackTrace prints the virtual machine stack.
 func (scm *Scheme) StackTrace() {
-	var prev int
-
 	fp := scm.fp
 	pc := scm.pc
 
@@ -375,14 +395,11 @@ func (scm *Scheme) StackTrace() {
 		}
 		fmt.Printf(", pc=%v\n", pc)
 
-		prev = fp
-
-		fp = frame.Next
-		pc = frame.PC
-
-		if fp == prev {
+		if frame.Next == fp {
 			break
 		}
+		fp = frame.Next
+		pc = frame.PC
 	}
 }
 
