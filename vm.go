@@ -382,10 +382,6 @@ func (scm *Scheme) StackTrace() {
 		}
 
 		fmt.Print("\t")
-		source, line := frame.MapPC(pc)
-		if line > 0 {
-			fmt.Printf("%s:%d: ", source, line)
-		}
 		if frame.Module != nil {
 			fmt.Printf("\u25A1=%v", frame.Module.Source)
 		} else if frame.Lambda != nil {
@@ -393,7 +389,12 @@ func (scm *Scheme) StackTrace() {
 		} else {
 			fmt.Printf("???")
 		}
-		fmt.Printf(", pc=%v\n", pc)
+		fmt.Printf(" at ")
+		source, line := frame.MapPC(pc)
+		if line > 0 {
+			fmt.Printf("%s:%d, ", source, line)
+		}
+		fmt.Printf("pc=%v\n", pc)
 
 		if frame.Next == fp {
 			break
