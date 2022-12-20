@@ -9,6 +9,7 @@ package scheme
 import (
 	"fmt"
 	"io"
+	"path"
 )
 
 // Port implements Scheme ports.
@@ -120,12 +121,12 @@ var outputBuiltins = []Builtin{
 			if len(args) == 2 {
 				port, ok = args[1].(*Port)
 				if !ok {
-					l.Errorf("invalid output port: %v", args[1])
+					return nil, l.Errorf("invalid output port: %v", args[1])
 				}
 			}
 			_, err := port.Printf("%v", args[0])
 			if err != nil {
-				l.Errorf("%v", err)
+				return nil, l.Errorf("%v", err)
 			}
 			return nil, nil
 		},
@@ -140,7 +141,7 @@ var outputBuiltins = []Builtin{
 			if len(args) == 1 {
 				port, ok = args[0].(*Port)
 				if !ok {
-					l.Errorf("invalid output port: %v", args[0])
+					return nil, l.Errorf("invalid output port: %v", args[0])
 				}
 			}
 			_, err := port.Println()
@@ -148,6 +149,28 @@ var outputBuiltins = []Builtin{
 				return nil, err
 			}
 			return nil, nil
+		},
+	},
+	{
+		Name: "load",
+		Args: []string{"filename"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			f, ok := args[0].(String)
+			if !ok {
+				return nil, l.Errorf("invalid filename: %v", args[0])
+			}
+			file := string(f)
+			if !path.IsAbs(file) {
+				source, _, err := scm.Location()
+				if err != nil {
+					return nil, err
+				}
+				file = path.Join(path.Dir(source), file)
+			}
+			if scm.Params.Verbose {
+				fmt.Printf("load: %v\n", file)
+			}
+			return scm.EvalFile(file)
 		},
 	},
 }
