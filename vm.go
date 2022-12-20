@@ -249,6 +249,8 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 				if err != nil {
 					return nil, scm.Breakf("%v", err)
 				}
+				scm.pc = callFrame.PC
+				code = callFrame.Code
 				scm.popFrame()
 			} else {
 				// Handle rest arguments.
