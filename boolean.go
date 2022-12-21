@@ -13,6 +13,16 @@ import (
 // Boolean implements boolean values.
 type Boolean bool
 
+// IsBoolean tests if the value is boolean.
+func IsBoolean(value Value) (v bool, ok bool) {
+	var b Boolean
+	b, ok = value.(Boolean)
+	if !ok {
+		return
+	}
+	return bool(b), true
+}
+
 // Scheme returns the value as a Scheme string.
 func (v Boolean) Scheme() string {
 	return v.String()
