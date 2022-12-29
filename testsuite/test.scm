@@ -31,6 +31,7 @@
            (runner
             (lambda (cmd . args)
               (cond ((eq? cmd 'run)
+                     (car args)
                      (iter (car args) (length (cdr args)) (cdr args)))
                     ((eq? cmd 'error)
                      (set! fail (+ fail 1)))
@@ -48,6 +49,7 @@
 
 (define runner (test "r6rs"))
 
+(load "test-characters.scm")
 (load "test-eq.scm")
 
 (runner 'stats)

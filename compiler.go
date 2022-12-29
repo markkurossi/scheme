@@ -265,13 +265,17 @@ func (c *Compiler) compileValue(env *Env, value Value, tail bool) error {
 			return err
 		}
 
+		// Environment for the lambda body when its arguments are
+		// evaluated.
+		lambdaEnv := env.Copy()
+
 		// Create a call frame.
 		c.addInstr(v, OpPushF, nil, 0)
-		env.PushFrame()
+		lambdaEnv.PushFrame()
 
 		// Push argument scope.
 		c.addInstr(v, OpPushS, nil, length-1)
-		env.PushFrame()
+		lambdaEnv.PushFrame()
 
 		// Evaluate arguments.
 		li := v.Cdr()
@@ -280,20 +284,14 @@ func (c *Compiler) compileValue(env *Env, value Value, tail bool) error {
 			if !ok {
 				return v.Errorf("invalid list: %v", li)
 			}
-			err := c.compileValue(env, pair.Car(), false)
+			err := c.compileValue(lambdaEnv, pair.Car(), false)
 			if err != nil {
 				return err
 			}
 			li = pair.Cdr()
-			instr := c.addInstr(pair, OpLocalSet, nil, env.Depth()-1)
+			instr := c.addInstr(pair, OpLocalSet, nil, lambdaEnv.Depth()-1)
 			instr.J = j
 		}
-
-		// Pop argument scope.
-		env.PopFrame()
-
-		// Pop call frame.
-		env.PopFrame()
 
 		if tail {
 			c.addInstr(nil, OpCall, nil, 1)
@@ -460,14 +458,13 @@ func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 
 	// The environment (below) is converted to lambda capture:
 	//
-	//     0: let-frame-m           0: let-frame-m
-	//        ...                      ...
-	//   n-1: let-frame-0         n-2: let-frame-0
-	//     n: ctx-function-args   n-1: ctx-function-args
-	//							    n: lambda-args
+	//     0: let-frame-m
+	//        ...
+	//   n-1: let-frame-0
+	//     n: ctx-function-args
 	//
-	// And the final lambda environment (scope) is as follows (the
-	// lambda args are pushed to the top of the environment):
+	// The final lambda environment (scope) is as follows. The lambda
+	// argument frame is at the top of the capture environment:
 	//
 	//     0: lambda-args
 	//     1: let-frame-m
@@ -476,6 +473,7 @@ func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 	//     n: ctx-function-args
 
 	capture := NewEnv()
+	capture.Push(env)
 
 	capture.PushFrame()
 	for _, arg := range args.Fixed {
@@ -490,8 +488,6 @@ func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 			return err
 		}
 	}
-	capture.Push(env)
-	capture.ShiftDown()
 
 	c.addInstr(nil, OpLambda, nil, len(c.lambdas))
 	c.lambdas = append(c.lambdas, &LambdaBody{
@@ -807,15 +803,15 @@ func (e *Env) Copy() *Env {
 
 // Print prints the environment to standard output.
 func (e *Env) Print() {
-	fmt.Printf("Env:    depth=%v\n", len(e.Frames))
+	fmt.Printf("Env:\u2500\u2500\u252c\u2574depth=%v\n", len(e.Frames))
 	for i := len(e.Frames) - 1; i >= 0; i-- {
-		fmt.Printf("| %5d", i)
+		fmt.Printf("\u2502 %5d", i)
 		for k, v := range e.Frames[i] {
 			fmt.Printf(" %v=%d.%d(%v)", k, v.Frame, v.Index, v.Disabled)
 		}
 		fmt.Println()
 	}
-	fmt.Printf("+-----^\n")
+	fmt.Printf("\u2570\u2500\u2500\u2500\u2500\u2500\u256f\n")
 }
 
 // Empty tests if the environment is empty.

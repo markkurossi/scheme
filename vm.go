@@ -281,10 +281,21 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 
 					scm.fp = next
 				}
+
+				// Apply lambda capture.
 				if len(lambda.Locals) > 0 {
+					// Pop argument frame.
+					stackTop = len(scm.stack) - 1
+					args = scm.stack[stackTop]
+					scm.stack = scm.stack[:stackTop]
+
+					// Push capture frames.
 					for _, frame := range lambda.Locals {
 						scm.stack = append(scm.stack, frame)
 					}
+
+					// Push arguments top of capture frames.
+					scm.stack = append(scm.stack, args)
 				}
 
 				// Jump to lambda code.
@@ -521,11 +532,34 @@ func (f *Frame) String() string {
 }
 
 func (scm *Scheme) printStack() {
-	for i := len(scm.stack) - 1; i >= 0; i-- {
+	scm.printStackLimit(len(scm.stack))
+}
+
+func (scm *Scheme) printStackLimit(limit int) {
+	var all bool
+	if limit > len(scm.stack) {
+		limit = 0
+		all = true
+	} else {
+		limit = len(scm.stack) - limit
+	}
+	fmt.Printf("Stack:\u252c\u2574limit=%v\n", len(scm.stack)-limit)
+	for i := len(scm.stack) - 1; i >= limit; i-- {
 		if scm.fp == i {
-			fmt.Printf("%7d>%v\n", i, scm.stack[i])
+			istr := fmt.Sprintf("%d", i)
+			// |123456 []
+			fmt.Print("\u251c")
+			for j := 0; j < 5-len(istr); j++ {
+				fmt.Print("\u2500")
+			}
+			fmt.Printf(">%s %v\n", istr, scm.stack[i])
 		} else {
-			fmt.Printf("%7d %v\n", i, scm.stack[i])
+			fmt.Printf("\u2502%6d %v\n", i, scm.stack[i])
 		}
+	}
+	if all {
+		fmt.Printf("\u2570\u2500\u2500\u2500\u2500\u2500\u256f\n")
+	} else {
+		fmt.Printf("\u2575.....\u2575\n")
 	}
 }
