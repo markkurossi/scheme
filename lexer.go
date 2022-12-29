@@ -396,17 +396,14 @@ func (l *Lexer) Get() (*Token, error) {
 						}
 						return nil, err
 					}
-					if unicode.IsSpace(r) {
+					if unicode.IsLetter(r) || unicode.IsDigit(r) {
+						name = append(name, r)
+					} else {
 						if len(name) == 0 {
 							name = append(name, r)
 						} else {
 							l.UnreadRune()
 						}
-						break
-					} else if unicode.IsLetter(r) || unicode.IsDigit(r) {
-						name = append(name, r)
-					} else {
-						l.UnreadRune()
 						break
 					}
 				}

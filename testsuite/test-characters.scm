@@ -7,12 +7,15 @@
 (runner 'run "characters"
         (lambda (t)
           (letrec ((iter
-                    (lambda (names values)
-                      (if (null? names)
+                    (lambda (values)
+                      (if (null? values)
                           #t
                           (begin
-                            (if (not (eq? (car names) (car values)))
+                            (if (not (eq? (caar values) (cadar values)))
                                 (t 'error "character mismatch")
-                                (iter (cdr names) (cdr values))))))))
-            (iter '(#\a #\A)
-                  '(#\x61 #\x41)))))
+                                (iter (cdr values))))))))
+            (iter '((#\a #\x61)
+                    (#\A #\x41)
+                    (#\( #\x28)
+                    (#\  #\x20)
+                    )))))
