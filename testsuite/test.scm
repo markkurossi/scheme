@@ -10,12 +10,17 @@
            (fail 0)
            (run-test
             (lambda (category idx num-tests test)
-              (display "running ") (display category) (display " tests: ")
-              (display (+ idx 1)) (display " / ") (display num-tests) (newline)
+              (display "Running ") (display category) (display " test: ")
+              (display (+ idx 1)) (display " / ") (display num-tests)
+              (display " ")
               (let ((of fail))
                 (test runner)
                 (if (= of fail)
-                    (set! success (+ success 1))))))
+                    (begin
+                      (set! success (+ success 1))
+                      (display #\x2713))
+                    (display #\x274c))
+                (newline))))
            (iter
             (lambda (category num-tests tests)
               (if (null? tests)
@@ -36,9 +41,9 @@
                     ((eq? cmd 'error)
                      (set! fail (+ fail 1)))
                     ((eq? cmd 'stats)
-                     (display "tests  : ") (display count) (newline)
-                     (display "success: ") (display success) (newline)
-                     (display "fail   : ") (display fail) (newline))
+                     (display "Tests  : ") (display count) (newline)
+                     (display "Success: ") (display success) (newline)
+                     (display "Fail   : ") (display fail) (newline))
                     ((eq? cmd 'status)
                      (= fail 0))
                     (else
