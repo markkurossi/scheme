@@ -12,8 +12,8 @@
                           #t
                           (begin
                             (if (not (eq? (caar values) (cadar values)))
-                                (t 'error "character mismatch")
-                                (iter (cdr values))))))))
+                                (t 'error "character mismatch"))
+                            (iter (cdr values)))))))
             (iter '((#\a 		#\x61)
                     (#\A 		#\x41)
                     (#\( 		#\x28)

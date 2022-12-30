@@ -13,13 +13,22 @@
               (display "Running ") (display category) (display " test: ")
               (display (+ idx 1)) (display " / ") (display num-tests)
               (display " ")
-              (let ((of fail))
-                (test runner)
-                (if (= of fail)
+              (let ((failed #f))
+                ;; Run test with reporter.
+                (test (lambda (cmd . args)
+                        (cond ((eq? cmd 'error)
+                               (set! failed #t))
+                              (else
+                               (display "Test reporter: invalid command: ")
+                               (display cmd)
+                               (newline)))))
+                (if failed
+                    (begin
+                      (set! fail (+ fail 1))
+                      (display #\x274c))
                     (begin
                       (set! success (+ success 1))
-                      (display #\x2713))
-                    (display #\x274c))
+                      (display #\x2713)))
                 (newline))))
            (iter
             (lambda (category num-tests tests)
