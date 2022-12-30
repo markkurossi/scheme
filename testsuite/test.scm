@@ -10,7 +10,7 @@
            (fail 0)
            (run-test
             (lambda (category idx num-tests test)
-              (display "Running ") (display category) (display " test: ")
+              (display " - test ") (display category) (display ": ")
               (display (+ idx 1)) (display " / ") (display num-tests)
               (display " ")
               (let ((failed #f))
