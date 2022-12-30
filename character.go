@@ -144,17 +144,21 @@ var characterBuiltins = []Builtin{
 	},
 	{
 		Name: "char=?",
-		Args: []string{"char1", "char2"},
+		Args: []string{"char1", "char2", "char..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			ch1, ok := args[0].(Character)
-			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+			var last Character
+
+			for idx, arg := range args {
+				ch, ok := arg.(Character)
+				if !ok {
+					return nil, l.Errorf("invalid character %v", args)
+				}
+				if idx > 0 && ch != last {
+					return Boolean(false), nil
+				}
+				last = ch
 			}
-			ch2, ok := args[1].(Character)
-			if !ok {
-				return nil, l.Errorf("invalid character %v", args[1])
-			}
-			return Boolean(ch1 == ch2), nil
+			return Boolean(true), nil
 		},
 	},
 	{
