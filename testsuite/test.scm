@@ -25,7 +25,7 @@
                 (if failed
                     (begin
                       (set! fail (+ fail 1))
-                      (display #\x274c))
+                      (display #\x2716))
                     (begin
                       (set! success (+ success 1))
                       (display #\x2713)))
