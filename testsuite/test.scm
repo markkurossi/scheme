@@ -10,9 +10,6 @@
            (fail 0)
            (run-test
             (lambda (category idx num-tests test)
-              (display " - test ") (display category) (display ": ")
-              (display (+ idx 1)) (display " / ") (display num-tests)
-              (display " ")
               (let ((failed #f))
                 ;; Run test with reporter.
                 (test (lambda (cmd . args)
@@ -25,18 +22,21 @@
                 (if failed
                     (begin
                       (set! fail (+ fail 1))
-                      (display #\x2716))
+                      (display (integer->char 27)) (display "[1;31m")
+                      (display #\x2716)
+                      (display (integer->char 27)) (display "[0m"))
                     (begin
                       (set! success (+ success 1))
-                      (display #\x2713)))
-                (newline))))
+                      (display (integer->char 27)) (display "[1;32m")
+                      (display #\x2713)
+                      (display (integer->char 27)) (display "[0m")))
+                )))
            (iter
             (lambda (category num-tests tests)
               (if (null? tests)
                   #t
                   (begin
                     (set! count (+ count 1))
-                    ;;((car tests) runner)
                     (run-test category
                               (- num-tests (length tests))
                               num-tests
@@ -45,8 +45,9 @@
            (runner
             (lambda (cmd . args)
               (cond ((eq? cmd 'run)
-                     (car args)
-                     (iter (car args) (length (cdr args)) (cdr args)))
+                     (display " - test ") (display (car args)) (display ": ")
+                     (iter (car args) (length (cdr args)) (cdr args))
+                     (newline))
                     ((eq? cmd 'error)
                      (set! fail (+ fail 1)))
                     ((eq? cmd 'stats)
