@@ -113,6 +113,10 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Module, error) {
 
 	env := NewEnv()
 
+	// Top-level definitions are executed inside an empty lambda so
+	// push the empty argument frame.
+	env.PushFrame()
+
 	for {
 		v, err := parser.Next()
 		if err != nil {
@@ -386,17 +390,9 @@ func (c *Compiler) define(env *Env, name *Identifier) error {
 	c.defined[name.Name] = name
 	c.defines = append(c.defines, name.Name)
 
-	if env.Empty() {
-		instr := c.addInstr(nil, OpDefine, nil, 0)
-		instr.Sym = c.scm.Intern(name.Name)
-	} else {
-		b, err := env.Define(name.Name)
-		if err != nil {
-			return err
-		}
-		instr := c.addInstr(nil, OpLocalSet, nil, b.Frame)
-		instr.J = b.Index
-	}
+	instr := c.addInstr(nil, OpDefine, nil, 0)
+	instr.Sym = c.scm.Intern(name.Name)
+
 	return nil
 }
 

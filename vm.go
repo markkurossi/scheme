@@ -128,6 +128,9 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 	frame.Module = module
 	scm.fp = frame.Index
 
+	// Push empty argument frame.
+	scm.pushScope(0)
+
 	var err error
 	code := module.Init
 
@@ -180,7 +183,8 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 			scm.accu = instr.Sym.Global
 
 		case OpLocalSet:
-			// fmt.Printf("*** local! I=%v, J=%v\n", scm.fp+1+instr.I, instr.J)
+			// fmt.Printf("*** local! I=%v, J=%v, accu=%v\n",
+			// 	scm.fp+1+instr.I, instr.J, scm.accu)
 			// scm.printStack()
 			scm.stack[scm.fp+1+instr.I][instr.J] = scm.accu
 			// fmt.Printf(" =>\n")
@@ -196,8 +200,8 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 			// i.I != 0 for toplevel frames.
 			lambda, ok := scm.accu.(*Lambda)
 			if !ok {
-				return nil, scm.Breakf("pushf: invalid function: %v(%T)",
-					scm.accu, scm.accu)
+				return nil, scm.Breakf("%s: invalid function: %v(%T)",
+					instr.Op, scm.accu, scm.accu)
 			}
 			scm.pushFrame(lambda, instr.I != 0)
 
@@ -224,7 +228,8 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 
 			callFrame, ok := scm.stack[stackTop-1][0].(*Frame)
 			if !ok || callFrame.Lambda == nil {
-				return nil, scm.Breakf("call: invalid function: %v", scm.accu)
+				return nil, scm.Breakf("%s: invalid function: %v",
+					instr.Op, scm.stack[stackTop-1][0])
 			}
 			lambda := callFrame.Lambda
 
@@ -319,7 +324,8 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 		case OpReturn:
 			frame, ok := scm.stack[scm.fp][0].(*Frame)
 			if !ok {
-				return nil, scm.Breakf("return: invalid function: %v", scm.accu)
+				return nil, scm.Breakf("%s: invalid function: %v",
+					instr.Op, scm.stack[scm.fp][0])
 			}
 			scm.pc = frame.PC
 			code = frame.Code
