@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -32,6 +32,18 @@ var osBuiltins = []Builtin{
 			}
 			os.Exit(code)
 			return nil, nil
+		},
+	},
+	{
+		Name: "getenv",
+		Args: []string{"name"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			name, ok := args[0].(String)
+			if !ok {
+				return nil, l.Errorf("invalid variable name: %v", args[0])
+			}
+			val, _ := os.LookupEnv(string(name))
+			return String(val), nil
 		},
 	},
 }
