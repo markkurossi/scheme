@@ -70,6 +70,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 	scm.DefineBuiltins(outputBuiltins)
 	scm.DefineBuiltins(stringBuiltins)
 	scm.DefineBuiltins(vectorBuiltins)
+	scm.DefineBuiltins(loadBuiltins)
 
 	if !scm.Params.NoRuntime {
 		err := scm.loadRuntime("runtime")
