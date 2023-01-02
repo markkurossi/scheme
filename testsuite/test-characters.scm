@@ -19,7 +19,7 @@
                     (#\( 		#\x28)
                     (#\  		#\x20)
                     (#\nul 		#\x00)
-                    (#\alarm		#\x007)
+                    (#\alarm		#\x07)
                     (#\backspace	#\x08)
                     (#\tab		#\x09)
                     (#\linefeed		#\x0a)

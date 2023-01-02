@@ -70,6 +70,7 @@
 (define runner (test "r6rs"))
 
 (load "test-characters.scm")
+(load "test-strings.scm")
 (load "test-eq.scm")
 
 (runner 'stats)

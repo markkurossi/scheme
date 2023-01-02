@@ -471,6 +471,8 @@ func (l *Lexer) Get() (*Token, error) {
 								digit = uint64(r - '0')
 							} else if 'a' <= r && r <= 'f' {
 								digit = uint64(10 + r - 'a')
+							} else if 'A' <= r && r <= 'F' {
+								digit = uint64(10 + r - 'A')
 							} else {
 								l.UnreadRune()
 								return nil, l.errf("invalid hex literal %c%s",

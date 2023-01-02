@@ -212,9 +212,11 @@ var stringBuiltins = []Builtin{
 			if !ok {
 				return nil, l.Errorf("invalid string: %v", args[0])
 			}
+			runes := []rune(string(str))
+
 			var head, tail Pair
-			for i := 0; i < len(str); i++ {
-				item := NewPair(Character(str[i]), nil)
+			for i := 0; i < len(runes); i++ {
+				item := NewPair(Character(runes[i]), nil)
 				if head == nil {
 					head = item
 				} else {
