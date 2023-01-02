@@ -22,14 +22,14 @@
                 (if failed
                     (begin
                       (set! fail (+ fail 1))
-                      (display (integer->char 27)) (display "[1;31m")
+                      (color "1;31")
                       (display #\x2716)
-                      (display (integer->char 27)) (display "[0m"))
+                      (color "0"))
                     (begin
                       (set! success (+ success 1))
-                      (display (integer->char 27)) (display "[1;32m")
+                      (color "1;32")
                       (display #\x2713)
-                      (display (integer->char 27)) (display "[0m")))
+                      (color "0")))
                 )))
            (iter
             (lambda (category num-tests tests)
@@ -61,6 +61,12 @@
                      (display " - run tests...") (newline)
                      (display " - stats") (newline))))))
     runner))
+
+(define (color spec)
+  (if #f
+      (begin
+        (display (integer->char 27)) (display "[") (display spec)
+        (display "m"))))
 
 (define runner (test "r6rs"))
 
