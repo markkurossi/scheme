@@ -457,6 +457,34 @@ func (l *Lexer) Get() (*Token, error) {
 					case '0':
 						r = 0
 
+					case 'x':
+						var code, digit uint64
+						for {
+							r, _, err = l.ReadRune()
+							if err != nil {
+								return nil, err
+							}
+							if r == ';' {
+								break
+							}
+							if '0' <= r && r <= '9' {
+								digit = uint64(r - '0')
+							} else if 'a' <= r && r <= 'f' {
+								digit = uint64(10 + r - 'a')
+							} else {
+								l.UnreadRune()
+								return nil, l.errf("invalid hex literal %c%s",
+									r, ": did you forgot terminator ';'?")
+							}
+							code *= 16
+							if code > 0xffffffff {
+								l.UnreadRune()
+								return nil, l.errf("invalid hex literal")
+							}
+							code += digit
+						}
+						r = rune(code)
+
 					default:
 						return nil, l.errf("invalid escape: \\%c", r)
 					}

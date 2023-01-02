@@ -65,8 +65,7 @@
 (define (color spec)
   (if (zero? (string-length (getenv "INSIDE_EMACS")))
       (begin
-        (display (integer->char 27)) (display "[") (display spec)
-        (display "m"))))
+        (display "\x1b;[") (display spec) (display "m"))))
 
 (define runner (test "r6rs"))
 
