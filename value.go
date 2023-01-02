@@ -94,7 +94,7 @@ type Args struct {
 func (args Args) String() string {
 	if len(args.Fixed) == 0 {
 		if args.Rest == nil {
-			return ""
+			return "()"
 		}
 		return args.Rest.Name
 	}
@@ -209,13 +209,17 @@ func (v *Lambda) Signature(body bool) string {
 
 	if v.Native != nil {
 		str.WriteString(" {native}")
-	} else if body {
-		for _, pair := range v.Body {
-			str.WriteRune(' ')
-			str.WriteString(fmt.Sprintf("%v", pair.Car()))
-		}
 	} else if len(v.Body) > 0 {
-		str.WriteString(" ...")
+		if body {
+			for _, pair := range v.Body {
+				str.WriteRune(' ')
+				str.WriteString(fmt.Sprintf("%v", pair.Car()))
+			}
+		} else {
+			str.WriteString(" ...")
+		}
+	} else if v.Code != nil {
+		str.WriteString(" {compiled}")
 	}
 	str.WriteRune(')')
 
