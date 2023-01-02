@@ -33,7 +33,6 @@ const (
 	OpIfNot
 	OpJmp
 	OpReturn
-	OpHalt
 )
 
 var operands = map[Operand]string{
@@ -54,7 +53,6 @@ var operands = map[Operand]string{
 	OpIfNot:     "ifnot",
 	OpJmp:       "jmp",
 	OpReturn:    "return",
-	OpHalt:      "halt",
 }
 
 func (op Operand) String() string {
@@ -329,11 +327,9 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 			}
 			scm.pc = frame.PC
 			code = frame.Code
-			scm.popFrame()
-
-		case OpHalt:
-			scm.popFrame()
-			return scm.accu, nil
+			if scm.popFrame() {
+				return scm.accu, nil
+			}
 
 		default:
 			return nil, scm.Breakf("%s: not implemented", instr.Op)
@@ -346,7 +342,7 @@ func (scm *Scheme) Breakf(format string, a ...interface{}) error {
 	err := scm.VMErrorf(format, a...)
 	if true {
 		fmt.Printf("%s\n", err.Error())
-		scm.StackTrace()
+		scm.PrintStack()
 	}
 	return err
 }
@@ -389,8 +385,8 @@ func (scm *Scheme) VMErrorf(format string, a ...interface{}) error {
 	return fmt.Errorf("%s:%v: %s", source, line, msg)
 }
 
-// StackTrace prints the virtual machine stack.
-func (scm *Scheme) StackTrace() {
+// PrintStack prints the virtual machine stack.
+func (scm *Scheme) PrintStack() {
 	fp := scm.fp
 	pc := scm.pc
 
@@ -421,6 +417,43 @@ func (scm *Scheme) StackTrace() {
 		fp = frame.Next
 		pc = frame.PC
 	}
+}
+
+// StackFrame provides information about the virtual machine stack
+// frame.
+type StackFrame struct {
+	Source string
+	Line   int
+}
+
+// StackTrace prints the virtual machine stack.
+func (scm *Scheme) StackTrace() []StackFrame {
+	fp := scm.fp
+	pc := scm.pc
+
+	var result []StackFrame
+
+	for {
+		frame, ok := scm.stack[fp][0].(*Frame)
+		if !ok {
+			panic("corrupted stack")
+		}
+
+		source, line := frame.MapPC(pc)
+		if line > 0 {
+			result = append(result, StackFrame{
+				Source: source,
+				Line:   line,
+			})
+		}
+
+		if frame.Next == fp {
+			break
+		}
+		fp = frame.Next
+		pc = frame.PC
+	}
+	return result
 }
 
 // Intern interns the name and returns the interned symbol.
@@ -469,7 +502,7 @@ func (scm *Scheme) pushFrame(lambda *Lambda, toplevel bool) *Frame {
 	return f
 }
 
-func (scm *Scheme) popFrame() {
+func (scm *Scheme) popFrame() bool {
 	// Check that frame is valid.
 	if len(scm.stack[scm.fp]) != 1 {
 		panic(fmt.Sprintf("invalid frame: %v", scm.stack[scm.fp]))
@@ -480,6 +513,8 @@ func (scm *Scheme) popFrame() {
 	}
 	scm.stack = scm.stack[:scm.fp]
 	scm.fp = frame.Next
+
+	return frame.Toplevel
 }
 
 // Frame implements a SCM call stack frame.

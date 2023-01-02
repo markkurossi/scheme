@@ -132,7 +132,7 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Module, error) {
 			return nil, err
 		}
 	}
-	c.addInstr(parser, OpHalt, nil, 0)
+	c.addInstr(parser, OpReturn, nil, 0)
 
 	module := &Module{
 		Source: source,

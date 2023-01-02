@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -9,7 +9,6 @@ package scheme
 import (
 	"fmt"
 	"io"
-	"path"
 )
 
 // Port implements Scheme ports.
@@ -149,28 +148,6 @@ var outputBuiltins = []Builtin{
 				return nil, err
 			}
 			return nil, nil
-		},
-	},
-	{
-		Name: "load",
-		Args: []string{"filename"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			f, ok := args[0].(String)
-			if !ok {
-				return nil, l.Errorf("invalid filename: %v", args[0])
-			}
-			file := string(f)
-			if !path.IsAbs(file) {
-				source, _, err := scm.Location()
-				if err != nil {
-					return nil, err
-				}
-				file = path.Join(path.Dir(source), file)
-			}
-			if scm.Params.Verbose {
-				fmt.Printf("load: %v\n", file)
-			}
-			return scm.EvalFile(file)
 		},
 	},
 }
