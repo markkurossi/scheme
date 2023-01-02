@@ -17,6 +17,8 @@ import (
 type Compiler struct {
 	scm       *Scheme
 	source    string
+	defined   map[string]*Identifier
+	defines   []string
 	code      Code
 	pcmap     PCMap
 	lambdas   []*LambdaBody
@@ -25,9 +27,10 @@ type Compiler struct {
 
 // Module implements a Scheme compilation unit.
 type Module struct {
-	Source string
-	Init   Code
-	PCMap  PCMap
+	Source  string
+	Exports []string
+	Init    Code
+	PCMap   PCMap
 }
 
 // MapPC maps the program counter value to the source location.
@@ -82,7 +85,8 @@ func (code Code) Print() {
 // NewCompiler creates a new bytecode compiler.
 func NewCompiler(scm *Scheme) *Compiler {
 	return &Compiler{
-		scm: scm,
+		scm:     scm,
+		defined: make(map[string]*Identifier),
 	}
 }
 
@@ -196,6 +200,7 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Module, error) {
 		}
 	}
 
+	module.Exports = c.defines
 	module.Init = c.code
 
 	return module, nil
@@ -365,24 +370,27 @@ func (c *Compiler) compileDefine(env *Env, list []Pair) error {
 		if err != nil {
 			return err
 		}
-		return c.define(env, name.Name)
+		return c.define(env, name)
 	}
 
 	// (define (name args?) body)
 	return c.compileLambda(env, true, list)
 }
 
-func (c *Compiler) define(env *Env, name string) error {
-	_, ok := env.Lookup(name)
+func (c *Compiler) define(env *Env, name *Identifier) error {
+	prev, ok := c.defined[name.Name]
 	if ok {
-		return fmt.Errorf("symbol '%v' already defined", name)
+		return name.Point.Errorf("symbol '%s' already defined at %s",
+			name.Name, prev.Point)
 	}
+	c.defined[name.Name] = name
+	c.defines = append(c.defines, name.Name)
 
 	if env.Empty() {
 		instr := c.addInstr(nil, OpDefine, nil, 0)
-		instr.Sym = c.scm.Intern(name)
+		instr.Sym = c.scm.Intern(name.Name)
 	} else {
-		b, err := env.Define(name)
+		b, err := env.Define(name.Name)
 		if err != nil {
 			return err
 		}
@@ -496,7 +504,7 @@ func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 		Env:  capture,
 	})
 	if define {
-		return c.define(env, name.Name)
+		return c.define(env, name)
 	}
 
 	return nil
