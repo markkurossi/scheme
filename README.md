@@ -87,10 +87,10 @@ structured data operations.
      - [ ] string->number
    - [ ] 6.7. Strings
 	 - [ ] string-set!
-	 - [ ] string=?
+	 - [X] string=?
 	 - [ ] string-ci=?
-	 - [ ] string<?
-	 - [ ] string>?
+	 - [X] string<?
+	 - [X] string>?
 	 - [ ] string<=?
 	 - [ ] string>=?
 	 - [ ] string-ci<?
@@ -98,6 +98,7 @@ structured data operations.
 	 - [ ] string-ci<=?
 	 - [ ] string-ci>=?
 	 - [ ] substring
+	 - [ ] string-for-each
 	 - [ ] string-fill!
    - [ ] 6.9. Control features
      - [ ] procedure?
@@ -125,6 +126,6 @@ structured data operations.
      - [ ] write
      - [ ] write-char
    - [ ] 6.10.4. System interface
-     - [ ] load
+     - [X] load
      - [ ] transcript-on
      - [ ] transcript-off
