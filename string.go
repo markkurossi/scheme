@@ -111,20 +111,20 @@ var stringBuiltins = []Builtin{
 				return nil, l.Errorf("negative length: %v", k)
 			}
 
-			fill := byte(' ')
+			fill := ' '
 			if len(args) == 2 {
 				ch, ok := args[1].(Character)
 				if !ok {
 					return nil, l.Errorf("invalid char: %v", args[1])
 				}
-				fill = byte(ch)
+				fill = rune(ch)
 			}
-			str := make([]byte, length, length)
+			str := make([]rune, length, length)
 			for i := 0; i < int(length); i++ {
 				str[i] = fill
 			}
 
-			return String(str), nil
+			return String(string(str)), nil
 		},
 	},
 	{
@@ -150,7 +150,7 @@ var stringBuiltins = []Builtin{
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			switch v := args[0].(type) {
 			case String:
-				return NewNumber(0, len(v)), nil
+				return NewNumber(0, len([]rune(string(v)))), nil
 
 			default:
 				return nil, l.Errorf("invalid argument")
@@ -170,17 +170,72 @@ var stringBuiltins = []Builtin{
 				return nil, l.Errorf("invalid index: %v", args[1])
 			}
 			k := kn.Int64()
-			if k < 0 || k >= int64(len(str)) {
+			chars := []rune(string(str))
+			if k < 0 || k >= int64(len(chars)) {
 				return nil, l.Errorf("invalid index: %v", args[1])
 			}
-			return Character(str[k]), nil
+			return Character(chars[k]), nil
 		},
 	},
 	// XXX string-set!
-	// XXX string=?
+	{
+		Name: "string=?",
+		Args: []string{"string1", "string2", "string3..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var last string
+
+			for idx, arg := range args {
+				str, ok := arg.(String)
+				if !ok {
+					return nil, l.Errorf("invalid string %v", arg)
+				}
+				if idx > 0 && string(str) != last {
+					return Boolean(false), nil
+				}
+				last = string(str)
+			}
+			return Boolean(true), nil
+		},
+	},
 	// XXX string-ci=?
-	// XXX string<?
-	// XXX string>?
+	{
+		Name: "string<?",
+		Args: []string{"string1", "string2", "string3..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var last string
+
+			for idx, arg := range args {
+				str, ok := arg.(String)
+				if !ok {
+					return nil, l.Errorf("invalid string %v", arg)
+				}
+				if idx > 0 && string(str) <= last {
+					return Boolean(false), nil
+				}
+				last = string(str)
+			}
+			return Boolean(true), nil
+		},
+	},
+	{
+		Name: "string>?",
+		Args: []string{"string1", "string2", "string3..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var last string
+
+			for idx, arg := range args {
+				str, ok := arg.(String)
+				if !ok {
+					return nil, l.Errorf("invalid string %v", arg)
+				}
+				if idx > 0 && string(str) >= last {
+					return Boolean(false), nil
+				}
+				last = string(str)
+			}
+			return Boolean(true), nil
+		},
+	},
 	// XXX string<=?
 	// XXX string>=?
 	// XXX string-ci<?
@@ -192,16 +247,16 @@ var stringBuiltins = []Builtin{
 		Name: "string-append",
 		Args: []string{"string..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var str []byte
+			var result string
 
-			for i := 0; i < len(args); i++ {
-				s, ok := args[i].(String)
+			for _, arg := range args {
+				str, ok := arg.(String)
 				if !ok {
-					return nil, l.Errorf("invalid string: %v", args[i])
+					return nil, l.Errorf("invalid string: %v", arg)
 				}
-				str = append(str, s...)
+				result += string(str)
 			}
-			return String(str), nil
+			return String(result), nil
 		},
 	},
 	{
@@ -231,21 +286,22 @@ var stringBuiltins = []Builtin{
 		Name: "list->string",
 		Args: []string{"chars"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var str []byte
+			var str []rune
 			err := Map(func(idx int, v Value) error {
 				ch, ok := v.(Character)
 				if !ok {
 					return l.Errorf("invalid character: %v", v)
 				}
-				str = append(str, byte(ch))
+				str = append(str, rune(ch))
 				return nil
 			}, args[0])
 			if err != nil {
 				return nil, err
 			}
-			return String(str), nil
+			return String(string(str)), nil
 		},
 	},
+	// XXX string-for-each
 	{
 		Name: "string-copy",
 		Args: []string{"string"},
@@ -254,9 +310,10 @@ var stringBuiltins = []Builtin{
 			if !ok {
 				return nil, l.Errorf("invalid string: %v", args[0])
 			}
-			new := make([]byte, len(str), len(str))
-			copy(new, str)
-			return String(new), nil
+			runes := []rune(string(str))
+			new := make([]rune, len(runes), len(runes))
+			copy(new, runes)
+			return String(string(new)), nil
 		},
 	},
 	// XXX string-fill!
