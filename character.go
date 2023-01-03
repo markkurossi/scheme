@@ -151,7 +151,7 @@ var characterBuiltins = []Builtin{
 			for idx, arg := range args {
 				ch, ok := arg.(Character)
 				if !ok {
-					return nil, l.Errorf("invalid character %v", args)
+					return nil, l.Errorf("invalid character %v", arg)
 				}
 				if idx > 0 && ch != last {
 					return Boolean(false), nil
