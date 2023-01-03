@@ -236,13 +236,78 @@ var stringBuiltins = []Builtin{
 			return Boolean(true), nil
 		},
 	},
-	// XXX string<=?
-	// XXX string>=?
+	{
+		Name: "string<=?",
+		Args: []string{"string1", "string2", "string3..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var last string
+
+			for idx, arg := range args {
+				str, ok := arg.(String)
+				if !ok {
+					return nil, l.Errorf("invalid string %v", arg)
+				}
+				if idx > 0 && string(str) < last {
+					return Boolean(false), nil
+				}
+				last = string(str)
+			}
+			return Boolean(true), nil
+		},
+	},
+	{
+		Name: "string>=?",
+		Args: []string{"string1", "string2", "string3..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var last string
+
+			for idx, arg := range args {
+				str, ok := arg.(String)
+				if !ok {
+					return nil, l.Errorf("invalid string %v", arg)
+				}
+				if idx > 0 && string(str) > last {
+					return Boolean(false), nil
+				}
+				last = string(str)
+			}
+			return Boolean(true), nil
+		},
+	},
 	// XXX string-ci<?
 	// XXX string-ci>?
 	// XXX string-ci<=?
 	// XXX string-ci>=?
-	// XXX substring
+	{
+		Name: "substring",
+		Args: []string{"string", "start", "end"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			strv, ok := args[0].(String)
+			if !ok {
+				return nil, l.Errorf("invalid string: %v", args[0])
+			}
+			str := []rune(string(strv))
+
+			startn, ok := args[1].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid start index: %v", args[1])
+			}
+			start := startn.Int64()
+
+			endn, ok := args[2].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid end index: %v", args[2])
+			}
+			end := endn.Int64()
+
+			if start < 0 || end < start || end > int64(len(strv)) {
+				return nil, l.Errorf("invalid indices: 0 <= %v <= %v <= %v",
+					start, end, len(strv))
+			}
+
+			return String(string(str[start:end])), nil
+		},
+	},
 	{
 		Name: "string-append",
 		Args: []string{"string..."},

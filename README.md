@@ -91,13 +91,13 @@ structured data operations.
 	 - [ ] string-ci=?
 	 - [X] string<?
 	 - [X] string>?
-	 - [ ] string<=?
-	 - [ ] string>=?
+	 - [X] string<=?
+	 - [X] string>=?
 	 - [ ] string-ci<?
 	 - [ ] string-ci>?
 	 - [ ] string-ci<=?
 	 - [ ] string-ci>=?
-	 - [ ] substring
+	 - [X] substring
 	 - [ ] string-for-each
 	 - [ ] string-fill!
    - [ ] 6.9. Control features
