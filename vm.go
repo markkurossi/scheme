@@ -116,21 +116,41 @@ func (i Instr) String() string {
 	}
 }
 
-// Execute runs the module.
-func (scm *Scheme) Execute(module *Module) (Value, error) {
+// Apply applies lambda for arguments.
+func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
+	var argsList, tail Pair
 
+	for _, arg := range args {
+		item := NewPair(arg, nil)
+
+		if argsList == nil {
+			argsList = item
+		} else {
+			tail.SetCdr(item)
+		}
+		tail = item
+	}
+
+	scm.accu = lambda
+	code := []*Instr{
+		{
+			Op: OpPushF,
+			I:  1,
+		},
+		{
+			Op: OpConst,
+			V:  argsList,
+		},
+		{
+			Op: OpPushA,
+		},
+		{
+			Op: OpCall,
+		},
+	}
 	scm.pc = 0
-	scm.accu = nil
-
-	frame := scm.pushFrame(nil, true)
-	frame.Module = module
-	scm.fp = frame.Index
-
-	// Push empty argument frame.
-	scm.pushScope(0)
 
 	var err error
-	code := module.Init
 
 	for {
 		instr := code[scm.pc]

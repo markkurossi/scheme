@@ -169,17 +169,14 @@ func (scm *Scheme) EvalFile(file string) (Value, error) {
 
 // Eval evaluates the scheme source.
 func (scm *Scheme) Eval(source string, in io.Reader) (Value, error) {
-	c := NewCompiler(scm)
-
-	module, err := c.Compile(source, in)
+	module, err := scm.Load(source, in)
 	if err != nil {
 		return nil, err
 	}
-	if false {
-		fmt.Printf("Code:\n")
-		for _, c := range module.Init {
-			fmt.Printf("%s\n", c)
-		}
+	values, ok := ListValues(module)
+	if !ok || len(values) != 4 {
+		return nil, fmt.Errorf("invalid module: %v", module)
 	}
-	return scm.Execute(module)
+
+	return scm.Apply(values[3], nil)
 }
