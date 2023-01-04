@@ -439,10 +439,13 @@ func (scm *Scheme) PrintStack() {
 			panic("corrupted stack")
 		}
 
-		fmt.Print("\t")
-		if frame.Module != nil {
-			fmt.Printf("\u25A1=%v", frame.Module.Source)
-		} else if frame.Lambda != nil {
+		fmt.Print("      ")
+		if frame.Toplevel {
+			fmt.Print("\u2514\u2574")
+		} else {
+			fmt.Print("\u251c\u2574")
+		}
+		if frame.Lambda != nil {
 			fmt.Printf("\u03BB=%v", frame.Lambda.Signature(false))
 		} else {
 			fmt.Printf("???")
@@ -469,7 +472,7 @@ type StackFrame struct {
 	Line   int
 }
 
-// StackTrace prints the virtual machine stack.
+// StackTrace returns information about the virtual machine stack.
 func (scm *Scheme) StackTrace() []StackFrame {
 	fp := scm.fp
 	pc := scm.pc
@@ -567,7 +570,6 @@ type Frame struct {
 	Toplevel bool
 
 	Lambda *Lambda
-	Module *Module
 	PC     int
 	Code   Code
 }
@@ -581,9 +583,6 @@ func (f *Frame) Scheme() string {
 func (f *Frame) MapPC(pc int) (source string, line int) {
 	if f.Lambda != nil {
 		return f.Lambda.MapPC(pc)
-	}
-	if f.Module != nil {
-		return f.Module.MapPC(pc)
 	}
 	return
 }
