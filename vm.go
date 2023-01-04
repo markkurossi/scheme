@@ -198,8 +198,8 @@ func (scm *Scheme) Execute(module *Module) (Value, error) {
 			// i.I != 0 for toplevel frames.
 			lambda, ok := scm.accu.(*Lambda)
 			if !ok {
-				return nil, scm.Breakf("%s: invalid function: %v(%T)",
-					instr.Op, scm.accu, scm.accu)
+				return nil, scm.Breakf("%s: invalid function: %v",
+					instr.Op, scm.accu)
 			}
 			scm.pushFrame(lambda, instr.I != 0)
 
@@ -344,6 +344,9 @@ func (scm *Scheme) Breakf(format string, a ...interface{}) error {
 		fmt.Printf("%s\n", err.Error())
 		scm.PrintStack()
 	}
+
+	scm.popToplevel()
+
 	return err
 }
 
@@ -383,6 +386,26 @@ func (scm *Scheme) VMErrorf(format string, a ...interface{}) error {
 		return fmt.Errorf("%s: %s", source, msg)
 	}
 	return fmt.Errorf("%s:%v: %s", source, line, msg)
+}
+
+func (scm *Scheme) popToplevel() {
+	fp := scm.fp
+
+	for {
+		frame, ok := scm.stack[fp][0].(*Frame)
+		if !ok {
+			panic("corrupted stack")
+		}
+		if frame.Toplevel {
+			scm.stack = scm.stack[:fp]
+			scm.fp = frame.Next
+			break
+		}
+		if frame.Next == fp {
+			break
+		}
+		fp = frame.Next
+	}
 }
 
 // PrintStack prints the virtual machine stack.
