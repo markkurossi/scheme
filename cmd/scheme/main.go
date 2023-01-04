@@ -82,6 +82,7 @@ func repl(scm *scheme.Scheme) {
 		v, err := scm.Eval("input", input)
 		if err != nil {
 			fmt.Printf("%v\n", err)
+			input.SaveHistory()
 			continue
 		}
 		if scm.Parsing {
