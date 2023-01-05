@@ -15,10 +15,7 @@ structured data operations.
 
  - [ ] Compiler
    - [ ] 4.2.1. Conditionals
-     - [X] cond
      - [ ] case
-     - [X] and
-     - [X] or
    - [ ] 4.2.4. Iteration
      - [ ] do
      - [ ] Named let
@@ -31,8 +28,6 @@ structured data operations.
  - [ ] Runtime
    - [ ] 6.3. Pairs and lists
      - [ ] append
-     - [X] memq, memv, member
-     - [X] assq, assv, assoc
    - [ ] 6.4. Symbols
      - [ ] symbol?
      - [ ] symbol->string
@@ -47,8 +42,6 @@ structured data operations.
      - [ ] <, >, <=, >=
      - [ ] positive?
      - [ ] negative?
-     - [X] odd?
-     - [X] even?
      - [ ] max?
      - [ ] min?
      - [ ] -, /
@@ -87,17 +80,11 @@ structured data operations.
      - [ ] string->number
    - [ ] 6.7. Strings
 	 - [ ] string-set!
-	 - [X] string=?
 	 - [ ] string-ci=?
-	 - [X] string<?
-	 - [X] string>?
-	 - [X] string<=?
-	 - [X] string>=?
 	 - [ ] string-ci<?
 	 - [ ] string-ci>?
 	 - [ ] string-ci<=?
 	 - [ ] string-ci>=?
-	 - [X] substring
 	 - [ ] string-for-each
 	 - [ ] string-fill!
    - [ ] 6.9. Control features
@@ -106,10 +93,7 @@ structured data operations.
    - [ ] 6.10.1. Ports
      - [ ] call-with-input-file
      - [ ] call-with-output-file
-     - [X] input-port?
-     - [X] output-port?
      - [ ] current-input-port
-     - [X] current-output-port
      - [ ] with-input-from-file
      - [ ] with-output-to-file
      - [ ] open-input-file
@@ -126,6 +110,5 @@ structured data operations.
      - [ ] write
      - [ ] write-char
    - [ ] 6.10.4. System interface
-     - [X] load
      - [ ] transcript-on
      - [ ] transcript-off
