@@ -223,6 +223,23 @@ func (n Number) Int64() int64 {
 	}
 }
 
+// Bit returns the value of the i'th bit. The bit index must be >= 0.
+func (n Number) Bit(i int) uint {
+	if i < 0 {
+		panic(fmt.Sprintf("Number.Bit: index is negative: %v", i))
+	}
+	switch v := n.Value.(type) {
+	case int64:
+		return uint((v >> i) & 0x1)
+
+	case *big.Int:
+		return v.Bit(i)
+
+	default:
+		panic(fmt.Errorf("Number.Int64: invalid number: %v", v))
+	}
+}
+
 // Add adds the argument number to this number and returns the sum.
 func (n *Number) Add(o Number) (Number, error) {
 	var result Number
@@ -503,6 +520,28 @@ var numberBuiltins = []Builtin{
 				return nil, l.Errorf("invalid argument: %v", args[0])
 			}
 			return Boolean(z.Equal(NewNumber(0, 0))), nil
+		},
+	},
+	{
+		Name: "odd?",
+		Args: []string{"z"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			z, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[0])
+			}
+			return Boolean(z.Bit(0) == 1), nil
+		},
+	},
+	{
+		Name: "even?",
+		Args: []string{"z"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			z, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[0])
+			}
+			return Boolean(z.Bit(0) == 0), nil
 		},
 	},
 	{
