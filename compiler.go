@@ -265,6 +265,12 @@ func (c *Compiler) compileValue(env *Env, value Value, tail bool) error {
 		if isKeyword(v.Car(), KwCond) {
 			return c.compileCond(env, list, tail)
 		}
+		if isKeyword(v.Car(), KwAnd) {
+			return c.compileAnd(env, list, tail)
+		}
+		if isKeyword(v.Car(), KwOr) {
+			return c.compileOr(env, list, tail)
+		}
 
 		// Function call.
 
@@ -756,6 +762,58 @@ func (c *Compiler) compileCond(env *Env, list []Pair, tail bool) error {
 		instr := c.addInstr(nil, OpJmp, nil, 0)
 		instr.J = labelEnd.I
 	}
+	c.addLabel(labelEnd)
+
+	return nil
+}
+
+func (c *Compiler) compileAnd(env *Env, list []Pair, tail bool) error {
+	if len(list) == 1 {
+		c.addInstr(nil, OpConst, Boolean(true), 0)
+		return nil
+	}
+	labelEnd := c.newLabel()
+	for i := 1; i < len(list)-1; i++ {
+		err := c.compileValue(env, list[i].Car(), false)
+		if err != nil {
+			return err
+		}
+		instr := c.addInstr(nil, OpIfNot, nil, 0)
+		instr.J = labelEnd.I
+	}
+
+	// Last expression.
+	err := c.compileValue(env, list[len(list)-1].Car(), tail)
+	if err != nil {
+		return err
+	}
+
+	c.addLabel(labelEnd)
+
+	return nil
+}
+
+func (c *Compiler) compileOr(env *Env, list []Pair, tail bool) error {
+	if len(list) == 1 {
+		c.addInstr(nil, OpConst, Boolean(false), 0)
+		return nil
+	}
+	labelEnd := c.newLabel()
+	for i := 1; i < len(list)-1; i++ {
+		err := c.compileValue(env, list[i].Car(), false)
+		if err != nil {
+			return err
+		}
+		instr := c.addInstr(nil, OpIf, nil, 0)
+		instr.J = labelEnd.I
+	}
+
+	// Last expression.
+	err := c.compileValue(env, list[len(list)-1].Car(), tail)
+	if err != nil {
+		return err
+	}
+
 	c.addLabel(labelEnd)
 
 	return nil

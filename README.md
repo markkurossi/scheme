@@ -17,8 +17,8 @@ structured data operations.
    - [ ] 4.2.1. Conditionals
      - [X] cond
      - [ ] case
-     - [ ] and
-     - [ ] or
+     - [X] and
+     - [X] or
    - [ ] 4.2.4. Iteration
      - [ ] do
      - [ ] Named let
