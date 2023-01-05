@@ -75,5 +75,7 @@
 (load "test-strings.scm")
 (load "test-numbers.scm")
 
+(load "test-r6rs-lists.scm")
+
 (runner 'stats)
 (runner 'status)
