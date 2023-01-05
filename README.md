@@ -32,7 +32,7 @@ structured data operations.
    - [ ] 6.3. Pairs and lists
      - [ ] append
      - [ ] memq, memv, member
-     - [ ] assq, assv, assoc
+     - [X] assq, assv, assoc
    - [ ] 6.4. Symbols
      - [ ] symbol?
      - [ ] symbol->string
@@ -47,8 +47,8 @@ structured data operations.
      - [ ] <, >, <=, >=
      - [ ] positive?
      - [ ] negative?
-     - [ ] odd?
-     - [ ] even?
+     - [X] odd?
+     - [X] even?
      - [ ] max?
      - [ ] min?
      - [ ] -, /
