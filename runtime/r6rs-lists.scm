@@ -6,6 +6,22 @@
 
 ;; rnrs lists (6)
 
+(define (memp proc list)
+  (if (null? list)
+      #f
+      (if (proc (car list))
+          list
+          (memp proc (cdr list)))))
+
+(define (member obj list)
+  (memp (lambda (item) (equal? obj item)) list))
+
+(define (memv obj list)
+  (memp (lambda (item) (eqv? obj item)) list))
+
+(define (memq obj list)
+  (memp (lambda (item) (eq? obj item)) list))
+
 (define (assp proc alist)
   (if (null? alist)
       #f

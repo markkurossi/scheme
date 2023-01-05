@@ -31,7 +31,7 @@ structured data operations.
  - [ ] Runtime
    - [ ] 6.3. Pairs and lists
      - [ ] append
-     - [ ] memq, memv, member
+     - [X] memq, memv, member
      - [X] assq, assv, assoc
    - [ ] 6.4. Symbols
      - [ ] symbol?

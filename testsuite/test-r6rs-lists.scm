@@ -6,6 +6,39 @@
 ;;; Tests for the r6rs lists library.
 ;;;
 
+(runner 'run "memp"
+        (lambda (t)
+          (if (not (equal? (memp even? '(3 1 4 1 5 9 2 6 5)) '(4 1 5 9 2 6 5)))
+              (t 'error "memp"))))
+
+(runner 'run "memq"
+        (lambda (t)
+          (if (not (equal? (memq 'a '(a b c)) '(a b c)))
+              (t 'error "memq 'a")))
+        (lambda (t)
+          (if (not (equal? (memq 'b '(a b c)) '(b c)))
+              (t 'error "memq 'a")))
+        (lambda (t)
+          (if (not (equal? (memq 'a '(b c d)) #f))
+              (t 'error "memq 'a")))
+        (lambda (t)
+          (if (not (equal? (memq (list 'a) '(b (c) c)) #f))
+              (t 'error "memq 'a")))
+        (lambda (t)
+          (if (not (equal? (memq 101 '(100 101 102)) '(101 102)))
+              (t 'error "memq 101")))
+        )
+
+(runner 'run "member"
+        (lambda (t)
+          (if (not (equal? (member (list 'a) '(b (a) c)) '((a) c)))
+              (t 'error "member (list 'a)"))))
+
+(runner 'run "memv"
+        (lambda (t)
+          (if (not (equal? (memv 101 '(100 101 102)) '(101 102)))
+              (t 'error "memv 101"))))
+
 (let ((d '((3 a) (1 b) (4 c))))
   (runner 'run "assp"
           (lambda (t)
