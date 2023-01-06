@@ -31,3 +31,12 @@
           (if (bytevector=? #vu8(1 2 3) #vu8())
               (t 'error "bytevector=? #vu8(1 2 3) #vu8()")))
         )
+
+(runner 'run "bytevector-copy"
+        (lambda (t)
+          (if (not (bytevector=? (bytevector-copy #vu8()) #vu8()))
+              (t 'error "bytevector-copy")))
+        (lambda (t)
+          (if (not (bytevector=? (bytevector-copy #vu8(1 2 3)) #vu8(1 2 3)))
+              (t 'error "bytevector-copy")))
+        )

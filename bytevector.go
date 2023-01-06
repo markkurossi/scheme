@@ -96,4 +96,20 @@ var bytevectorBuiltins = []Builtin{
 			return Boolean(bytes.Equal(v1, v2)), nil
 		},
 	},
+	// XXX bytevector-fill!
+	// XXX bytevector-copy!
+	{
+		Name: "bytevector-copy",
+		Args: []string{"bytevector"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			v, ok := args[0].(ByteVector)
+			if !ok {
+				return nil, l.Errorf("not a bytevector: %v", args[0])
+			}
+			arr := make([]byte, len(v))
+			copy(arr, v)
+
+			return ByteVector(arr), nil
+		},
+	},
 }
