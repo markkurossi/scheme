@@ -137,6 +137,30 @@ func (p *Parser) Next() (Value, error) {
 			elements = append(elements, v)
 		}
 
+	case TVU8LPar:
+		var elements []byte
+		for {
+			t, err = p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			switch t.Type {
+			case ')':
+				return ByteVector(elements), nil
+
+			case TNumber:
+				v := t.Number.Int64()
+				if v < 0 || v > 0xff {
+					return nil, t.Errorf("invalid bytevector initializer: %v",
+						v)
+				}
+				elements = append(elements, byte(v))
+
+			default:
+				return nil, t.Errorf("invalid bytevector initializer: %v", t)
+			}
+		}
+
 	case TIdentifier:
 		return &Identifier{
 			Name:  t.Identifier,

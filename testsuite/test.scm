@@ -74,6 +74,7 @@
 (load "test-characters.scm")
 (load "test-strings.scm")
 (load "test-numbers.scm")
+(load "test-bytevectors.scm")
 
 (load "test-r6rs-lists.scm")
 

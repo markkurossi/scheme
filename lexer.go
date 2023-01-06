@@ -27,6 +27,7 @@ const (
 	TString
 	TKeyword
 	THashLPar
+	TVU8LPar
 	TCommaAt
 )
 
@@ -38,6 +39,7 @@ var tokenTypes = map[TokenType]string{
 	TString:     "string",
 	TKeyword:    "keyword",
 	THashLPar:   "#(",
+	TVU8LPar:    "#vu8(",
 	TCommaAt:    ",@",
 }
 
@@ -380,6 +382,27 @@ func (l *Lexer) Get() (*Token, error) {
 			switch r {
 			case '(':
 				return l.Token(THashLPar), nil
+
+			case 'v':
+				var vname []rune
+				for {
+					r, _, err = l.ReadRune()
+					if err != nil {
+						return nil, err
+					}
+					if r == '(' {
+						break
+					}
+					vname = append(vname, r)
+				}
+				name := string(vname)
+				switch name {
+				case "u8":
+					return l.Token(TVU8LPar), nil
+
+				default:
+					return nil, l.errf("unknown vector type: '%s'", name)
+				}
 
 			case 't', 'f':
 				token := l.Token(TBoolean)

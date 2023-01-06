@@ -329,7 +329,7 @@ func (c *Compiler) compileValue(env *Env, value Value, tail bool) error {
 	case Keyword:
 		return fmt.Errorf("unexpected keyword: %s", v)
 
-	case Vector, Boolean, String, Character, Number:
+	case Vector, ByteVector, Boolean, String, Character, Number:
 		c.addInstr(nil, OpConst, v, 0)
 
 	default:
