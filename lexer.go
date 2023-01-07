@@ -371,8 +371,32 @@ func (l *Lexer) Get() (*Token, error) {
 				return nil, err
 			}
 
-		case '(', ')', '\'', '`', ',', '.':
+		case '(', ')', '\'', '`', ',':
 			return l.Token(TokenType(r)), nil
+
+		case '.':
+			r, _, err := l.ReadRune()
+			if err != nil {
+				if err != io.EOF {
+					return nil, err
+				}
+				return l.Token(TokenType('.')), nil
+			}
+			if r != '.' {
+				l.UnreadRune()
+				return l.Token(TokenType('.')), nil
+			}
+			r, _, err = l.ReadRune()
+			if err != nil {
+				return nil, err
+			}
+			if r != '.' {
+				l.UnreadRune()
+				return nil, l.errf("unexpected character: %c", r)
+			}
+			token := l.Token(TIdentifier)
+			token.Identifier = "..."
+			return token, nil
 
 		case '#':
 			r, _, err := l.ReadRune()
