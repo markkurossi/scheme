@@ -127,7 +127,7 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Module, error) {
 		}
 		c.scm.Parsing = false
 
-		err = c.compileValue(env, v, false)
+		err = c.compileValue(env, Point{}, v, false)
 		if err != nil {
 			return nil, err
 		}
@@ -153,8 +153,8 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Module, error) {
 
 		c.addInstr(nil, OpLabel, nil, lambda.Start)
 		for idx := 0; idx < len(lambda.Body); idx++ {
-			err := c.compileValue(lambda.Env, lambda.Body[idx].Car(),
-				idx+1 >= len(lambda.Body))
+			err := c.compileValue(lambda.Env, lambda.Body[idx],
+				lambda.Body[idx].Car(), idx+1 >= len(lambda.Body))
 			if err != nil {
 				return nil, err
 			}
@@ -210,7 +210,9 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Module, error) {
 	return module, nil
 }
 
-func (c *Compiler) compileValue(env *Env, value Value, tail bool) error {
+func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
+	tail bool) error {
+
 	switch v := value.(type) {
 	case Pair:
 		list, ok := ListPairs(v)
@@ -238,8 +240,9 @@ func (c *Compiler) compileValue(env *Env, value Value, tail bool) error {
 			return c.compileLet(KwLetrec, env, list, tail)
 		}
 		if isKeyword(v.Car(), KwBegin) {
-			return Map(func(idx int, v Value) error {
-				return c.compileValue(env, v, tail && idx+1 >= length-1)
+			return MapPairs(func(idx int, p Pair) error {
+				return c.compileValue(env, p, p.Car(),
+					tail && idx+1 >= length-1)
 			}, v.Cdr())
 		}
 		if isKeyword(v.Car(), KwIf) {
@@ -275,7 +278,7 @@ func (c *Compiler) compileValue(env *Env, value Value, tail bool) error {
 		// Function call.
 
 		// Compile function.
-		err := c.compileValue(env, v.Car(), false)
+		err := c.compileValue(env, v, v.Car(), false)
 		if err != nil {
 			return err
 		}
@@ -299,7 +302,7 @@ func (c *Compiler) compileValue(env *Env, value Value, tail bool) error {
 			if !ok {
 				return v.Errorf("invalid list: %v", li)
 			}
-			err := c.compileValue(lambdaEnv, pair.Car(), false)
+			err := c.compileValue(lambdaEnv, pair, pair.Car(), false)
 			if err != nil {
 				return err
 			}
@@ -327,7 +330,7 @@ func (c *Compiler) compileValue(env *Env, value Value, tail bool) error {
 		}
 
 	case Keyword:
-		return fmt.Errorf("unexpected keyword: %s", v)
+		return loc.Errorf("unexpected keyword: %s", v)
 
 	case Vector, ByteVector, Boolean, String, Character, Number:
 		c.addInstr(nil, OpConst, v, 0)
@@ -376,7 +379,7 @@ func (c *Compiler) compileDefine(env *Env, list []Pair) error {
 	// (define name value)
 	name, ok := isIdentifier(list[1].Car())
 	if ok {
-		err := c.compileValue(env, list[2].Car(), false)
+		err := c.compileValue(env, list[2], list[2].Car(), false)
 		if err != nil {
 			return err
 		}
@@ -521,7 +524,7 @@ func (c *Compiler) compileSet(env *Env, list []Pair) error {
 	if !ok {
 		return list[1].Errorf("set!: expected variable name: %v", list[1].Car())
 	}
-	err := c.compileValue(env, list[2].Car(), false)
+	err := c.compileValue(env, list[2], list[2].Car(), false)
 	if err != nil {
 		return err
 	}
@@ -583,7 +586,7 @@ func (c *Compiler) compileLet(kind Keyword, env *Env, list []Pair,
 		}
 
 		// Compile init value.
-		err := c.compileValue(letEnv, def[1].Car(), false)
+		err := c.compileValue(letEnv, def[1], def[1].Car(), false)
 		if err != nil {
 			return err
 		}
@@ -606,7 +609,8 @@ func (c *Compiler) compileLet(kind Keyword, env *Env, list []Pair,
 
 	// Compile body.
 	for i := 2; i < len(list); i++ {
-		err := c.compileValue(letEnv, list[i].Car(), tail && i+1 >= len(list))
+		err := c.compileValue(letEnv, list[i], list[i].Car(),
+			tail && i+1 >= len(list))
 		if err != nil {
 			return err
 		}
@@ -627,7 +631,7 @@ func (c *Compiler) compileIf(env *Env, list []Pair, tail bool) error {
 	labelFalse := c.newLabel()
 	labelEnd := c.newLabel()
 
-	err := c.compileValue(env, list[1].Car(), false)
+	err := c.compileValue(env, list[1], list[1].Car(), false)
 	if err != nil {
 		return err
 	}
@@ -636,7 +640,7 @@ func (c *Compiler) compileIf(env *Env, list []Pair, tail bool) error {
 		instr := c.addInstr(list[0], OpIfNot, nil, 0)
 		instr.J = labelEnd.I
 
-		err = c.compileValue(env, list[2].Car(), tail)
+		err = c.compileValue(env, list[2], list[2].Car(), tail)
 		if err != nil {
 			return err
 		}
@@ -645,7 +649,7 @@ func (c *Compiler) compileIf(env *Env, list []Pair, tail bool) error {
 		instr := c.addInstr(list[0], OpIfNot, nil, 0)
 		instr.J = labelFalse.I
 
-		err = c.compileValue(env, list[2].Car(), tail)
+		err = c.compileValue(env, list[2], list[2].Car(), tail)
 		if err != nil {
 			return err
 		}
@@ -653,7 +657,7 @@ func (c *Compiler) compileIf(env *Env, list []Pair, tail bool) error {
 		instr.J = labelEnd.I
 
 		c.addLabel(labelFalse)
-		err = c.compileValue(env, list[3].Car(), tail)
+		err = c.compileValue(env, list[3], list[3].Car(), tail)
 		if err != nil {
 			return err
 		}
@@ -675,7 +679,7 @@ func (c *Compiler) compileApply(env *Env, pair Pair, tail bool) error {
 	}
 
 	// Compile function.
-	err := c.compileValue(env, f, false)
+	err := c.compileValue(env, pair, f, false)
 	if err != nil {
 		return err
 	}
@@ -685,7 +689,7 @@ func (c *Compiler) compileApply(env *Env, pair Pair, tail bool) error {
 	env.PushFrame()
 
 	// Compile arguments.
-	err = c.compileValue(env, args, false)
+	err = c.compileValue(env, pair, args, false)
 	if err != nil {
 		return err
 	}
@@ -741,7 +745,7 @@ func (c *Compiler) compileCond(env *Env, list []Pair, tail bool) error {
 
 		if !isElse {
 			// Compile condition.
-			err := c.compileValue(env, clause[0].Car(), false)
+			err := c.compileValue(env, clause[0], clause[0].Car(), false)
 			if err != nil {
 				return err
 			}
@@ -752,7 +756,7 @@ func (c *Compiler) compileCond(env *Env, list []Pair, tail bool) error {
 		// Compile expressions.
 		for j := 1; j < len(clause); j++ {
 			last := j+1 >= len(clause)
-			err := c.compileValue(env, clause[j].Car(), tail && last)
+			err := c.compileValue(env, clause[j], clause[j].Car(), tail && last)
 			if err != nil {
 				return err
 			}
@@ -774,7 +778,7 @@ func (c *Compiler) compileAnd(env *Env, list []Pair, tail bool) error {
 	}
 	labelEnd := c.newLabel()
 	for i := 1; i < len(list)-1; i++ {
-		err := c.compileValue(env, list[i].Car(), false)
+		err := c.compileValue(env, list[i], list[i].Car(), false)
 		if err != nil {
 			return err
 		}
@@ -783,7 +787,8 @@ func (c *Compiler) compileAnd(env *Env, list []Pair, tail bool) error {
 	}
 
 	// Last expression.
-	err := c.compileValue(env, list[len(list)-1].Car(), tail)
+	last := list[len(list)-1]
+	err := c.compileValue(env, last, last.Car(), tail)
 	if err != nil {
 		return err
 	}
@@ -800,7 +805,7 @@ func (c *Compiler) compileOr(env *Env, list []Pair, tail bool) error {
 	}
 	labelEnd := c.newLabel()
 	for i := 1; i < len(list)-1; i++ {
-		err := c.compileValue(env, list[i].Car(), false)
+		err := c.compileValue(env, list[i], list[i].Car(), false)
 		if err != nil {
 			return err
 		}
@@ -809,7 +814,8 @@ func (c *Compiler) compileOr(env *Env, list []Pair, tail bool) error {
 	}
 
 	// Last expression.
-	err := c.compileValue(env, list[len(list)-1].Car(), tail)
+	last := list[len(list)-1]
+	err := c.compileValue(env, last, last.Car(), tail)
 	if err != nil {
 		return err
 	}
