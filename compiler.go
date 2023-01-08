@@ -792,9 +792,10 @@ func (c *Compiler) compileCond(env *Env, list []Pair, tail bool) error {
 				c.addInstr(nil, OpCall, nil, 1)
 			} else {
 				c.addInstr(nil, OpCall, nil, 0)
+
+				// Pop value scope.
+				c.addInstr(clause[2], OpPopS, nil, 0)
 			}
-			// Pop value scope.
-			c.addInstr(clause[2], OpPopS, nil, 0)
 		} else {
 			// Compile expressions.
 			for j := 1; j < len(clause); j++ {
