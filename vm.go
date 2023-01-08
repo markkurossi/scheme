@@ -201,8 +201,8 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			scm.accu = instr.Sym.Global
 
 		case OpLocalSet:
-			// fmt.Printf("*** local! I=%v, J=%v, accu=%v\n",
-			// 	scm.fp+1+instr.I, instr.J, scm.accu)
+			// fmt.Printf("%d\tlocal! I=%v, J=%v, accu=%v\n",
+			// 	scm.pc-1, scm.fp+1+instr.I, instr.J, scm.accu)
 			// scm.printStack()
 			scm.stack[scm.fp+1+instr.I][instr.J] = scm.accu
 			// fmt.Printf(" =>\n")

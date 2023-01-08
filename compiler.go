@@ -287,7 +287,7 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 		// evaluated.
 		lambdaEnv := env.Copy()
 
-		// Create a call frame.
+		// Create call frame.
 		c.addInstr(v, OpPushF, nil, 0)
 		lambdaEnv.PushFrame()
 
@@ -307,7 +307,7 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 				return err
 			}
 			li = pair.Cdr()
-			instr := c.addInstr(pair, OpLocalSet, nil, lambdaEnv.Depth()-1)
+			instr := c.addInstr(pair, OpLocalSet, nil, lambdaEnv.Top())
 			instr.J = j
 		}
 
@@ -752,13 +752,58 @@ func (c *Compiler) compileCond(env *Env, list []Pair, tail bool) error {
 			instr := c.addInstr(nil, OpIfNot, nil, 0)
 			instr.J = next.I
 		}
+		// cond => func
+		if len(clause) > 1 && isKeyword(clause[1].Car(), KwImplies) {
+			if len(clause) != 3 {
+				return clause[0].Errorf("cond: invalid => clause")
+			}
 
-		// Compile expressions.
-		for j := 1; j < len(clause); j++ {
-			last := j+1 >= len(clause)
-			err := c.compileValue(env, clause[j], clause[j].Car(), tail && last)
+			// Push value scope.
+			c.addInstr(clause[2], OpPushS, nil, 1)
+			env.PushFrame()
+			valueFrame := env.Top()
+
+			// Save value
+			c.addInstr(clause[2], OpLocalSet, nil, valueFrame)
+
+			// Compile function.
+			err := c.compileValue(env, clause[2], clause[2].Car(), false)
 			if err != nil {
 				return err
+			}
+
+			// Create call frame.
+			c.addInstr(clause[2], OpPushF, nil, 0)
+			env.PushFrame()
+
+			// Push argument scope.
+			c.addInstr(clause[2], OpPushS, nil, 1)
+			env.PushFrame()
+
+			// Set argument.
+			c.addInstr(clause[2], OpLocal, nil, valueFrame)
+			c.addInstr(clause[2], OpLocalSet, nil, env.Top())
+
+			env.PopFrame() // Argument
+			env.PopFrame() // Call
+			env.PopFrame() // Value
+
+			if tail {
+				c.addInstr(nil, OpCall, nil, 1)
+			} else {
+				c.addInstr(nil, OpCall, nil, 0)
+			}
+			// Pop value scope.
+			c.addInstr(clause[2], OpPopS, nil, 0)
+		} else {
+			// Compile expressions.
+			for j := 1; j < len(clause); j++ {
+				last := j+1 >= len(clause)
+				err := c.compileValue(env, clause[j], clause[j].Car(),
+					tail && last)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -882,14 +927,14 @@ func (e *Env) Print() {
 	fmt.Printf("\u2570\u2500\u2500\u2500\u2500\u2500\u256f\n")
 }
 
-// Empty tests if the environment is empty.
-func (e *Env) Empty() bool {
-	return e.Depth() == 0
-}
-
 // Depth returns the depth of the environment.
 func (e *Env) Depth() int {
 	return len(e.Frames)
+}
+
+// Top returns the index of the environment's top frame.
+func (e *Env) Top() int {
+	return len(e.Frames) - 1
 }
 
 // PushFrame pushes an environment frame.
@@ -900,17 +945,6 @@ func (e *Env) PushFrame() {
 // PopFrame pops the topmost environment frame.
 func (e *Env) PopFrame() {
 	e.Frames = e.Frames[:len(e.Frames)-1]
-}
-
-// ShiftDown shifts the environment frames down. The bottom-most
-// elements goes to the top of the env.
-func (e *Env) ShiftDown() {
-	if len(e.Frames) < 2 {
-		return
-	}
-	bottom := e.Frames[0]
-	e.Frames = e.Frames[1:]
-	e.Frames = append(e.Frames, bottom)
 }
 
 // Define defines the named symbol in the environment.
