@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2022 Markku Rossi
+;;; Copyright (c) 2022-2023 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -77,6 +77,7 @@
 (load "test-characters.scm")
 (load "test-strings.scm")
 (load "test-numbers.scm")
+(load "test-symbols.scm")
 (load "test-bytevectors.scm")
 
 (load "test-r6rs-lists.scm")
