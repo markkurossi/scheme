@@ -24,8 +24,6 @@ structured data operations.
  - [ ] VM
    - [ ] Call with current continuation
  - [ ] Runtime
-   - [ ] 6.3. Pairs and lists
-     - [ ] append
    - [ ] 6.5.5. Numerical operations
      - [ ] complex?
      - [ ] real?
