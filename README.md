@@ -14,8 +14,6 @@ structured data operations.
 # TODO
 
  - [ ] Compiler
-   - [ ] 4.2.1. Conditionals
-     - [ ] case
    - [ ] 4.2.4. Iteration
      - [ ] do
      - [ ] Named let
