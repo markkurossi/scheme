@@ -268,6 +268,9 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 		if isKeyword(v.Car(), KwCond) {
 			return c.compileCond(env, list, tail)
 		}
+		if isKeyword(v.Car(), KwCase) {
+			return c.compileCase(env, list, tail)
+		}
 		if isKeyword(v.Car(), KwAnd) {
 			return c.compileAnd(env, list, tail)
 		}
@@ -731,8 +734,8 @@ func (c *Compiler) compileCond(env *Env, list []Pair, tail bool) error {
 		}
 
 		clause, ok := ListPairs(list[i].Car())
-		if !ok || len(clause) < 2 {
-			list[i].Errorf("cond: invalid clause: %v", list[i])
+		if !ok || len(clause) < 1 {
+			return list[i].Errorf("cond: invalid clause: %v", list[i])
 		}
 
 		var isElse bool
@@ -813,6 +816,128 @@ func (c *Compiler) compileCond(env *Env, list []Pair, tail bool) error {
 		instr.J = labelEnd.I
 	}
 	c.addLabel(labelEnd)
+
+	return nil
+}
+
+func (c *Compiler) compileCase(env *Env, list []Pair, tail bool) error {
+	if len(list) < 3 {
+		return list[0].Errorf("case: key or clauses")
+	}
+	labelEnd := c.newLabel()
+
+	// Push value scope.
+	c.addInstr(list[1], OpPushS, nil, 1)
+	env.PushFrame()
+	valueFrame := env.Top()
+
+	// Compile key.
+	err := c.compileValue(env, list[1], list[1].Car(), false)
+	if err != nil {
+		return err
+	}
+
+	// Save value.
+	c.addInstr(list[1], OpLocalSet, nil, valueFrame)
+
+	// Compile clauses
+
+	var labelClause *Instr
+
+	for i := 2; i < len(list); i++ {
+		if labelClause != nil {
+			c.addLabel(labelClause)
+		}
+
+		var next *Instr
+		if i+1 < len(list) {
+			next = c.newLabel()
+			labelClause = next
+		} else {
+			next = labelEnd
+		}
+
+		clause, ok := ListPairs(list[i].Car())
+		if !ok || len(clause) < 2 {
+			return list[i].Errorf("case: invalid clause: %v", list[i])
+		}
+
+		// (else expr1 expr2...)
+		var isElse bool
+		if isKeyword(clause[0].Car(), KwElse) {
+			if i+1 < len(list) {
+				return clause[0].Errorf("case: else must be the last clause")
+			}
+			isElse = true
+		}
+
+		var labelExprs *Instr
+		if !isElse {
+			labelExprs = c.newLabel()
+
+			// Compare datums: ((datum1 ...) expr1 expr2...)
+			datums, ok := ListPairs(clause[0].Car())
+			if !ok || len(clause) == 0 {
+				return clause[0].Errorf("cond: invalid clause: %v", clause[0])
+			}
+			for _, datum := range datums {
+				// (eqv? value datum)
+				eqvEnv := env.Copy()
+
+				instr := c.addInstr(datum, OpGlobal, nil, 0)
+				instr.Sym = c.scm.Intern("eqv?")
+
+				c.addInstr(datum, OpPushF, nil, 0)
+				eqvEnv.PushFrame()
+
+				c.addInstr(datum, OpPushS, nil, 2)
+				eqvEnv.PushFrame()
+
+				c.addInstr(datum, OpLocal, nil, valueFrame)
+				instr = c.addInstr(datum, OpLocalSet, nil, eqvEnv.Top())
+				instr.J = 0
+
+				c.addInstr(datum, OpConst, datum.Car(), 0)
+				instr = c.addInstr(datum, OpLocalSet, nil, eqvEnv.Top())
+				instr.J = 1
+
+				c.addInstr(datum, OpCall, nil, 0)
+
+				instr = c.addInstr(datum, OpIf, nil, 0)
+				instr.J = labelExprs.I
+			}
+
+			// No datum matched.
+			instr := c.addInstr(nil, OpJmp, nil, 0)
+			instr.J = next.I
+		}
+
+		if labelExprs != nil {
+			c.addLabel(labelExprs)
+		}
+
+		// Compile expressions.
+		for j := 1; j < len(clause); j++ {
+			last := j+1 >= len(clause)
+			err := c.compileValue(env, clause[j], clause[j].Car(),
+				tail && last)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Jump to end.
+		instr := c.addInstr(nil, OpJmp, nil, 0)
+		instr.J = labelEnd.I
+	}
+
+	c.addLabel(labelEnd)
+
+	if !tail {
+		// Pop value scope.
+		c.addInstr(nil, OpPopS, nil, 0)
+		env.PopFrame()
+	}
 
 	return nil
 }
