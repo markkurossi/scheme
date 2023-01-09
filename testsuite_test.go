@@ -15,7 +15,7 @@ func TestTestsuite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create scheme: %v", err)
 	}
-	v, err := scm.EvalFile("testsuite/test.scm")
+	v, err := scm.EvalFile("testdata/test.scm")
 	if err != nil {
 		t.Fatalf("eval testsuite failed: %v", err)
 	}
