@@ -42,11 +42,41 @@
                               num-tests
                               (car tests))
                     (iter category num-tests (cdr tests))))))
+
+           (test-success
+            (lambda ()
+              (set! success (+ success 1))
+              (color "1;32")
+              (display #\x2713)
+              (color "0")))
+           (test-failure
+            (lambda ()
+              (set! fail (+ fail 1))
+              (color "1;31")
+              (display #\x2716)
+              (color "0")))
+
+           (test-iter
+            (lambda (tests)
+              (if (null? tests)
+                  #t
+                  (begin
+                    (set! count (+ count 1))
+                    (if ((car tests))
+                        (test-success)
+                        (test-failure))
+                    (test-iter (cdr tests))))))
            (runner
             (lambda (cmd . args)
               (cond ((eq? cmd 'run)
                      (display " - test ") (display (car args)) (display ": ")
                      (iter (car args) (length (cdr args)) (cdr args))
+                     (newline))
+                    ((eq? cmd 'sub-section)
+                     (display "** ") (display (car args)) (newline))
+                    ((eq? cmd 'test)
+                     (display " - test ") (display (car args)) (display ": ")
+                     (test-iter (cdr args))
                      (newline))
                     ((eq? cmd 'error)
                      (set! fail (+ fail 1)))
@@ -57,9 +87,11 @@
                     ((eq? cmd 'status)
                      (= fail 0))
                     (else
+                     (display "Unknown command: ") (display cmd) (newline)
                      (display "Usage:") (newline)
-                     (display " - run tests...") (newline)
-                     (display " - stats") (newline))))))
+                     (display " - run group tests...") (newline)
+                     (display " - stats") (newline)
+                     (exit 1))))))
     runner))
 
 (define (color spec)

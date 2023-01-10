@@ -4,20 +4,97 @@
 ;;; All rights reserved.
 ;;;
 
-(runner 'run "append"
-        (lambda (t)
-          (if (not (equal? (append '(x) '(y)) '(x y)))
-              (t 'error "append '(x) '(y)")))
-        (lambda (t)
-          (if (not (equal? (append '(a) '(b c d)) '(a b c d)))
-              (t 'error "append '(a) '(b c d)")))
-        (lambda (t)
-          (if (not (equal? (append '(a (b)) '((c))) '(a (b) (c))))
-              (t 'error "append '(a (b)) '((c))")))
-        (lambda (t)
-          (if (not (equal? (append '(a b) '(c . d)) '(a b c . d)))
-              (t 'error "append '(a b) '(c . d)")))
-        (lambda (t)
-          (if (not (equal? (append '() 'a) 'a))
-              (t 'error "append '() 'a")))
+(runner 'sub-section "11.9. Pairs and lists")
+
+(runner 'test "pair?"
+        (lambda ()
+          (pair? '(a . b)))
+        (lambda ()
+          (pair? '(a b c)))
+        (lambda ()
+          (not (pair? '())))
+        (lambda ()
+          (not (pair? '#(a b))))
+        )
+
+(runner 'test "cons"
+        (lambda ()
+          (equal? (cons 'a '()) '(a)))
+        (lambda ()
+          (equal? (cons '(a) '(b c d)) '((a) b c d)))
+        (lambda ()
+          (equal? (cons "a" '(b c)) '("a" b c)))
+        (lambda ()
+          (equal? (cons 'a 3) '(a . 3)))
+        (lambda ()
+          (equal? (cons '(a b) 'c) '((a b) . c)))
+        )
+
+(runner 'test "car"
+        (lambda ()
+          (equal? (car '(a b c)) 'a))
+        (lambda ()
+          (equal? (car '((a) b c d)) '(a)))
+        (lambda ()
+          (equal? (car '(1 . 2)) 1))
+        )
+(runner 'test "cdr"
+        (lambda ()
+          (equal? (cdr '((a) b c d))
+                       '(b c d)))
+        (lambda ()
+          (equal? (cdr '(1 . 2))
+                  2))
+        )
+(runner 'test "null?"
+        (lambda ()
+          (null? '()))
+        (lambda ()
+          (not (null? 0)))
+        )
+
+(runner 'test "list?"
+        (lambda ()
+          (list? '(a b c)))
+        (lambda ()
+          (list? '()))
+        (lambda ()
+          (not (list? '(a . b))))
+        )
+
+(runner 'test "list"
+        (lambda ()
+          (equal? (list 'a (+ 3 4) 'c) '(a 7 c)))
+        (lambda ()
+          (equal? (list) '()))
+        )
+
+(runner 'test "length"
+        (lambda ()
+          (= (length '(a b c)) 3))
+        (lambda ()
+          (= (length '(a (b) (c d e))) 3))
+        (lambda ()
+          (= (length '()) 0))
+        )
+
+(runner 'test "append"
+        (lambda ()
+          (equal? (append '(x) '(y)) '(x y)))
+        (lambda ()
+          (equal? (append '(a) '(b c d)) '(a b c d)))
+        (lambda ()
+          (equal? (append '(a (b)) '((c))) '(a (b) (c))))
+        (lambda ()
+          (equal? (append '(a b) '(c . d)) '(a b c . d)))
+        (lambda ()
+          (equal? (append '() 'a) 'a))
+        )
+
+(runner 'test "reverse"
+        (lambda ()
+          (equal? (reverse '(a b c)) '(c b a)))
+        (lambda ()
+          (equal? (reverse '(a (b c) d (e (f))))
+                           '((e (f)) d (b c) a)))
         )
