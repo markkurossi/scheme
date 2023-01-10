@@ -936,8 +936,8 @@ func (c *Compiler) compileCase(env *Env, list []Pair, tail bool) error {
 	if !tail {
 		// Pop value scope.
 		c.addInstr(nil, OpPopS, nil, 0)
-		env.PopFrame()
 	}
+	env.PopFrame()
 
 	return nil
 }
