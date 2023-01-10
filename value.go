@@ -158,7 +158,7 @@ func (v *Lambda) Scheme() string {
 
 // Eq tests if the argument value is eq? to this value.
 func (v *Lambda) Eq(o Value) bool {
-	return v == v
+	return v == o
 }
 
 // Equal tests if the argument value is equal to this value.
