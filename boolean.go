@@ -108,6 +108,25 @@ var booleanBuiltins = []Builtin{
 		},
 	},
 	{
+		Name: "boolean=?",
+		Args: []string{"bool1", "bool2", "bool3..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var last bool
+
+			for idx, arg := range args {
+				b, ok := arg.(Boolean)
+				if !ok {
+					return nil, l.Errorf("invalid boolean: %v", arg)
+				}
+				if idx > 0 && bool(b) != last {
+					return Boolean(false), nil
+				}
+				last = bool(b)
+			}
+			return Boolean(true), nil
+		},
+	},
+	{
 		Name: "eqv?",
 		Args: []string{"obj1", "obj2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {

@@ -4,6 +4,8 @@
 ;;; All rights reserved.
 ;;;
 
+(runner 'sub-section "2. Bytevectors")
+
 (runner 'run "bytevector?"
         (lambda (t)
           (if (not (bytevector? #vu8(12 23 123)))

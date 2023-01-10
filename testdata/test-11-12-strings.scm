@@ -4,6 +4,8 @@
 ;;; All rights reserved.
 ;;;
 
+(runner 'sub-section "11.12. Strings")
+
 (runner 'run "strings"
         (lambda (t)
           (letrec ((iter

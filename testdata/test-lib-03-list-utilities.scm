@@ -6,6 +6,8 @@
 ;;; Tests for the r6rs lists library.
 ;;;
 
+(runner 'sub-section "3. List utilities")
+
 (runner 'run "memp"
         (lambda (t)
           (if (not (equal? (memp even? '(3 1 4 1 5 9 2 6 5)) '(4 1 5 9 2 6 5)))

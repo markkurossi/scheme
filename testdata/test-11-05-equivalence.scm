@@ -1,8 +1,10 @@
 ;;;
-;;; Copyright (c) 2022 Markku Rossi
+;;; Copyright (c) 2022-2023 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
+
+(runner 'sub-section "11.5. Equivalence predicates")
 
 (runner 'run "eq?"
         (lambda (t)

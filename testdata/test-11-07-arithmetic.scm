@@ -4,6 +4,8 @@
 ;;; All rights reserved.
 ;;;
 
+(runner 'sub-section "11.7. Arithmetic")
+
 (runner 'run "odd?"
         (lambda (t)
           (if (not (odd? 1))

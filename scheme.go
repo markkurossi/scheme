@@ -68,6 +68,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 	scm.DefineBuiltins(numberBuiltins)
 	scm.DefineBuiltins(osBuiltins)
 	scm.DefineBuiltins(outputBuiltins)
+	scm.DefineBuiltins(procedureBuiltins)
 	scm.DefineBuiltins(stringBuiltins)
 	scm.DefineBuiltins(symbolBuiltins)
 	scm.DefineBuiltins(vectorBuiltins)

@@ -102,19 +102,21 @@
 
 (define runner (test "r6rs"))
 
-(load "test-eq.scm")
 (load "test-cond.scm")
 (load "test-case.scm")
 (load "test-and.scm")
 (load "test-or.scm")
+(load "test-11-05-equivalence.scm")
+(load "test-11-06-procedure-preds.scm")
 (load "test-11-07-arithmetic.scm")
+(load "test-11-08-booleans.scm")
 (load "test-11-09-pairs-and-lists.scm")
 (load "test-11-10-symbols.scm")
 (load "test-11-11-characters.scm")
 (load "test-11-12-strings.scm")
-(load "test-bytevectors.scm")
 
-(load "test-r6rs-lists.scm")
+(load "test-lib-02-bytevectors.scm")
+(load "test-lib-03-list-utilities.scm")
 
 (runner 'stats)
 (runner 'status)
