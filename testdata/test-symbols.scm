@@ -4,6 +4,8 @@
 ;;; All rights reserved.
 ;;;
 
+(runner 'sub-section "11.10. Symbols")
+
 (runner 'run "symbol?"
         (lambda (t)
           (if (not (symbol? 'foo))

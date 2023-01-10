@@ -109,8 +109,8 @@
 (load "test-or.scm")
 (load "test-characters.scm")
 (load "test-strings.scm")
-(load "test-lists.scm")
 (load "test-numbers.scm")
+(load "test-lists.scm")
 (load "test-symbols.scm")
 (load "test-bytevectors.scm")
 
