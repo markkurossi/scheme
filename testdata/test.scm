@@ -75,6 +75,8 @@
                  (newline))
                 ((sub-section)
                  (display "** ") (display (car args)) (newline))
+                ((sub-sub-section)
+                 (display "*** ") (display (car args)) (newline))
                 ((test)
                  (display " - test ") (display (car args)) (display ": ")
                  (test-iter (cdr args))
@@ -102,10 +104,10 @@
 
 (define runner (test "r6rs"))
 
-(load "test-cond.scm")
 (load "test-case.scm")
 (load "test-and.scm")
 (load "test-or.scm")
+(load "test-11-04-expressions.scm")
 (load "test-11-05-equivalence.scm")
 (load "test-11-06-procedure-preds.scm")
 (load "test-11-07-arithmetic.scm")
