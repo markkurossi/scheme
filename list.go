@@ -92,7 +92,8 @@ func (pair *PlainPair) Scheme() string {
 
 // Eq tests if the argument value is eq? to this value.
 func (pair *PlainPair) Eq(o Value) bool {
-	return pair == o
+	ov, ok := o.(*PlainPair)
+	return ok && pair == ov
 }
 
 // Equal tests if the argument value is equal to this value.
@@ -170,6 +171,12 @@ func (pair *LocationPair) To() Point {
 // SetTo sets pair's end location.
 func (pair *LocationPair) SetTo(p Point) {
 	pair.to = p
+}
+
+// Eq tests if the argument value is eq? to this value.
+func (pair *LocationPair) Eq(o Value) bool {
+	ov, ok := o.(*LocationPair)
+	return ok && pair == ov
 }
 
 // Errorf returns an error with the pair's location.
