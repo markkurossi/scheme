@@ -47,8 +47,24 @@
                            '(5 6)))
         )
 
-;; XXX if
-;; XXX set!
+(runner 'test "if"
+        (lambda () (eq? (if (> 3 2) 'yes 'no) 'yes))
+        (lambda () (eq? (if (> 2 3) 'yes 'no) 'no))
+        (lambda () (eq? (if (> 3 2)
+                            (- 3 2)
+                            (+ 3 2))
+                        1))
+        ;; Unspecified.
+        (lambda () (eq? (if #f #f) #f))
+        )
+
+(runner 'test "set!"
+        (lambda () (eq? (let ((x 2))
+                          (+ x 1)
+                          (set! x 4)
+                          (+ x 1))
+                        5))
+        )
 
 (runner 'test "cond"
         (lambda () (eq? (cond ((> 3 2) 'greater)
