@@ -66,3 +66,34 @@
                               (else #f))
                         2))
         )
+
+(runner 'test "case"
+        (lambda () (eq? (case (* 2 3)
+                          ((2 3 5 7) 'prime)
+                          ((1 4 6 8 9) 'composite))
+                        'composite))
+        (lambda () (eq? (case (car '(c d))
+                          ((a) 'a)
+                          ((b) 'b))
+                        #f))
+        (lambda () (eq? (case (car '(c d))
+                          ((a e i o u) 'vowel)
+                          ((w y) 'semivowel)
+                          (else 'consonant))
+                        'consonant))
+        )
+
+(runner 'test "and"
+        (lambda () (eq? (and (= 2 2) (> 2 1)) #t))
+        (lambda () (eq? (and (= 2 2) (< 2 1)) #f))
+        (lambda () (equal? (and 1 2 'c '(f g)) '(f g)))
+        (lambda () (eq? (and) #t))
+        )
+
+(runner 'test "or"
+        (lambda () (eq? (or) #f))
+        (lambda () (eq? (or (= 2 2) (> 2 1)) #t))
+        (lambda () (eq? (or (= 2 2) (< 2 1)) #t))
+        (lambda () (eq? (or #f #f #f) #f))
+        (lambda () (equal? (or '(b c) (/ 3 0)) '(b c)))
+        )

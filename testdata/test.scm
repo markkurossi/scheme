@@ -104,9 +104,6 @@
 
 (define runner (test "r6rs"))
 
-(load "test-case.scm")
-(load "test-and.scm")
-(load "test-or.scm")
 (load "test-11-04-expressions.scm")
 (load "test-11-05-equivalence.scm")
 (load "test-11-06-procedure-preds.scm")
