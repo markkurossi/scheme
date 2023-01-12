@@ -73,6 +73,8 @@
                  (display " - test ") (display (car args)) (display ": ")
                  (iter (car args) (length (cdr args)) (cdr args))
                  (newline))
+                ((section)
+                 (display "* ") (display (car args)) (newline))
                 ((sub-section)
                  (display "** ") (display (car args)) (newline))
                 ((sub-sub-section)
@@ -104,6 +106,12 @@
 
 (define runner (test "r6rs"))
 
+(runner 'section "11. Base library")
+
+;; XXX 11.1. Base types
+;; XXX 11.2. Definitions
+;; XXX 11.3. Bodies
+
 (load "test-11-04-expressions.scm")
 (load "test-11-05-equivalence.scm")
 (load "test-11-06-procedure-preds.scm")
@@ -113,6 +121,20 @@
 (load "test-11-10-symbols.scm")
 (load "test-11-11-characters.scm")
 (load "test-11-12-strings.scm")
+(load "test-11-13-vectors.scm")
+
+;; XXX 11.14. Errors and violations
+
+(load "test-11-15-control-features.scm")
+
+;; XXX 11.16. Iteration
+;; XXX 11.17. Quasiquotation
+;; XXX 11.18. Binding constructs for syntactic key-words
+;; XXX 11.19. Macro transformers
+
+(runner 'section "1. Standard libraries")
+
+;; XXX 1. Unicode
 
 (load "test-lib-02-bytevectors.scm")
 (load "test-lib-03-list-utilities.scm")

@@ -14,7 +14,7 @@
         (lambda () (equal? '"abc" "abc"))
         (lambda () (equal? '145932 145932))
         (lambda () (equal? 'a 'a))
-        (lambda () (equal? '#(a b c) #(a b c)))
+        (lambda () (equal? '#(a b c) '#(a b c)))
         (lambda () (equal? '() '()))
         (lambda () (equal? '(+ 1 2) '(+ 1 2)))
         (lambda () (equal? '(quote a) ''a))
@@ -66,6 +66,8 @@
                         5))
         )
 
+;; 11.4.5. Derived conditionals
+
 (runner 'test "cond"
         (lambda () (eq? (cond ((> 3 2) 'greater)
                               ((< 3 2) 'less))
@@ -112,4 +114,38 @@
         (lambda () (eq? (or (= 2 2) (< 2 1)) #t))
         (lambda () (eq? (or #f #f #f) #f))
         (lambda () (equal? (or '(b c) (/ 3 0)) '(b c)))
+        )
+
+;; 11.4.6. Binding constructs
+
+(runner 'test "let"
+        (lambda () (eq? (let ((x 2) (y 3))
+                          (* x y))
+                        6))
+        (lambda () (eq? (let ((x 2) (y 3))
+                          (let ((x 7)
+                                (z (+ x y)))
+                            (* z x)))
+                        35))
+        )
+(runner 'test "let*"
+        (lambda () (eq? (let ((x 2) (y 3))
+                          (let* ((x 7)
+                                 (z (+ x y)))
+                            (* z x)))
+                        70))
+        )
+(runner 'test "letrec"
+        (lambda () (eq? (letrec ((even?
+                                  (lambda (n)
+                                    (if (zero? n)
+                                        #t
+                                        (odd? (- n 1)))))
+                                 (odd?
+                                  (lambda (n)
+                                    (if (zero? n)
+                                        #f
+                                        (even? (- n 1))))))
+                          (even? 88))
+                        #t))
         )
