@@ -335,7 +335,11 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 	case Keyword:
 		return loc.Errorf("unexpected keyword: %s", v)
 
-	case Vector, ByteVector, Boolean, String, Character, Number:
+	case Vector:
+		// Vector literals must be quoted like list constants.
+		return loc.Errorf("invalid syntax: %v", v)
+
+	case ByteVector, Boolean, String, Character, Number:
 		c.addInstr(nil, OpConst, v, 0)
 
 	default:
