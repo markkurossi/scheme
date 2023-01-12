@@ -8,40 +8,6 @@
   (letrec ((count 0)
            (success 0)
            (fail 0)
-           (run-test
-            (lambda (category idx num-tests test)
-              (let ((failed #f))
-                ;; Run test with reporter.
-                (test (lambda (cmd . args)
-                        (cond ((eq? cmd 'error)
-                               (set! failed #t))
-                              (else
-                               (display "Test reporter: invalid command: ")
-                               (display cmd)
-                               (newline)))))
-                (if failed
-                    (begin
-                      (set! fail (+ fail 1))
-                      (color "1;31")
-                      (display #\x2716)
-                      (color "0"))
-                    (begin
-                      (set! success (+ success 1))
-                      (color "1;32")
-                      (display #\x2713)
-                      (color "0")))
-                )))
-           (iter
-            (lambda (category num-tests tests)
-              (if (null? tests)
-                  #t
-                  (begin
-                    (set! count (+ count 1))
-                    (run-test category
-                              (- num-tests (length tests))
-                              num-tests
-                              (car tests))
-                    (iter category num-tests (cdr tests))))))
 
            (test-success
             (lambda ()
@@ -69,10 +35,6 @@
            (runner
             (lambda (cmd . args)
               (case cmd
-                ((run)
-                 (display " - test ") (display (car args)) (display ": ")
-                 (iter (car args) (length (cdr args)) (cdr args))
-                 (newline))
                 ((section)
                  (display "* ") (display (car args)) (newline))
                 ((sub-section)
