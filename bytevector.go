@@ -204,4 +204,44 @@ var bytevectorBuiltins = []Builtin{
 			return ByteVector(arr), nil
 		},
 	},
+	{
+		Name: "bytevector-u8-ref",
+		Args: []string{"bytevector", "k"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			v, ok := args[0].(ByteVector)
+			if !ok {
+				return nil, l.Errorf("not a bytevector: %v", args[0])
+			}
+			kn, ok := args[1].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid index: %v", args[1])
+			}
+			k := kn.Int64()
+			if k < 0 || k >= int64(len(v)) {
+				return nil, l.Errorf("invalid index: 0 <= %v < %v", k, len(v))
+			}
+
+			return NewNumber(0, int(uint8(v[k]))), nil
+		},
+	},
+	{
+		Name: "bytevector-s8-ref",
+		Args: []string{"bytevector", "k"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			v, ok := args[0].(ByteVector)
+			if !ok {
+				return nil, l.Errorf("not a bytevector: %v", args[0])
+			}
+			kn, ok := args[1].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid index: %v", args[1])
+			}
+			k := kn.Int64()
+			if k < 0 || k >= int64(len(v)) {
+				return nil, l.Errorf("invalid index: 0 <= %v < %v", k, len(v))
+			}
+
+			return NewNumber(0, int(int8(v[k]))), nil
+		},
+	},
 }

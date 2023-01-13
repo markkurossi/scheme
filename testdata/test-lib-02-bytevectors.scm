@@ -41,3 +41,14 @@
         (lambda () (bytevector=? (bytevector-copy #vu8()) #vu8()))
         (lambda () (bytevector=? (bytevector-copy #vu8(1 2 3)) #vu8(1 2 3)))
         )
+
+(runner 'test "bytevector-{u,s}8-ref"
+        (lambda() (equal? (let ((b1 (make-bytevector 16 (- 0 127)))
+                                (b2 (make-bytevector 16 255)))
+                            (list
+                             (bytevector-s8-ref b1 0)
+                             (bytevector-u8-ref b1 0)
+                             (bytevector-s8-ref b2 0)
+                             (bytevector-u8-ref b2 0)))
+                          (list (- 0 127) 129 (- 0 1) 255)))
+        )
