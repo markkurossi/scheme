@@ -151,13 +151,13 @@ func (p *Parser) Next() (Value, error) {
 			case TNumber:
 				v := t.Number.Int64()
 				if v < 0 || v > 0xff {
-					return nil, t.Errorf("invalid bytevector initializer: %v",
+					return nil, t.Errorf("invalid bytevector initializer: '%v'",
 						v)
 				}
 				elements = append(elements, byte(v))
 
 			default:
-				return nil, t.Errorf("invalid bytevector initializer: %v", t)
+				return nil, t.Errorf("invalid bytevector initializer: '%v'", t)
 			}
 		}
 
