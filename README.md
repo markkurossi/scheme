@@ -28,10 +28,7 @@ structured data operations.
      - [ ] complex?
      - [ ] real?
      - [ ] rational?
-     - [ ] integer?
-     - [ ] exact?
-     - [ ] inexact?
-     - [ ] <, >, <=, >=
+     - [ ] <=, >=
      - [ ] positive?
      - [ ] negative?
      - [ ] max?

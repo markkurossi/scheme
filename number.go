@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022, 2023-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -391,6 +391,108 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
+		Name: "integer?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			n, ok := args[0].(Number)
+			if !ok {
+				return Boolean(false), nil
+			}
+			switch n.Value.(type) {
+			case int64, *big.Int:
+				return Boolean(true), nil
+			}
+			return Boolean(false), nil
+		},
+	},
+	{
+		Name: "exact?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			n, ok := args[0].(Number)
+			if !ok {
+				return Boolean(false), nil
+			}
+			switch n.Value.(type) {
+			case *big.Int:
+				return Boolean(true), nil
+			}
+			return Boolean(false), nil
+		},
+	},
+	{
+		Name: "inexact?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			n, ok := args[0].(Number)
+			if !ok {
+				return Boolean(false), nil
+			}
+			switch n.Value.(type) {
+			case *big.Int:
+				return Boolean(false), nil
+			}
+			return Boolean(true), nil
+		},
+	},
+	{
+		Name: "=",
+		Args: []string{"z1", "z2", "z..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var last Number
+
+			for idx, arg := range args {
+				num, ok := arg.(Number)
+				if !ok {
+					return nil, l.Errorf("invalid argument: %v", arg)
+				}
+				if idx > 0 && !last.Equal(num) {
+					return Boolean(false), nil
+				}
+				last = num
+			}
+			return Boolean(true), nil
+		},
+	},
+	{
+		Name: "<",
+		Args: []string{"z1", "z2", "z1..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var last Number
+
+			for idx, arg := range args {
+				num, ok := arg.(Number)
+				if !ok {
+					return nil, l.Errorf("invalid argument: %v", arg)
+				}
+				if idx > 0 && !last.Lt(num) {
+					return Boolean(false), nil
+				}
+				last = num
+			}
+			return Boolean(true), nil
+		},
+	},
+	{
+		Name: ">",
+		Args: []string{"z1", "z2", "z1..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var last Number
+
+			for idx, arg := range args {
+				num, ok := arg.(Number)
+				if !ok {
+					return nil, l.Errorf("invalid argument: %v", arg)
+				}
+				if idx > 0 && !last.Gt(num) {
+					return Boolean(false), nil
+				}
+				last = num
+			}
+			return Boolean(true), nil
+		},
+	},
+	{
 		Name: "+",
 		Args: []string{"z1..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
@@ -452,63 +554,6 @@ var numberBuiltins = []Builtin{
 				}
 			}
 			return product, nil
-		},
-	},
-	{
-		Name: "=",
-		Args: []string{"z1", "z2", "z..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last Number
-
-			for idx, arg := range args {
-				num, ok := arg.(Number)
-				if !ok {
-					return nil, l.Errorf("invalid argument: %v", arg)
-				}
-				if idx > 0 && !last.Equal(num) {
-					return Boolean(false), nil
-				}
-				last = num
-			}
-			return Boolean(true), nil
-		},
-	},
-	{
-		Name: "<",
-		Args: []string{"z1", "z2", "z1..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last Number
-
-			for idx, arg := range args {
-				num, ok := arg.(Number)
-				if !ok {
-					return nil, l.Errorf("invalid argument: %v", arg)
-				}
-				if idx > 0 && !last.Lt(num) {
-					return Boolean(false), nil
-				}
-				last = num
-			}
-			return Boolean(true), nil
-		},
-	},
-	{
-		Name: ">",
-		Args: []string{"z1", "z2", "z1..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last Number
-
-			for idx, arg := range args {
-				num, ok := arg.(Number)
-				if !ok {
-					return nil, l.Errorf("invalid argument: %v", arg)
-				}
-				if idx > 0 && !last.Gt(num) {
-					return Boolean(false), nil
-				}
-				last = num
-			}
-			return Boolean(true), nil
 		},
 	},
 	{
