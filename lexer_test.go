@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -111,6 +111,13 @@ var lexerTests = []struct {
 		o: &Token{
 			Type:   TNumber,
 			Number: NewNumber(0, 66),
+		},
+	},
+	{
+		i: "#e#x-42",
+		o: &Token{
+			Type:   TNumber,
+			Number: NewNumber(0, -66),
 		},
 	},
 	{

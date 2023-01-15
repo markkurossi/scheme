@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -544,16 +544,24 @@ func (l *Lexer) Get() (*Token, error) {
 			token.Str = str.String()
 			return token, nil
 
-		case '+':
-			// XXX numbers.
+		case '+', '-':
+			n, _, err := l.ReadRune()
+			if err != nil {
+				if err != io.EOF {
+					return nil, err
+				}
+			} else if IsDigit10(n) {
+				l.UnreadRune()
+				val, err := l.parseDigit(10)
+				if err != nil {
+					return nil, err
+				}
+				return l.newNumber(false, r == '-', 0, val)
+			} else {
+				l.UnreadRune()
+			}
 			token := l.Token(TIdentifier)
-			token.Identifier = "+"
-			return token, nil
-
-		case '-':
-			// XXX numbers.
-			token := l.Token(TIdentifier)
-			token.Identifier = "-"
+			token.Identifier = string(r)
 			return token, nil
 
 		default:
@@ -591,7 +599,7 @@ func (l *Lexer) Get() (*Token, error) {
 				if err != nil {
 					return nil, err
 				}
-				return l.newNumber(false, 0, val)
+				return l.newNumber(false, false, 0, val)
 			}
 			l.UnreadRune()
 			return nil, l.errf("unexpected character: %c", r)
@@ -599,7 +607,14 @@ func (l *Lexer) Get() (*Token, error) {
 	}
 }
 
-func (l *Lexer) newNumber(exact bool, base int, val *big.Int) (*Token, error) {
+func (l *Lexer) newNumber(exact, negative bool, base int, val *big.Int) (
+	*Token, error) {
+
+	if negative {
+		zero := big.NewInt(0)
+		val.Sub(zero, val)
+	}
+
 	token := l.Token(TNumber)
 	if exact {
 		token.Number = NewNumber(base, val)
@@ -610,7 +625,8 @@ func (l *Lexer) newNumber(exact bool, base int, val *big.Int) (*Token, error) {
 }
 
 func (l *Lexer) parseNumber() (*Token, error) {
-	var exact bool
+	var exact, negative, hasSign bool
+	base := int64(10)
 
 	for {
 		// Here we have seen '#' before r.
@@ -627,32 +643,16 @@ func (l *Lexer) parseNumber() (*Token, error) {
 			exact = true
 
 		case 'b':
-			val, err := l.parseDigit(2)
-			if err != nil {
-				return nil, err
-			}
-			return l.newNumber(exact, 2, val)
+			base = 2
 
 		case 'o':
-			val, err := l.parseDigit(8)
-			if err != nil {
-				return nil, err
-			}
-			return l.newNumber(exact, 8, val)
+			base = 8
 
 		case 'd':
-			val, err := l.parseDigit(10)
-			if err != nil {
-				return nil, err
-			}
-			return l.newNumber(exact, 10, val)
+			base = 10
 
 		case 'x':
-			val, err := l.parseDigit(16)
-			if err != nil {
-				return nil, err
-			}
-			return l.newNumber(exact, 16, val)
+			base = 16
 
 		default:
 			l.UnreadRune()
@@ -663,16 +663,31 @@ func (l *Lexer) parseNumber() (*Token, error) {
 		if err != nil {
 			return nil, err
 		}
-		if r == '#' {
-			// Continue from the top.
+		if r == '-' || r == '+' {
+			negative = r == '-'
+			hasSign = true
 
-		} else if IsDigit10(r) {
-			l.UnreadRune()
-			val, err := l.parseDigit(10)
+			r, _, err = l.ReadRune()
 			if err != nil {
 				return nil, err
 			}
-			return l.newNumber(exact, 0, val)
+		}
+		if r == '#' {
+			if hasSign {
+				l.UnreadRune()
+				return nil, l.errf("unexpected character: %c", r)
+			}
+			// Continue from the top.
+
+		} else if IsDigit10(r) ||
+			'a' <= r && r <= 'f' ||
+			'A' <= r && r <= 'F' {
+			l.UnreadRune()
+			val, err := l.parseDigit(base)
+			if err != nil {
+				return nil, err
+			}
+			return l.newNumber(exact, negative, 0, val)
 		} else {
 			l.UnreadRune()
 			return nil, l.errf("unexpected character: %c", r)
