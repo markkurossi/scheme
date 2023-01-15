@@ -34,12 +34,15 @@
         )
 (runner 'test "null?"
         (lambda () (null? '()))
+        (lambda () (null? (list)))
         (lambda () (not (null? 0)))
+        (lambda () (not (null? (list 1))))
         )
 
 (runner 'test "list?"
         (lambda () (list? '(a b c)))
         (lambda () (list? '()))
+        (lambda () (list? (list)))
         (lambda () (not (list? '(a . b))))
         )
 
