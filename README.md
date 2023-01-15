@@ -33,7 +33,7 @@ structured data operations.
      - [ ] negative?
      - [ ] max?
      - [ ] min?
-     - [ ] -, /
+     - [ ] /
      - [ ] abs
      - [ ] quotient
      - [ ] remainder
@@ -77,7 +77,6 @@ structured data operations.
 	 - [ ] string-for-each
 	 - [ ] string-fill!
    - [ ] 6.9. Control features
-     - [ ] procedure?
      - [ ] force
    - [ ] 6.10.1. Ports
      - [ ] call-with-input-file
