@@ -13,6 +13,9 @@ structured data operations.
 
 # TODO
 
+ - [ ] API
+   - [ ] Marshal / unmarshal
+   - [ ] Access to global symbols
  - [ ] Compiler
    - [ ] 4.2.4. Iteration
      - [ ] do
@@ -22,6 +25,7 @@ structured data operations.
    - [ ] 4.2.6. Quasiquotation
      - [ ] quasiquote
  - [ ] VM
+   - [ ] Error handlers
    - [ ] Call with current continuation
  - [ ] Runtime
    - [ ] 6.5.5. Numerical operations
