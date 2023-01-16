@@ -81,7 +81,7 @@
         (lambda () (not (string<=? "a" "b" "a")))
         )
 
-(runner 'test "string=>?"
+(runner 'test "string>=?"
         (lambda () (string>=? "b" "a"))
         (lambda () (string>=? "c" "b" "a"))
         (lambda () (string>=? "c" "b" "b"))
