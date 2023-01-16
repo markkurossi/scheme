@@ -102,3 +102,16 @@
         (lambda () (for-each (lambda (x) x) '(1 2 3 4)))
         (lambda () (for-each even? '()))
         )
+
+(let ((loop-odd '(1 2 3 4 5))
+      (loop-even '(1 2 3 4)))
+  (set-cdr! (cddddr loop-odd) loop-odd)
+  (set-cdr! (cdddr loop-even) loop-even)
+  (runner 'test "loop"
+          (lambda () (eq? (length loop-odd) #f))
+          (lambda () (eq? (length loop-even) #f))
+          (lambda () (eq? (for-each (lambda (x)) loop-odd) #f))
+          (lambda () (eq? (for-each (lambda (x)) loop-even) #f))
+          (lambda () (eq? (map (lambda (x) x) loop-odd) #f))
+          (lambda () (eq? (map (lambda (x) x) loop-even) #f))
+          ))

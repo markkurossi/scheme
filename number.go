@@ -520,98 +520,48 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "=",
-		Args: []string{"z1", "z2", "z..."},
+		Name: "scheme::=",
+		Args: []string{"z1", "z2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last Number
-
-			for idx, arg := range args {
-				num, ok := arg.(Number)
-				if !ok {
-					return nil, l.Errorf("invalid argument: %v", arg)
-				}
-				if idx > 0 && !last.Equal(num) {
-					return Boolean(false), nil
-				}
-				last = num
+			z1, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[0])
 			}
-			return Boolean(true), nil
+			z2, ok := args[1].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[1])
+			}
+			return Boolean(z1.Equal(z2)), nil
 		},
 	},
 	{
-		Name: "<",
-		Args: []string{"z1", "z2", "z1..."},
+		Name: "scheme::<",
+		Args: []string{"x1", "x2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last Number
-
-			for idx, arg := range args {
-				num, ok := arg.(Number)
-				if !ok {
-					return nil, l.Errorf("invalid argument: %v", arg)
-				}
-				if idx > 0 && !last.Lt(num) {
-					return Boolean(false), nil
-				}
-				last = num
+			x1, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[0])
 			}
-			return Boolean(true), nil
+			x2, ok := args[1].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[1])
+			}
+			return Boolean(x1.Lt(x2)), nil
 		},
 	},
 	{
-		Name: ">",
-		Args: []string{"z1", "z2", "z1..."},
+		Name: "scheme::>",
+		Args: []string{"x1", "x2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last Number
-
-			for idx, arg := range args {
-				num, ok := arg.(Number)
-				if !ok {
-					return nil, l.Errorf("invalid argument: %v", arg)
-				}
-				if idx > 0 && !last.Gt(num) {
-					return Boolean(false), nil
-				}
-				last = num
+			x1, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[0])
 			}
-			return Boolean(true), nil
-		},
-	},
-	{
-		Name: "<=",
-		Args: []string{"z1", "z2", "z1..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last Number
-
-			for idx, arg := range args {
-				num, ok := arg.(Number)
-				if !ok {
-					return nil, l.Errorf("invalid argument: %v", arg)
-				}
-				if idx > 0 && last.Gt(num) {
-					return Boolean(false), nil
-				}
-				last = num
+			x2, ok := args[1].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[1])
 			}
-			return Boolean(true), nil
-		},
-	},
-	{
-		Name: ">=",
-		Args: []string{"z1", "z2", "z1..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last Number
-
-			for idx, arg := range args {
-				num, ok := arg.(Number)
-				if !ok {
-					return nil, l.Errorf("invalid argument: %v", arg)
-				}
-				if idx > 0 && last.Lt(num) {
-					return Boolean(false), nil
-				}
-				last = num
-			}
-			return Boolean(true), nil
+			return Boolean(x1.Gt(x2)), nil
 		},
 	},
 	{
@@ -637,95 +587,63 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "+",
-		Args: []string{"z1..."},
+		Name: "scheme::+",
+		Args: []string{"z1", "z2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			sum := NewNumber(0, big.NewInt(0))
-			var err error
-
-			for _, arg := range args {
-				num, ok := arg.(Number)
-				if !ok {
-					return nil, l.Errorf("invalid argument: %v", arg)
-				}
-				sum, err = sum.Add(num)
-				if err != nil {
-					return nil, err
-				}
-			}
-			return sum, nil
-		},
-	},
-	{
-		Name: "*",
-		Args: []string{"z1..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			product := NewNumber(0, big.NewInt(1))
-			var err error
-
-			for _, arg := range args {
-				num, ok := arg.(Number)
-				if !ok {
-					return nil, l.Errorf("invalid argument: %v", arg)
-				}
-				product, err = product.Mul(num)
-				if err != nil {
-					return nil, err
-				}
-			}
-			return product, nil
-		},
-	},
-	{
-		Name: "-",
-		Args: []string{"z1", "z2..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			result := NewNumber(0, big.NewInt(0))
-			var err error
-
-			for idx, arg := range args {
-				num, ok := arg.(Number)
-				if !ok {
-					return nil, l.Errorf("invalid argument: %v", arg)
-				}
-				if idx == 0 && len(args) > 1 {
-					result = num.Copy()
-				} else {
-					result, err = result.Sub(num)
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
-			return result, nil
-		},
-	},
-	{
-		Name: "/",
-		Args: []string{"z1", "z2..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			z, ok := args[0].(Number)
+			z1, ok := args[0].(Number)
 			if !ok {
 				return nil, l.Errorf("invalid argument: %v", args[0])
 			}
-			if len(args) == 1 {
-				one := z.Const(1)
-				return one.Div(z)
+			z2, ok := args[1].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[1])
 			}
-
-			var err error
-
-			for i := 1; i < len(args); i++ {
-				num, ok := args[i].(Number)
-				if !ok {
-					return nil, l.Errorf("invalid argument: %v", args[i])
-				}
-				z, err = z.Div(num)
-				if err != nil {
-					return nil, err
-				}
+			return z1.Add(z2)
+		},
+	},
+	{
+		Name: "scheme::*",
+		Args: []string{"z1", "z2"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			z1, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[0])
 			}
-			return z, nil
+			z2, ok := args[1].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[1])
+			}
+			return z1.Mul(z2)
+		},
+	},
+	{
+		Name: "scheme::-",
+		Args: []string{"z1", "z2"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			z1, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[0])
+			}
+			z2, ok := args[1].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[1])
+			}
+			return z1.Sub(z2)
+		},
+	},
+	{
+		Name: "scheme::/",
+		Args: []string{"z1", "z2"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			z1, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[0])
+			}
+			z2, ok := args[1].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[1])
+			}
+			return z1.Div(z2)
 		},
 	},
 	{

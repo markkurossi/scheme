@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2022 Markku Rossi
+;;; Copyright (c) 2022-2023 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -28,20 +28,36 @@
     (tails '() lists)))
 
 (define (map f . lists)
-  (letrec ((loop
-            (lambda (result lists)
+  (letrec ((turtle '())
+           (loop
+            (lambda (even result lists)
               (if (null? (car lists))
                   (reverse result)
-                  (loop (cons (apply f (scheme::list-heads lists)) result)
-                        (scheme::list-tails lists))))))
-    (loop '() lists)))
+                  (if (eq? turtle (car lists))
+                      #f
+                      (begin
+                        (if even
+                            (if (null? turtle)
+                                (set! turtle (car lists))
+                                (set! turtle (cdr turtle))))
+                        (loop (not even)
+                              (cons (apply f (scheme::list-heads lists)) result)
+                              (scheme::list-tails lists))))))))
+    (loop #t '() lists)))
 
 (define (for-each f . lists)
-  (letrec ((loop
-            (lambda (lists)
+  (letrec ((turtle '())
+           (loop
+            (lambda (even lists)
               (if (null? (car lists))
                   #t
-                  (begin
-                    (apply f (scheme::list-heads lists))
-                    (loop (scheme::list-tails lists)))))))
-    (loop lists)))
+                  (if (eq? turtle (car lists))
+                      #f
+                      (begin
+                        (if even
+                            (if (null? turtle)
+                                (set! turtle (car lists))
+                                (set! turtle (cdr turtle))))
+                        (apply f (scheme::list-heads lists))
+                        (loop (not even) (scheme::list-tails lists))))))))
+    (loop #t lists)))

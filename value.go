@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -191,7 +191,7 @@ func (v *Lambda) Equal(o Value) bool {
 }
 
 func (v *Lambda) String() string {
-	return v.Signature(true)
+	return v.Signature(false)
 }
 
 // Signature prints the lambda signature with optional lambda body.

@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2022 Markku Rossi
+;;; Copyright (c) 2022-2023 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -37,3 +37,65 @@
 (define (cddadr x) (cdr (cdr (car (cdr x)))))
 (define (cdddar x) (cdr (cdr (cdr (car x)))))
 (define (cddddr x) (cdr (cdr (cdr (cdr x)))))
+
+;; XXX list?
+
+(define (list . items) items)
+
+;; XXX implement all below using for-each, and add turtle to for-each
+
+(define (length lst)
+  (let ((count 0))
+    (if (for-each (lambda (x) (set! count (+ count 1))) lst)
+        count
+        #f)))
+
+(define (reverse list)
+  (letrec ((turtle '())
+           (iter
+            (lambda (even result rest)
+              (if (null? rest)
+                  result
+                  (if (eq? turtle rest)
+                      #f
+                      (begin
+                        (if even
+                            (if (null? turtle)
+                                (set! turtle rest)
+                                (set! turtle (cdr turtle))))
+                        (iter (not even)
+                              (cons (car rest) result)
+                              (cdr rest))))))))
+    (iter #t '() list)))
+
+;; XXX list-tail
+;; XXX list-ref
+
+(define (append list . rest)
+  (if (null? rest)
+      list
+      (letrec ((head '())
+               (tail '())
+               (append-list
+                (lambda (items)
+                  ;; XXX need turtle here
+                  (if (not (null? items))
+                      (let ((p (cons (car items) '())))
+                        (if (null? tail)
+                            (set! head p)
+                            (set-cdr! tail p))
+                        (set! tail p)
+                        (append-list (cdr items))))))
+               (iter
+                (lambda (rest)
+                  (if (null? (cdr rest))
+                      (if (null? tail)
+                          (car rest)
+                          (begin
+                            (set-cdr! tail (car rest))
+                            head))
+                      (begin
+                        (append-list (car rest))
+                        (iter (cdr rest)))))))
+        (append-list list)
+        (iter rest))))
