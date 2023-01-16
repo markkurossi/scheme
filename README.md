@@ -29,7 +29,7 @@ structured data operations.
      - [ ] real?
      - [ ] rational?
      - [ ] abs
-     - [ ] div-and-mdo
+     - [ ] div-and-mod
      - [ ] div
      - [ ] div0-and-mod0
      - [ ] div0
