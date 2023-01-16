@@ -28,16 +28,12 @@ structured data operations.
      - [ ] complex?
      - [ ] real?
      - [ ] rational?
-     - [ ] <=, >=
-     - [ ] positive?
-     - [ ] negative?
-     - [ ] max?
-     - [ ] min?
-     - [ ] /
      - [ ] abs
-     - [ ] quotient
-     - [ ] remainder
-     - [ ] modulo
+     - [ ] div-and-mdo
+     - [ ] div
+     - [ ] div0-and-mod0
+     - [ ] div0
+     - [ ] mod0
      - [ ] gcm
      - [ ] lcm
      - [ ] numerator
@@ -45,7 +41,7 @@ structured data operations.
      - [ ] floor
      - [ ] ceiling
      - [ ] truncate
-     - [ ] floor
+     - [ ] round
      - [ ] rationalize
      - [ ] exp
      - [ ] log
@@ -55,8 +51,6 @@ structured data operations.
      - [ ] asin
      - [ ] acos
      - [ ] atan
-     - [ ] sqrt
-     - [ ] expt
      - [ ] make-rectangular
      - [ ] make-polar
      - [ ] imag-part

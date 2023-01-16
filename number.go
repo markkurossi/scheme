@@ -18,11 +18,6 @@ type Number struct {
 	Value interface{}
 }
 
-// Zero defines an inexact number 0.
-var Zero = Number{
-	Value: int64(0),
-}
-
 // NewNumber creates a new numeric value.
 func NewNumber(base int, value interface{}) Number {
 	var numValue interface{}
@@ -58,6 +53,27 @@ func (n Number) Copy() Number {
 	case *big.Int:
 		i := big.NewInt(0)
 		result.Value = i.Set(v)
+
+	default:
+		panic(fmt.Sprintf("n type %T not implemented", n.Value))
+	}
+
+	return result
+}
+
+// Const creates a constant value with the same underlying number
+// type.
+func (n Number) Const(val int64) Number {
+	result := Number{
+		Base: n.Base,
+	}
+
+	switch n.Value.(type) {
+	case int64:
+		result.Value = val
+
+	case *big.Int:
+		result.Value = big.NewInt(val)
 
 	default:
 		panic(fmt.Sprintf("n type %T not implemented", n.Value))
@@ -257,10 +273,10 @@ func (n *Number) Add(o Number) (Number, error) {
 			result.Value = v.Add(v, ov)
 
 		default:
-			return Zero, fmt.Errorf("+: unsupport number %v", ov)
+			return n.Const(0), fmt.Errorf("+: unsupport number %v", ov)
 		}
 	default:
-		return Zero, fmt.Errorf("+: unsupport number %v", v)
+		return n.Const(0), fmt.Errorf("+: unsupport number %v", v)
 	}
 	return result, nil
 }
@@ -283,10 +299,10 @@ func (n *Number) Sub(o Number) (Number, error) {
 			result.Value = v.Sub(v, ov)
 
 		default:
-			return Zero, fmt.Errorf("-: unsupport number %v", ov)
+			return n.Const(0), fmt.Errorf("-: unsupport number %v", ov)
 		}
 	default:
-		return Zero, fmt.Errorf("-: unsupport number %v", v)
+		return n.Const(0), fmt.Errorf("-: unsupport number %v", v)
 	}
 	return result, nil
 }
@@ -309,10 +325,78 @@ func (n *Number) Mul(o Number) (Number, error) {
 			result.Value = v.Mul(v, ov)
 
 		default:
-			return Zero, fmt.Errorf("*: unsupport number %v", ov)
+			return n.Const(0), fmt.Errorf("*: unsupport number %v", ov)
 		}
 	default:
-		return Zero, fmt.Errorf("*: unsupport number %v", v)
+		return n.Const(0), fmt.Errorf("*: unsupport number %v", v)
+	}
+	return result, nil
+}
+
+// Div divides the argument number with this number and returns the
+// quotient.
+func (n *Number) Div(o Number) (Number, error) {
+	var result Number
+
+	switch v := n.Value.(type) {
+	case int64:
+		result.Value = v / o.Int64()
+
+	case *big.Int:
+		switch ov := o.Value.(type) {
+		case int64:
+			result.Value = v.Int64() / ov
+
+		case *big.Int:
+			result.Value = v.Div(v, ov)
+
+		default:
+			return n.Const(0), fmt.Errorf("*: unsupport number %v", ov)
+		}
+	default:
+		return n.Const(0), fmt.Errorf("*: unsupport number %v", v)
+	}
+	return result, nil
+}
+
+// Mod returns the modulo of dividing n by o.
+func (n *Number) Mod(o Number) (Number, error) {
+	var result Number
+
+	switch v := n.Value.(type) {
+	case int64:
+		result.Value = v % o.Int64()
+
+	case *big.Int:
+		switch ov := o.Value.(type) {
+		case int64:
+			result.Value = v.Int64() % ov
+
+		case *big.Int:
+			result.Value = v.Mod(v, ov)
+
+		default:
+			return n.Const(0), fmt.Errorf("mod: unsupport number %v", ov)
+		}
+	default:
+		return n.Const(0), fmt.Errorf("mod: unsupport number %v", v)
+	}
+	return result, nil
+}
+
+// Sqrt computes square root of this number.
+func (n *Number) Sqrt() (Number, error) {
+	var result Number
+
+	switch v := n.Value.(type) {
+	case int64:
+		result.Value = int64(math.Sqrt(float64(v)))
+
+	case *big.Int:
+		result.Value = v.Sqrt(v)
+
+	default:
+		return n.Const(0), fmt.Errorf("expt: invalid number %v", v)
 	}
 	return result, nil
 }
@@ -334,11 +418,11 @@ func (n *Number) Expt(o Number) (Number, error) {
 			result.Value = v.Exp(v, ov, nil)
 
 		default:
-			return Zero, fmt.Errorf("expt: invalid number %v", ov)
+			return n.Const(0), fmt.Errorf("expt: invalid number %v", ov)
 		}
 
 	default:
-		return Zero, fmt.Errorf("expt: invalid number %v", v)
+		return n.Const(0), fmt.Errorf("expt: invalid number %v", v)
 	}
 	return result, nil
 }
@@ -493,6 +577,66 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
+		Name: "<=",
+		Args: []string{"z1", "z2", "z1..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var last Number
+
+			for idx, arg := range args {
+				num, ok := arg.(Number)
+				if !ok {
+					return nil, l.Errorf("invalid argument: %v", arg)
+				}
+				if idx > 0 && last.Gt(num) {
+					return Boolean(false), nil
+				}
+				last = num
+			}
+			return Boolean(true), nil
+		},
+	},
+	{
+		Name: ">=",
+		Args: []string{"z1", "z2", "z1..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var last Number
+
+			for idx, arg := range args {
+				num, ok := arg.(Number)
+				if !ok {
+					return nil, l.Errorf("invalid argument: %v", arg)
+				}
+				if idx > 0 && last.Lt(num) {
+					return Boolean(false), nil
+				}
+				last = num
+			}
+			return Boolean(true), nil
+		},
+	},
+	{
+		Name: "odd?",
+		Args: []string{"z"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			z, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[0])
+			}
+			return Boolean(z.Bit(0) == 1), nil
+		},
+	},
+	{
+		Name: "even?",
+		Args: []string{"z"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			z, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[0])
+			}
+			return Boolean(z.Bit(0) == 0), nil
+		},
+	},
+	{
 		Name: "+",
 		Args: []string{"z1..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
@@ -510,6 +654,26 @@ var numberBuiltins = []Builtin{
 				}
 			}
 			return sum, nil
+		},
+	},
+	{
+		Name: "*",
+		Args: []string{"z1..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			product := NewNumber(0, big.NewInt(1))
+			var err error
+
+			for _, arg := range args {
+				num, ok := arg.(Number)
+				if !ok {
+					return nil, l.Errorf("invalid argument: %v", arg)
+				}
+				product, err = product.Mul(num)
+				if err != nil {
+					return nil, err
+				}
+			}
+			return product, nil
 		},
 	},
 	{
@@ -537,56 +701,57 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "*",
-		Args: []string{"z1..."},
+		Name: "/",
+		Args: []string{"z1", "z2..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			product := NewNumber(0, big.NewInt(1))
+			z, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[0])
+			}
+			if len(args) == 1 {
+				one := z.Const(1)
+				return one.Div(z)
+			}
+
 			var err error
 
-			for _, arg := range args {
-				num, ok := arg.(Number)
+			for i := 1; i < len(args); i++ {
+				num, ok := args[i].(Number)
 				if !ok {
-					return nil, l.Errorf("invalid argument: %v", arg)
+					return nil, l.Errorf("invalid argument: %v", args[i])
 				}
-				product, err = product.Mul(num)
+				z, err = z.Div(num)
 				if err != nil {
 					return nil, err
 				}
 			}
-			return product, nil
+			return z, nil
 		},
 	},
 	{
-		Name: "zero?",
+		Name: "mod",
+		Args: []string{"z1", "z2"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			z1, ok := args[0].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[0])
+			}
+			z2, ok := args[1].(Number)
+			if !ok {
+				return nil, l.Errorf("invalid argument: %v", args[1])
+			}
+			return z1.Mod(z2)
+		},
+	},
+	{
+		Name: "sqrt",
 		Args: []string{"z"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			z, ok := args[0].(Number)
 			if !ok {
 				return nil, l.Errorf("invalid argument: %v", args[0])
 			}
-			return Boolean(z.Equal(NewNumber(0, 0))), nil
-		},
-	},
-	{
-		Name: "odd?",
-		Args: []string{"z"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			z, ok := args[0].(Number)
-			if !ok {
-				return nil, l.Errorf("invalid argument: %v", args[0])
-			}
-			return Boolean(z.Bit(0) == 1), nil
-		},
-	},
-	{
-		Name: "even?",
-		Args: []string{"z"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			z, ok := args[0].(Number)
-			if !ok {
-				return nil, l.Errorf("invalid argument: %v", args[0])
-			}
-			return Boolean(z.Bit(0) == 0), nil
+			return z.Sqrt()
 		},
 	},
 	{

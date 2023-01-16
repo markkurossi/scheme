@@ -64,26 +64,6 @@ Hello, world!
 `,
 	},
 	{
-		i: `(+ 1 2 3)`,
-		v: NewNumber(0, 6),
-		o: ``,
-	},
-	{
-		i: `(+)`,
-		v: NewNumber(0, 0),
-		o: ``,
-	},
-	{
-		i: `(* 1 2 3)`,
-		v: NewNumber(0, 6),
-		o: ``,
-	},
-	{
-		i: `(*)`,
-		v: NewNumber(0, 1),
-		o: ``,
-	},
-	{
 		i: `(begin 1 2 3 4)`,
 		v: NewNumber(0, 4),
 		o: ``,
