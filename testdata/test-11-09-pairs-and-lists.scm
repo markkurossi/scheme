@@ -111,8 +111,21 @@
   (set-cdr! (cddddr loop-odd) loop-odd)
   (set-cdr! (cdddr loop-even) loop-even)
   (runner 'test "loop"
+          (lambda () (eq? (list? loop-odd) #f))
+          (lambda () (eq? (list? loop-even) #f))
           (lambda () (eq? (length loop-odd) #f))
           (lambda () (eq? (length loop-even) #f))
+          (lambda () (eq? (append '() loop-odd '(1 2)) #f))
+          (lambda () (eq? (append '() loop-even '(1 2)) #f))
+          (lambda () (eq? (reverse loop-odd) #f))
+          (lambda () (eq? (reverse loop-even) #f))
+
+          ;; Index must be big enough to detec the loop.
+          (lambda () (eq? (list-tail loop-odd 100) #f))
+          (lambda () (eq? (list-tail loop-even 100) #f))
+          (lambda () (eq? (list-ref loop-odd 100) #f))
+          (lambda () (eq? (list-ref loop-even 100) #f))
+
           (lambda () (eq? (for-each (lambda (x)) loop-odd) #f))
           (lambda () (eq? (for-each (lambda (x)) loop-even) #f))
           (lambda () (eq? (map (lambda (x) x) loop-odd) #f))

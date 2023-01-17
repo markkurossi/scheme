@@ -6,6 +6,8 @@
 
 ;; rnrs lists (6)
 
+;; XXX turtle
+
 (define (memp proc list)
   (if (null? list)
       #f
