@@ -49,7 +49,35 @@
         ;; (error 'length "not a list" lst)
         #f)))
 
-;; XXX implement all below using for-each, and add turtle to for-each
+(define (append list . rest)
+  (if (null? rest)
+      list
+      (letrec ((head '())
+               (tail '())
+               (append-list
+                (lambda (items)
+                  (for-each (lambda (x)
+                              (let ((p (cons x '())))
+                                (if (null? tail)
+                                    (set! head p)
+                                    (set-cdr! tail p))
+                                (set! tail p)))
+                            items)))
+               (iter
+                (lambda (rest)
+                  (if (null? (cdr rest))
+                      (if (null? tail)
+                          (car rest)
+                          (begin
+                            (set-cdr! tail (car rest))
+                            head))
+                      (if (append-list (car rest))
+                          (iter (cdr rest))
+                          #f)))))
+        (if (append-list list)
+            (iter rest)
+            ;; (error 'append "not a list" list rest)
+            #f))))
 
 (define (reverse list)
   (letrec ((turtle '())
@@ -114,32 +142,3 @@
                 (iter (not even) (cdr list) (- k 1)))))))
     ;; XXX (assertion-violation 'list-ref "index out of range" list k)
     (iter #t list k)))
-
-(define (append list . rest)
-  (if (null? rest)
-      list
-      (letrec ((head '())
-               (tail '())
-               (append-list
-                (lambda (items)
-                  ;; XXX need turtle here
-                  (if (not (null? items))
-                      (let ((p (cons (car items) '())))
-                        (if (null? tail)
-                            (set! head p)
-                            (set-cdr! tail p))
-                        (set! tail p)
-                        (append-list (cdr items))))))
-               (iter
-                (lambda (rest)
-                  (if (null? (cdr rest))
-                      (if (null? tail)
-                          (car rest)
-                          (begin
-                            (set-cdr! tail (car rest))
-                            head))
-                      (begin
-                        (append-list (car rest))
-                        (iter (cdr rest)))))))
-        (append-list list)
-        (iter rest))))
