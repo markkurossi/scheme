@@ -120,7 +120,7 @@
           (lambda () (eq? (reverse loop-odd) #f))
           (lambda () (eq? (reverse loop-even) #f))
 
-          ;; Index must be big enough to detec the loop.
+          ;; Index must be big enough to detect the loop.
           (lambda () (eq? (list-tail loop-odd 100) #f))
           (lambda () (eq? (list-tail loop-even 100) #f))
           (lambda () (eq? (list-ref loop-odd 100) #f))
