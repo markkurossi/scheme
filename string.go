@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -179,99 +179,49 @@ var stringBuiltins = []Builtin{
 	},
 	// XXX string-set!
 	{
-		Name: "string=?",
-		Args: []string{"string1", "string2", "string3..."},
+		Name: "scheme::string=?",
+		Args: []string{"string1", "string2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last string
-
-			for idx, arg := range args {
-				str, ok := arg.(String)
-				if !ok {
-					return nil, l.Errorf("invalid string %v", arg)
-				}
-				if idx > 0 && string(str) != last {
-					return Boolean(false), nil
-				}
-				last = string(str)
+			str1, ok := args[0].(String)
+			if !ok {
+				return nil, l.Errorf("invalid string: %v", args[0])
 			}
-			return Boolean(true), nil
+			str2, ok := args[1].(String)
+			if !ok {
+				return nil, l.Errorf("invalid string: %v", args[1])
+			}
+			return Boolean(string(str1) == string(str2)), nil
 		},
 	},
 	// XXX string-ci=?
 	{
-		Name: "string<?",
-		Args: []string{"string1", "string2", "string3..."},
+		Name: "scheme::string<?",
+		Args: []string{"string1", "string2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last string
-
-			for idx, arg := range args {
-				str, ok := arg.(String)
-				if !ok {
-					return nil, l.Errorf("invalid string %v", arg)
-				}
-				if idx > 0 && string(str) <= last {
-					return Boolean(false), nil
-				}
-				last = string(str)
+			str1, ok := args[0].(String)
+			if !ok {
+				return nil, l.Errorf("invalid string: %v", args[0])
 			}
-			return Boolean(true), nil
+			str2, ok := args[1].(String)
+			if !ok {
+				return nil, l.Errorf("invalid string: %v", args[1])
+			}
+			return Boolean(string(str1) < string(str2)), nil
 		},
 	},
 	{
-		Name: "string>?",
-		Args: []string{"string1", "string2", "string3..."},
+		Name: "scheme::string>?",
+		Args: []string{"string1", "string2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last string
-
-			for idx, arg := range args {
-				str, ok := arg.(String)
-				if !ok {
-					return nil, l.Errorf("invalid string %v", arg)
-				}
-				if idx > 0 && string(str) >= last {
-					return Boolean(false), nil
-				}
-				last = string(str)
+			str1, ok := args[0].(String)
+			if !ok {
+				return nil, l.Errorf("invalid string: %v", args[0])
 			}
-			return Boolean(true), nil
-		},
-	},
-	{
-		Name: "string<=?",
-		Args: []string{"string1", "string2", "string3..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last string
-
-			for idx, arg := range args {
-				str, ok := arg.(String)
-				if !ok {
-					return nil, l.Errorf("invalid string %v", arg)
-				}
-				if idx > 0 && string(str) < last {
-					return Boolean(false), nil
-				}
-				last = string(str)
+			str2, ok := args[1].(String)
+			if !ok {
+				return nil, l.Errorf("invalid string: %v", args[1])
 			}
-			return Boolean(true), nil
-		},
-	},
-	{
-		Name: "string>=?",
-		Args: []string{"string1", "string2", "string3..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last string
-
-			for idx, arg := range args {
-				str, ok := arg.(String)
-				if !ok {
-					return nil, l.Errorf("invalid string %v", arg)
-				}
-				if idx > 0 && string(str) > last {
-					return Boolean(false), nil
-				}
-				last = string(str)
-			}
-			return Boolean(true), nil
+			return Boolean(string(str1) > string(str2)), nil
 		},
 	},
 	// XXX string-ci<?

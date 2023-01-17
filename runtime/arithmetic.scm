@@ -4,73 +4,34 @@
 ;;; All rights reserved.
 ;;;
 
-(define (= z1 z2 . rest)
-  (if (not (scheme::= z1 z2))
-      #f
+(define (scheme::compare pred x1 x2 rest)
+  (if (pred x1 x2)
       (letrec ((iter
-                (lambda (z values)
+                (lambda (last values)
                   (if (null? values)
                       #t
-                      (if (not (scheme::= z (car values)))
-                          #f
-                          (iter z (cdr values)))))))
-        (iter z1 rest))))
+                      (let ((next (car values))
+                            (rest (cdr values)))
+                        (if (pred last next)
+                            (iter next rest)
+                            #f))))))
+        (iter x2 rest))
+      #f))
+
+(define (= z1 z2 . rest)
+  (scheme::compare (lambda (x y) (scheme::= x y)) z1 z2 rest))
 
 (define (< x1 x2 . rest)
-  (if (not (scheme::< x1 x2))
-      #f
-      (letrec ((iter
-                (lambda (last values)
-                  (if (null? values)
-                      #t
-                      (let ((next (car values))
-                            (rest (cdr values)))
-                        (if (not (scheme::< last next))
-                            #f
-                            (iter next rest)))))))
-        (iter x2 rest))))
+  (scheme::compare (lambda (x y) (scheme::< x y)) x1 x2 rest))
 
 (define (> x1 x2 . rest)
-  (if (not (scheme::> x1 x2))
-      #f
-      (letrec ((iter
-                (lambda (last values)
-                  (if (null? values)
-                      #t
-                      (let ((next (car values))
-                            (rest (cdr values)))
-                        (if (not (scheme::> last next))
-                            #f
-                            (iter next rest)))))))
-        (iter x2 rest))))
+  (scheme::compare (lambda (x y) (scheme::> x y)) x1 x2 rest))
 
 (define (<= x1 x2 . rest)
-  (if (scheme::> x1 x2)
-      #f
-      (letrec ((iter
-                (lambda (last values)
-                  (if (null? values)
-                      #t
-                      (let ((next (car values))
-                            (rest (cdr values)))
-                        (if (scheme::> last next)
-                            #f
-                            (iter next rest)))))))
-        (iter x2 rest))))
+  (scheme::compare (lambda (x y) (not (scheme::> x y))) x1 x2 rest))
 
 (define (>= x1 x2 . rest)
-  (if (scheme::< x1 x2)
-      #f
-      (letrec ((iter
-                (lambda (last values)
-                  (if (null? values)
-                      #t
-                      (let ((next (car values))
-                            (rest (cdr values)))
-                        (if (scheme::< last next)
-                            #f
-                            (iter next rest)))))))
-        (iter x2 rest))))
+  (scheme::compare (lambda (x y) (not (scheme::< x y))) x1 x2 rest))
 
 (define (zero? z)
   (= z 0))

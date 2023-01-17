@@ -8,9 +8,13 @@
 
 (runner 'sub-section "3. List utilities")
 
-(runner 'test "memp"
-        (lambda () (equal? (memp even? '(3 1 4 1 5 9 2 6 5)) '(4 1 5 9 2 6 5)))
-        )
+(let ((loop '(1 1 1 1 1)))
+  (set-cdr! (cddddr loop) loop)
+  (runner 'test "memp"
+          (lambda () (equal? (memp even? '(3 1 4 1 5 9 2 6 5))
+                             '(4 1 5 9 2 6 5)))
+          (lambda () (eq? (memp even? loop) #f))
+          ))
 
 (runner 'test "memq"
         (lambda () (equal? (memq 'a '(a b c)) '(a b c)))
@@ -28,10 +32,13 @@
         (lambda () (equal? (memv 101 '(100 101 102)) '(101 102)))
         )
 
-(let ((d '((3 a) (1 b) (4 c))))
+(let ((d '((3 a) (1 b) (4 c)))
+      (loop '((1 a) (3 b) (5 c) (7 d) (9 e))))
+  (set-cdr! (cddddr loop) loop)
   (runner 'test "assp"
           (lambda () (equal? (assp even? d) '(4 c)))
           (lambda () (equal? (assp odd? d) '(3 a)))
+          (lambda () (eq? (assp even? loop) #f))
           ))
 
 (let ((e '((a 1) (b 2) (c 3))))
