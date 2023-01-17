@@ -44,6 +44,9 @@
         (lambda () (list? '()))
         (lambda () (list? (list)))
         (lambda () (not (list? '(a . b))))
+        (lambda () (let ((loop '(1 2 3 4 5)))
+                     (set-cdr! (cddddr loop) loop)
+                     (not (list? loop))))
         )
 
 (runner 'test "list"

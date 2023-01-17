@@ -47,17 +47,17 @@
 
 (define (for-each f . lists)
   (letrec ((turtle '())
-           (loop
+           (iter
             (lambda (even lists)
-              (if (null? (car lists))
-                  #t
-                  (if (eq? turtle (car lists))
-                      #f
-                      (begin
-                        (if even
-                            (if (null? turtle)
-                                (set! turtle (car lists))
-                                (set! turtle (cdr turtle))))
-                        (apply f (scheme::list-heads lists))
-                        (loop (not even) (scheme::list-tails lists))))))))
-    (loop #t lists)))
+              (cond
+               ((null? (car lists)) #t)
+               ((not (pair? (car lists))) #f)
+               ((eq? turtle (car lists)) #f)
+               (else
+                (if even
+                    (if (null? turtle)
+                        (set! turtle (car lists))
+                        (set! turtle (cdr turtle))))
+                (apply f (scheme::list-heads lists))
+                (iter (not even) (scheme::list-tails lists)))))))
+    (iter #t lists)))
