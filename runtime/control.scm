@@ -29,21 +29,23 @@
 
 (define (map f . lists)
   (letrec ((turtle '())
-           (loop
+           (iter
             (lambda (even result lists)
-              (if (null? (car lists))
-                  (reverse result)
-                  (if (eq? turtle (car lists))
-                      #f
-                      (begin
-                        (if even
-                            (if (null? turtle)
-                                (set! turtle (car lists))
-                                (set! turtle (cdr turtle))))
-                        (loop (not even)
-                              (cons (apply f (scheme::list-heads lists)) result)
-                              (scheme::list-tails lists))))))))
-    (loop #t '() lists)))
+              (cond
+               ((null? (car lists)) (reverse result))
+               ((or (not (pair? (car lists)))
+                    (eq? turtle (car lists)))
+                ;; XXX (error 'map "not a list" f lists)
+                #f)
+               (else
+                (if even
+                    (if (null? turtle)
+                        (set! turtle (car lists))
+                        (set! turtle (cdr turtle))))
+                (iter (not even)
+                      (cons (apply f (scheme::list-heads lists)) result)
+                      (scheme::list-tails lists)))))))
+    (iter #t '() lists)))
 
 (define (for-each f . lists)
   (letrec ((turtle '())
@@ -51,8 +53,10 @@
             (lambda (even lists)
               (cond
                ((null? (car lists)) #t)
-               ((not (pair? (car lists))) #f)
-               ((eq? turtle (car lists)) #f)
+               ((or (not (pair? (car lists)))
+                    (eq? turtle (car lists)))
+                ;; XXX (error 'for-each "not a list" f lists)
+                #f)
                (else
                 (if even
                     (if (null? turtle)

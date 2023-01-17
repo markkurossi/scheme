@@ -46,7 +46,7 @@
   (let ((count 0))
     (if (for-each (lambda (x) (set! count (+ count 1))) lst)
         count
-        ;; (error 'length "not a list" lst)
+        ;; XXX (error 'length "not a list" lst)
         #f)))
 
 (define (append list . rest)
@@ -76,7 +76,7 @@
                           #f)))))
         (if (append-list list)
             (iter rest)
-            ;; (error 'append "not a list" list rest)
+            ;; XXX (error 'append "not a list" list rest)
             #f))))
 
 (define (reverse list)
@@ -87,7 +87,7 @@
                ((null? rest) result)
                ((or (not (pair? rest))
                     (eq? turtle rest))
-                ;; (error 'reverse "not a list" list)
+                ;; XXX (error 'reverse "not a list" list)
                 #f)
                (else
                 (if even
@@ -106,11 +106,11 @@
               (cond
                ((zero? k) list)
                ((null? list)
-                ;; (error 'list-tail "index out of range" list k)
+                ;; XXX (error 'list-tail "index out of range" list k)
                 #f)
                ((or (not (pair? list))
                     (eq? turtle list))
-                ;; (error 'list-tail "not a list" list k)
+                ;; XXX (error 'list-tail "not a list" list k)
                 #f)
                (else
                 (if even
@@ -127,11 +127,11 @@
             (lambda (even list k)
               (cond
                ((null? list)
-                ;; (error 'list-ref "index out of range" list k)
+                ;; XXX (error 'list-ref "index out of range" list k)
                 #f)
                ((or (not (pair? list))
                     (eq? turtle list))
-                ;; (error 'list-ref "not a list" list k)
+                ;; XXX (error 'list-ref "not a list" list k)
                 #f)
                ((zero? k) (car list))
                (else
