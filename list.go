@@ -253,6 +253,8 @@ func MapPairs(f func(idx int, p Pair) error, list Value) error {
 		return ErrorInvalidList
 	}
 
+	var turtle Pair
+
 	for idx := 0; pair != nil; idx++ {
 		if err := f(idx, pair); err != nil {
 			point := pair.From()
@@ -260,6 +262,25 @@ func MapPairs(f func(idx int, p Pair) error, list Value) error {
 				return err
 			}
 			return fmt.Errorf("%s: %v", point, err)
+		}
+		if pair == turtle {
+			return ErrorInvalidList
+		}
+		if idx%2 == 0 {
+			if turtle == nil {
+				turtle = pair
+			} else {
+				switch cdr := turtle.Cdr().(type) {
+				case Pair:
+					turtle = cdr
+
+				case nil:
+					pair = nil
+
+				default:
+					return ErrorInvalidList
+				}
+			}
 		}
 		switch cdr := pair.Cdr().(type) {
 		case Pair:
