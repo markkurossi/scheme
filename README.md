@@ -72,7 +72,6 @@ structured data operations.
 	 - [ ] string-ci>?
 	 - [ ] string-ci<=?
 	 - [ ] string-ci>=?
-	 - [ ] string-for-each
 	 - [ ] string-fill!
    - [ ] 6.9. Control features
      - [ ] force
