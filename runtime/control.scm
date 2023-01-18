@@ -11,28 +11,36 @@
 
 (define (scheme::list-heads lists)
   (letrec ((heads
-            (lambda (result lists)
+            (lambda (head tail lists)
               (if (null? lists)
-                  (reverse result)
-                  (heads (cons (caar lists) result)
-                         (cdr lists))))))
-    (heads '() lists)))
+                  head
+                  (let ((p (cons (caar lists) '())))
+                    (if (null? tail)
+                        (set! head p)
+                        (set-cdr! tail p))
+                    (set! tail p)
+                    (heads head tail (cdr lists)))))))
+    (heads '() '() lists)))
 
 (define (scheme::list-tails lists)
   (letrec ((tails
-            (lambda (result lists)
+            (lambda (head tail lists)
               (if (null? lists)
-                  (reverse result)
-                  (tails (cons (cdar lists) result)
-                         (cdr lists))))))
-    (tails '() lists)))
+                  head
+                  (let ((p (cons (cdar lists) '())))
+                    (if (null? tail)
+                        (set! head p)
+                        (set-cdr! tail p))
+                    (set! tail p)
+                    (tails head tail (cdr lists)))))))
+    (tails '() '() lists)))
 
 (define (map f . lists)
   (letrec ((turtle '())
            (iter
-            (lambda (even result lists)
+            (lambda (even head tail lists)
               (cond
-               ((null? (car lists)) (reverse result))
+               ((null? (car lists)) head)
                ((or (not (pair? (car lists)))
                     (eq? turtle (car lists)))
                 ;; XXX (error 'map "not a list" f lists)
@@ -42,10 +50,15 @@
                     (if (null? turtle)
                         (set! turtle (car lists))
                         (set! turtle (cdr turtle))))
-                (iter (not even)
-                      (cons (apply f (scheme::list-heads lists)) result)
-                      (scheme::list-tails lists)))))))
-    (iter #t '() lists)))
+                (let ((p (cons (apply f (scheme::list-heads lists)) '())))
+                  (if (null? tail)
+                      (set! head p)
+                      (set-cdr! tail p))
+                  (set! tail p)
+                  (iter (not even)
+                        head tail
+                        (scheme::list-tails lists))))))))
+    (iter #t '() '() lists)))
 
 (define (for-each f . lists)
   (letrec ((turtle '())
