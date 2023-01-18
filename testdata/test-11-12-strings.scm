@@ -111,6 +111,29 @@
         (lambda () (string=? (list->string (string->list "")) ""))
         )
 
+(runner 'test "string-for-each"
+        (lambda () (let ((num-upper 0)
+                         (num-lower 0))
+                     (string-for-each
+                      (lambda (ch)
+                        (cond
+                         ((char-upper-case? ch)
+                          (set! num-upper (+ num-upper 1)))
+                         ((char-lower-case? ch)
+                          (set! num-lower (+ num-lower 1)))))
+                      "abcdABCD")
+                     (and (eq? num-upper 4)
+                          (eq? num-lower 4))))
+        (lambda () (let ((num-bigger 0))
+                     (string-for-each
+                      (lambda (ch1 ch2)
+                        (if (char>=? ch1 ch2)
+                            (set! num-bigger (+ num-bigger 1))))
+                      "ABCabcd"
+                      "abcABCD")
+                     (= num-bigger 4)))
+        )
+
 (runner 'test "string-copy"
         (lambda () (string=? (string-copy "") ""))
         (lambda () (string=? (string-copy "a\x41bc;c") "a\x41bc;c"))

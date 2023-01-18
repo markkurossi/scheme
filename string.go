@@ -316,7 +316,6 @@ var stringBuiltins = []Builtin{
 			return String(string(str)), nil
 		},
 	},
-	// XXX string-for-each
 	{
 		Name: "string-copy",
 		Args: []string{"string"},
