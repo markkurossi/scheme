@@ -51,8 +51,7 @@ func (n Number) Copy() Number {
 		result.Value = v
 
 	case *big.Int:
-		i := big.NewInt(0)
-		result.Value = i.Set(v)
+		result.Value = new(big.Int).Set(v)
 
 	default:
 		panic(fmt.Sprintf("n type %T not implemented", n.Value))
@@ -270,7 +269,7 @@ func (n *Number) Add(o Number) (Number, error) {
 			result.Value = v.Int64() + ov
 
 		case *big.Int:
-			result.Value = v.Add(v, ov)
+			result.Value = new(big.Int).Add(v, ov)
 
 		default:
 			return n.Const(0), fmt.Errorf("+: unsupport number %v", ov)
@@ -296,7 +295,7 @@ func (n *Number) Sub(o Number) (Number, error) {
 			result.Value = v.Int64() - ov
 
 		case *big.Int:
-			result.Value = v.Sub(v, ov)
+			result.Value = new(big.Int).Sub(v, ov)
 
 		default:
 			return n.Const(0), fmt.Errorf("-: unsupport number %v", ov)
@@ -322,7 +321,7 @@ func (n *Number) Mul(o Number) (Number, error) {
 			result.Value = v.Int64() * ov
 
 		case *big.Int:
-			result.Value = v.Mul(v, ov)
+			result.Value = new(big.Int).Mul(v, ov)
 
 		default:
 			return n.Const(0), fmt.Errorf("*: unsupport number %v", ov)
@@ -348,7 +347,7 @@ func (n *Number) Div(o Number) (Number, error) {
 			result.Value = v.Int64() / ov
 
 		case *big.Int:
-			result.Value = v.Div(v, ov)
+			result.Value = new(big.Int).Div(v, ov)
 
 		default:
 			return n.Const(0), fmt.Errorf("*: unsupport number %v", ov)
@@ -373,7 +372,7 @@ func (n *Number) Mod(o Number) (Number, error) {
 			result.Value = v.Int64() % ov
 
 		case *big.Int:
-			result.Value = v.Mod(v, ov)
+			result.Value = new(big.Int).Mod(v, ov)
 
 		default:
 			return n.Const(0), fmt.Errorf("mod: unsupport number %v", ov)
@@ -393,7 +392,7 @@ func (n *Number) Sqrt() (Number, error) {
 		result.Value = int64(math.Sqrt(float64(v)))
 
 	case *big.Int:
-		result.Value = v.Sqrt(v)
+		result.Value = new(big.Int).Sqrt(v)
 
 	default:
 		return n.Const(0), fmt.Errorf("expt: invalid number %v", v)
@@ -415,7 +414,7 @@ func (n *Number) Expt(o Number) (Number, error) {
 			result.Value = int64(math.Pow(float64(v.Int64()), float64(ov)))
 
 		case *big.Int:
-			result.Value = v.Exp(v, ov, nil)
+			result.Value = new(big.Int).Exp(v, ov, nil)
 
 		default:
 			return n.Const(0), fmt.Errorf("expt: invalid number %v", ov)
