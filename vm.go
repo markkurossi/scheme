@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -209,7 +209,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			// scm.printStack()
 
 		case OpGlobalSet:
-			if instr.Sym.Global == nil {
+			if instr.Sym.Flags&FlagDefined == 0 {
 				return nil, scm.Breakf("undefined symbol '%s'", instr.Sym.Name)
 			}
 			instr.Sym.Global = scm.accu
