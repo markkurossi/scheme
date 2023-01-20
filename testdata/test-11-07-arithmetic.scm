@@ -170,3 +170,13 @@
         (lambda () (= (expt 5 0) 1))
         (lambda () (= (expt 0 0) 1))
         )
+
+(letrec ((fact
+          (lambda (n)
+            (if (< n #e2)
+                #e1
+                (* n (fact (- n #e1)))))))
+  (runner 'test "fact"
+          (lambda () (eq? (fact 5) 120))
+          (lambda () (eq? (fact #e5) #e120))
+          ))

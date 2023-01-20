@@ -72,7 +72,7 @@
               (if (null? rest)
                   sum
                   (iter (scheme::+ sum (car rest)) (cdr rest))))))
-    (iter 0 rest)))
+    (iter #e0 rest)))
 
 (define (* . rest)
   (letrec ((iter
@@ -80,11 +80,11 @@
               (if (null? rest)
                   product
                   (iter (scheme::* product (car rest)) (cdr rest))))))
-    (iter 1 rest)))
+    (iter #e1 rest)))
 
 (define (- z . rest)
   (if (null? rest)
-      (scheme::- 0 z)
+      (scheme::- #e0 z)
       (letrec ((iter
                 (lambda (diff rest)
                   (if (null? rest)
@@ -94,7 +94,7 @@
 
 (define (/ z . rest)
   (if (null? rest)
-      (scheme::/ 1 z)
+      (scheme::/ #e1 z)
       (letrec ((iter
                 (lambda (quot rest)
                   (if (null? rest)
