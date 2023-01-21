@@ -67,20 +67,24 @@
     (iter x args)))
 
 (define (+ . rest)
-  (letrec ((iter
-            (lambda (sum rest)
-              (if (null? rest)
-                  sum
-                  (iter (scheme::+ sum (car rest)) (cdr rest))))))
-    (iter #e0 rest)))
+  (if (null? rest)
+      #e0
+      (letrec ((iter
+                (lambda (sum rest)
+                  (if (null? rest)
+                      sum
+                      (iter (scheme::+ sum (car rest)) (cdr rest))))))
+        (iter (car rest) (cdr rest)))))
 
 (define (* . rest)
-  (letrec ((iter
-            (lambda (product rest)
-              (if (null? rest)
-                  product
-                  (iter (scheme::* product (car rest)) (cdr rest))))))
-    (iter #e1 rest)))
+  (if (null? rest)
+      #e1
+      (letrec ((iter
+                (lambda (product rest)
+                  (if (null? rest)
+                      product
+                      (iter (scheme::* product (car rest)) (cdr rest))))))
+        (iter (car rest) (cdr rest)))))
 
 (define (- z . rest)
   (if (null? rest)
