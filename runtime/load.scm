@@ -11,22 +11,38 @@
 
 (define scheme::libraries '(((rnrs) initialized)))
 
-(define (scheme::main? name)
-  (equal? name '(main)))
-
 (define (scheme::init-library library)
-  (letrec ((make-library-path
+  (letrec ((main?
             (lambda (name)
-              (string-append (getenv "HOME")
-                             "/"
-                             "go/src/github.com/markkurossi/scheme/lib"
-                             "/"
-                             "go"
-                             "/"
-                             "base"
-                             ".scm")))
+              (equal? name '(main))))
 
-           ;; Importer imports all library imports and returns a
+           (join
+            (lambda (items sep)
+              (letrec ((head '())
+                       (tail '()))
+                (for-each (lambda (item)
+                            (let ((p (cons item '())))
+                              (if (null? tail)
+                                  (set! head p)
+                                  (set-cdr! tail (cons sep p)))
+                              (set! tail p)))
+                          items)
+                head)))
+
+           ;; The make-library-path creates an operating system file
+           ;; path for the argument library name.
+           (make-library-path
+            (lambda (name)
+              (apply string-append
+                     (append
+                      (join (append
+                             (list (getenv "HOME")
+                                   "go/src/github.com/markkurossi/scheme/lib")
+                             (map symbol->string name))
+                            "/")
+                      '(".scm")))))
+
+           ;; The importer imports all library imports and returns a
            ;; boolean success status.
            (importer
             (lambda (imports)
@@ -78,7 +94,7 @@
           ;; Library not seen before. Initialize it now.
           (begin
             (set! this (list lib-name 'initializing))
-            (if (not (scheme::main? lib-name))
+            (if (not (main? lib-name))
                 (set! scheme::libraries (cons this scheme::libraries)))
 
             ;; Imports.
