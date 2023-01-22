@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -15,30 +15,38 @@ import (
 
 // Compiler implements the byte-code compiler.
 type Compiler struct {
-	scm       *Scheme
-	source    string
-	defined   map[string]*Identifier
-	defines   []string
+	scm    *Scheme
+	source string
+
+	// Library header.
+	libraryName Value
+	exportAll   bool
+	exports     Value
+	exported    map[string]*Identifier
+	imports     Value
+
 	code      Code
 	pcmap     PCMap
 	lambdas   []*LambdaBody
 	nextLabel int
 }
 
-// Module implements a Scheme compilation unit.
-type Module struct {
+// Library implements a Scheme compilation unit.
+type Library struct {
 	Source  string
-	Exports []string
+	Name    Value
+	Exports Value
+	Imports Value
 	Init    Code
 	PCMap   PCMap
 }
 
 // MapPC maps the program counter value to the source location.
-func (m *Module) MapPC(pc int) (source string, line int) {
+func (m *Library) MapPC(pc int) (source string, line int) {
 	source = m.Source
 
 	if false {
-		fmt.Printf("Module.MapPC: %v:%v\n", source, pc)
+		fmt.Printf("Library.MapPC: %v:%v\n", source, pc)
 		for idx, pm := range m.PCMap {
 			fmt.Printf(" - %v\tPC=%v, Line=%v\n", idx, pm.PC, pm.Line)
 		}
@@ -85,13 +93,13 @@ func (code Code) Print() {
 // NewCompiler creates a new bytecode compiler.
 func NewCompiler(scm *Scheme) *Compiler {
 	return &Compiler{
-		scm:     scm,
-		defined: make(map[string]*Identifier),
+		scm:      scm,
+		exported: make(map[string]*Identifier),
 	}
 }
 
 // CompileFile compiles the Scheme file.
-func (c *Compiler) CompileFile(file string) (*Module, error) {
+func (c *Compiler) CompileFile(file string) (*Library, error) {
 	in, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -101,7 +109,7 @@ func (c *Compiler) CompileFile(file string) (*Module, error) {
 }
 
 // Compile compiles the scheme source.
-func (c *Compiler) Compile(source string, in io.Reader) (*Module, error) {
+func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 	parser := NewParser(source, in)
 
 	c.source = source
@@ -117,6 +125,12 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Module, error) {
 	// push the empty argument frame.
 	env.PushFrame()
 
+	first := true
+
+	library := &Library{
+		Source: source,
+	}
+
 	for {
 		v, err := parser.Next()
 		if err != nil {
@@ -127,6 +141,47 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Module, error) {
 		}
 		c.scm.Parsing = false
 
+		// Check libraries.
+		if first {
+			pair, ok := v.(Pair)
+			if ok && isNamedIdentifier(pair.Car(), "library") {
+				list, ok := ListPairs(v)
+				if !ok || len(list) < 4 {
+					return nil, pair.Errorf("invalid library: %v", v)
+				}
+				err = c.parseLibraryHeader(list)
+				if err != nil {
+					return nil, err
+				}
+
+				// Compile library body.
+				for i := 4; i < len(list); i++ {
+					err = c.compileValue(env, list[i], list[i].Car(), false)
+					if err != nil {
+						return nil, err
+					}
+				}
+
+				// Check that the file does not have any trailing garbage
+				// after the library specification.
+				v, err = parser.Next()
+				if err == nil {
+					return nil, fmt.Errorf("garbage after library: %v", v)
+				}
+				if err != io.EOF {
+					return nil, err
+				}
+				break
+			} else {
+				// Not a library source.
+				c.exportAll = true
+				c.libraryName = NewPair(&Identifier{
+					Name: "main",
+				}, nil)
+			}
+			first = false
+		}
+
 		err = c.compileValue(env, Point{}, v, false)
 		if err != nil {
 			return nil, err
@@ -134,10 +189,7 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Module, error) {
 	}
 	c.addInstr(parser, OpReturn, nil, 0)
 
-	module := &Module{
-		Source: source,
-		PCMap:  c.pcmap,
-	}
+	library.PCMap = c.pcmap
 
 	// Compile lambdas.
 
@@ -204,10 +256,61 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Module, error) {
 		}
 	}
 
-	module.Exports = c.defines
-	module.Init = c.code
+	// Check that all exported names were defined.
+	for k, v := range c.exported {
+		if v == nil {
+			return nil, fmt.Errorf("exported symbol '%s' not defined", k)
+		}
+	}
 
-	return module, nil
+	library.Name = c.libraryName
+	library.Exports = c.exports
+	library.Imports = c.imports
+	library.Init = c.code
+
+	return library, nil
+}
+
+func (c *Compiler) parseLibraryHeader(list []Pair) error {
+	if len(list) < 4 {
+		return list[0].Errorf("truncated library header")
+	}
+	// Name.
+	pair, ok := list[1].Car().(Pair)
+	if !ok {
+		return list[1].Errorf("invalid library name: %v", list[1].Car())
+	}
+	l, ok := ListPairs(pair)
+	if !ok || len(l) == 0 {
+		return list[1].Errorf("invalid library name: %v", pair)
+	}
+	c.libraryName = pair
+
+	// Export.
+	l, ok = ListPairs(list[2].Car())
+	if !ok || len(l) == 0 || !isNamedIdentifier(l[0].Car(), "export") {
+		return list[2].Errorf("expected (export ...)")
+	}
+	for i := 1; i < len(l); i++ {
+		id, ok := isIdentifier(l[i].Car())
+		if !ok {
+			return l[i].Errorf("invalid export name: %v", l[i])
+		}
+		c.exported[id.Name] = nil
+	}
+
+	// Import.
+	pair, ok = list[3].Car().(Pair)
+	if !ok {
+		return list[3].Errorf("invalid library import: %v", list[3].Car())
+	}
+	_, ok = ListPairs(list[3].Car())
+	if !ok {
+		return list[3].Errorf("expected (import ...)")
+	}
+	c.imports, _ = Cdr(pair, true)
+
+	return nil
 }
 
 func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
@@ -398,13 +501,31 @@ func (c *Compiler) compileDefine(env *Env, list []Pair) error {
 }
 
 func (c *Compiler) define(env *Env, name *Identifier) error {
-	prev, ok := c.defined[name.Name]
-	if ok {
-		return name.Point.Errorf("symbol '%s' already defined at %s",
-			name.Name, prev.Point)
+	prev, ok := c.exported[name.Name]
+	if c.exportAll {
+		// All symbols are exported. Check that the symbol is not
+		// redefined.
+		if ok {
+			return name.Point.Errorf("symbol '%s' already defined at %s",
+				name.Name, prev.Point)
+		}
+		// XXX Define global symbol.
+	} else {
+		// Only listed symbols are exported.
+		if ok {
+			if prev != nil {
+				// Exported symbol redefined.
+				return name.Point.Errorf("symbol '%s' already defined at %s",
+					name.Name, prev.Point)
+			}
+			// XXX Defined global symbol.
+		} else {
+			// XXX Define library symbol.
+		}
 	}
-	c.defined[name.Name] = name
-	c.defines = append(c.defines, name.Name)
+
+	c.exported[name.Name] = name
+	c.exports = NewPair(name, c.exports)
 
 	instr := c.addInstr(nil, OpDefine, nil, 0)
 	instr.Sym = c.scm.Intern(name.Name)
@@ -1011,6 +1132,11 @@ func isKeyword(value Value, keyword Keyword) bool {
 func isIdentifier(value Value) (*Identifier, bool) {
 	id, ok := value.(*Identifier)
 	return id, ok
+}
+
+func isNamedIdentifier(value Value, name string) bool {
+	id, ok := isIdentifier(value)
+	return ok && id.Name == name
 }
 
 // LambdaBody defines the lambda body and its location in the compiled

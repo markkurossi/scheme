@@ -172,11 +172,16 @@ func TestVM(t *testing.T) {
 		}
 		if !Equal(v, test.v) {
 			fmt.Printf("Test %d:\n%s\n", idx, vmTests[idx].i)
+			fmt.Printf(" - result mismatch: got %v, expected %v\n",
+				v, test.v)
 			t.Errorf("Test %d: Eval failed: got %v, expected %v",
 				idx, v, test.v)
 		}
 		output := stdout.String()
 		if output != test.o {
+			fmt.Printf("Test %d:\n%s\n", idx, vmTests[idx].i)
+			fmt.Printf(" - output mismatch: got '%v', expected '%v'\n",
+				output, test.o)
 			t.Errorf("unexpected output: got '%v', expected '%v'",
 				output, test.o)
 		}

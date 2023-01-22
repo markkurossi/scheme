@@ -75,36 +75,26 @@ func (scm *Scheme) LoadFile(file string) (Value, error) {
 func (scm *Scheme) Load(source string, in io.Reader) (Value, error) {
 	c := NewCompiler(scm)
 
-	module, err := c.Compile(source, in)
+	library, err := c.Compile(source, in)
 	if err != nil {
 		return nil, err
 	}
 	if false {
 		fmt.Printf("Code:\n")
-		for _, c := range module.Init {
+		for _, c := range library.Init {
 			fmt.Printf("%s\n", c)
 		}
 	}
-	var exports Pair
-	var tail Pair
-	for _, export := range module.Exports {
-		p := NewPair(String(export), nil)
-		if tail == nil {
-			exports = p
-		} else {
-			tail.SetCdr(p)
-		}
-		tail = p
-	}
 
 	return NewPair(&Identifier{Name: "library"},
-		NewPair(exports,
-			NewPair(nil, // XXX imports
-				NewPair(
-					&Lambda{
-						Source: module.Source,
-						Code:   module.Init,
-						PCMap:  module.PCMap,
-					},
-					nil)))), nil
+		NewPair(library.Name,
+			NewPair(library.Exports,
+				NewPair(library.Imports,
+					NewPair(
+						&Lambda{
+							Source: library.Source,
+							Code:   library.Init,
+							PCMap:  library.PCMap,
+						},
+						nil))))), nil
 }

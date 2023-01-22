@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -108,7 +108,7 @@ func (scm *Scheme) loadRuntime(dir string) error {
 		if err != nil {
 			return err
 		}
-		_, err = scm.Eval(file, bytes.NewReader(data))
+		_, err = scm.evalRuntime(file, bytes.NewReader(data))
 		if err != nil {
 			return err
 		}
@@ -172,14 +172,24 @@ func (scm *Scheme) EvalFile(file string) (Value, error) {
 
 // Eval evaluates the scheme source.
 func (scm *Scheme) Eval(source string, in io.Reader) (Value, error) {
-	module, err := scm.Load(source, in)
+	library, err := scm.Load(source, in)
 	if err != nil {
 		return nil, err
 	}
-	values, ok := ListValues(module)
-	if !ok || len(values) != 4 {
-		return nil, fmt.Errorf("invalid module: %v", module)
+	sym := scm.Intern("scheme::init-library")
+
+	return scm.Apply(sym.Global, []Value{library})
+}
+
+func (scm *Scheme) evalRuntime(source string, in io.Reader) (Value, error) {
+	library, err := scm.Load(source, in)
+	if err != nil {
+		return nil, err
+	}
+	values, ok := ListValues(library)
+	if !ok || len(values) != 5 {
+		return nil, fmt.Errorf("invalid library: %v", library)
 	}
 
-	return scm.Apply(values[3], nil)
+	return scm.Apply(values[4], nil)
 }

@@ -149,3 +149,9 @@
                           (even? 88))
                         #t))
         )
+
+;; 11.4.7. Sequencing
+
+(runner 'test "begin"
+        (lambda() (eq? (begin 1 2 3 4) 4))
+        )
