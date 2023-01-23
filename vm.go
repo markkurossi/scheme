@@ -376,7 +376,7 @@ func (scm *Scheme) Location() (source string, line int, err error) {
 	fp := scm.fp
 	pc := scm.pc
 
-	for {
+	for fp < len(scm.stack) {
 		frame, ok := scm.stack[fp][0].(*Frame)
 		if !ok {
 			err = errors.New("no stack")
@@ -411,7 +411,7 @@ func (scm *Scheme) VMErrorf(format string, a ...interface{}) error {
 func (scm *Scheme) popToplevel() {
 	fp := scm.fp
 
-	for {
+	for fp < len(scm.stack) {
 		frame, ok := scm.stack[fp][0].(*Frame)
 		if !ok {
 			panic("corrupted stack")
@@ -433,7 +433,7 @@ func (scm *Scheme) PrintStack() {
 	fp := scm.fp
 	pc := scm.pc
 
-	for {
+	for fp < len(scm.stack) {
 		frame, ok := scm.stack[fp][0].(*Frame)
 		if !ok {
 			panic("corrupted stack")

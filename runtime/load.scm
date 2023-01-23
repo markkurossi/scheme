@@ -4,18 +4,21 @@
 ;;; All rights reserved.
 ;;;
 
-(define (load filename)
-  (let* ((stack (scheme::stack-trace))
-         (library (scheme::load (caadr stack) filename)))
-    (scheme::init-library library)))
+(define load-path (list "/opt/scheme/share/lib"))
 
-(define scheme::libraries '(((rnrs) initialized)))
+(let ((gohome (getenv "GOHOME"))
+      (home (getenv "HOME"))
+      (gopath "/src/github.com/markkurossi/scheme/lib"))
+  (cond
+   ((> (string-length gohome) 0)
+    (set! load-path (cons (string-append gohome gopath) load-path)))
+   ((> (string-length home) 0)
+    (set! load-path (cons (string-append home "/go" gopath) load-path)))))
 
-(define (scheme::init-library library)
-  (letrec ((main?
-            (lambda (name)
-              (equal? name '(main))))
+;; (display "load-path=") (display load-path) (newline)
 
+(define (load-library name)
+  (letrec ((name-string-list (map symbol->string name))
            (join
             (lambda (items sep)
               (letrec ((head '())
@@ -29,18 +32,39 @@
                           items)
                 head)))
 
-           ;; The make-library-path creates an operating system file
-           ;; path for the argument library name.
-           (make-library-path
-            (lambda (name)
+           ;; The make-path creates an operating system file path for
+           ;; the argument library name.
+           (make-path
+            (lambda (dir)
               (apply string-append
-                     (append
-                      (join (append
-                             (list (getenv "HOME")
-                                   "go/src/github.com/markkurossi/scheme/lib")
-                             (map symbol->string name))
-                            "/")
-                      '(".scm")))))
+                     (append (join (append (list dir) name-string-list)
+                                   "/")
+                             '(".scm")))))
+           (iter
+            (lambda (path)
+              (if (null? path)
+                  #f
+                  (let ((filename (make-path (car path))))
+                    (if (file-exists? filename)
+                        (load filename)
+                        (iter (cdr path))))))))
+    (iter load-path)))
+
+(define (load filename)
+  (let* ((stack (scheme::stack-trace))
+         (library (scheme::load (caadr stack) filename)))
+    (scheme::init-library library)))
+
+(define scheme::libraries
+  '(
+    ((rnrs) initialized)
+    ((rnrs files) initialized)      ; (rnrs files (6))
+    ))
+
+(define (scheme::init-library library)
+  (letrec ((main?
+            (lambda (name)
+              (equal? name '(main))))
 
            ;; The importer imports all library imports and returns a
            ;; boolean success status.
@@ -53,7 +77,7 @@
                     (cond
                      ((not lib)
                       ;; Load library.
-                      (load (make-library-path lib-name))
+                      (load-library lib-name)
 
                       ;; Check that the library was initialized.
                       (set! lib (assoc lib-name scheme::libraries))
@@ -65,11 +89,7 @@
                       (importer (cdr imports)))
                      (else
                       ;; Dependency error.
-                      #f))))))
-
-           ;; XXX if the following closing paren is missing, VM
-           ;; crashes.
-           )
+                      #f)))))))
 
     (let* ((lib-name (cadr library))
            (lib-exports (caddr library))
@@ -104,4 +124,6 @@
                   (set! result (lib-init))
                   (set-car! (cdr this) 'initialized))
                 (set-cdr! this 'error))
+
+            ;; XXX return an error if init fails
             result)))))
