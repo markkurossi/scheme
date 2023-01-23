@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -143,98 +143,48 @@ var characterBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "char=?",
-		Args: []string{"char1", "char2", "char3..."},
+		Name: "scheme::char=?",
+		Args: []string{"char1", "char2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last Character
-
-			for idx, arg := range args {
-				ch, ok := arg.(Character)
-				if !ok {
-					return nil, l.Errorf("invalid character %v", arg)
-				}
-				if idx > 0 && ch != last {
-					return Boolean(false), nil
-				}
-				last = ch
+			char1, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
 			}
-			return Boolean(true), nil
+			char2, ok := args[1].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[1])
+			}
+			return Boolean(char1 == char2), nil
 		},
 	},
 	{
-		Name: "char<?",
-		Args: []string{"char1", "char2", "char3..."},
+		Name: "scheme::char<?",
+		Args: []string{"char1", "char2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last Character
-
-			for idx, arg := range args {
-				ch, ok := arg.(Character)
-				if !ok {
-					return nil, l.Errorf("invalid character %v", arg)
-				}
-				if idx > 0 && ch <= last {
-					return Boolean(false), nil
-				}
-				last = ch
+			char1, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
 			}
-			return Boolean(true), nil
+			char2, ok := args[1].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[1])
+			}
+			return Boolean(char1 < char2), nil
 		},
 	},
 	{
-		Name: "char>?",
-		Args: []string{"char1", "char2", "char3..."},
+		Name: "scheme::char>?",
+		Args: []string{"char1", "char2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last Character
-
-			for idx, arg := range args {
-				ch, ok := arg.(Character)
-				if !ok {
-					return nil, l.Errorf("invalid character %v", arg)
-				}
-				if idx > 0 && ch >= last {
-					return Boolean(false), nil
-				}
-				last = ch
+			char1, ok := args[0].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[0])
 			}
-			return Boolean(true), nil
-		},
-	},
-	{
-		Name: "char<=?",
-		Args: []string{"char1", "char2", "char3..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last Character
-
-			for idx, arg := range args {
-				ch, ok := arg.(Character)
-				if !ok {
-					return nil, l.Errorf("invalid character %v", arg)
-				}
-				if idx > 0 && ch < last {
-					return Boolean(false), nil
-				}
-				last = ch
+			char2, ok := args[1].(Character)
+			if !ok {
+				return nil, l.Errorf("invalid character %v", args[1])
 			}
-			return Boolean(true), nil
-		},
-	},
-	{
-		Name: "char>=?",
-		Args: []string{"char1", "char2", "char3..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last Character
-
-			for idx, arg := range args {
-				ch, ok := arg.(Character)
-				if !ok {
-					return nil, l.Errorf("invalid character %v", arg)
-				}
-				if idx > 0 && ch > last {
-					return Boolean(false), nil
-				}
-				last = ch
-			}
-			return Boolean(true), nil
+			return Boolean(char1 > char2), nil
 		},
 	},
 	{

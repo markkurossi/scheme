@@ -56,25 +56,33 @@
         (lambda () (= (char->integer (integer->char 5000)) 5000))
         (lambda () (eq? (integer->char 32) #\space))
         )
-(runner 'test "char predicates"
+(runner 'test "char=?"
         (lambda () (char=? (integer->char 32) #\space #\ ))
         (lambda () (char=? #\space #\ ))
         (lambda () (char=? #\space #\ #\x20))
         (lambda () (not (char=? #\space #\x21)))
+        )
 
+(runner 'test "char<?"
         (lambda () (char<? #\a #\b))
         (lambda () (char<? #\a #\b #\c))
         (lambda () (not (char<? #\a #\a)))
+        )
 
+(runner 'test "char>?"
         (lambda () (char>? #\b #\a))
         (lambda () (char>? #\c #\b #\a))
         (lambda () (not (char>? #\a #\a)))
+        )
 
+(runner 'test "char<=?"
         (lambda () (char<=? #\a #\b))
         (lambda () (char<=? #\a #\b #\c))
         (lambda () (char<=? #\a #\b #\c #\c))
         (lambda () (not (char<=? #\b #\a)))
+        )
 
+(runner 'test "char>=?"
         (lambda () (char>=? #\b #\b))
         (lambda () (char>=? #\c #\b #\a))
         (lambda () (char>=? #\c #\b #\a #\a))
