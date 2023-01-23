@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -108,22 +108,18 @@ var booleanBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "boolean=?",
-		Args: []string{"bool1", "bool2", "bool3..."},
+		Name: "scheme::boolean=?",
+		Args: []string{"bool1", "bool2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			var last bool
-
-			for idx, arg := range args {
-				b, ok := arg.(Boolean)
-				if !ok {
-					return nil, l.Errorf("invalid boolean: %v", arg)
-				}
-				if idx > 0 && bool(b) != last {
-					return Boolean(false), nil
-				}
-				last = bool(b)
+			bool1, ok := args[0].(Boolean)
+			if !ok {
+				return nil, l.Errorf("invalid boolean: %v", args[0])
 			}
-			return Boolean(true), nil
+			bool2, ok := args[1].(Boolean)
+			if !ok {
+				return nil, l.Errorf("invalid boolean: %v", args[1])
+			}
+			return Boolean(bool1 == bool2), nil
 		},
 	},
 	{
