@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -7,6 +7,7 @@
 package scheme
 
 import (
+	"errors"
 	"fmt"
 	"io"
 )
@@ -53,6 +54,9 @@ func (p *Parser) Next() (Value, error) {
 	case '\'':
 		v, err := p.Next()
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil, p.lexer.errf("unexpected EOF")
+			}
 			return nil, err
 		}
 
@@ -68,9 +72,13 @@ func (p *Parser) Next() (Value, error) {
 
 	case '(':
 		var list, cursor Pair
+
 		for {
 			t, err = p.lexer.Get()
 			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return nil, p.lexer.errf("unexpected EOF")
+				}
 				return nil, err
 			}
 			if t.Type == ')' {
@@ -81,12 +89,18 @@ func (p *Parser) Next() (Value, error) {
 				}
 				t, err = p.lexer.Get()
 				if err != nil {
+					if errors.Is(err, io.EOF) {
+						return nil, p.lexer.errf("unexpected EOF")
+					}
 					return nil, err
 				}
 				p.lexer.Unget(t)
 
 				v, err := p.Next()
 				if err != nil {
+					if errors.Is(err, io.EOF) {
+						return nil, p.lexer.errf("unexpected EOF")
+					}
 					return nil, err
 				}
 				cursor.SetCdr(v)
@@ -94,6 +108,9 @@ func (p *Parser) Next() (Value, error) {
 
 				t, err = p.lexer.Get()
 				if err != nil {
+					if errors.Is(err, io.EOF) {
+						return nil, p.lexer.errf("unexpected EOF")
+					}
 					return nil, err
 				}
 				if t.Type != ')' {
@@ -105,6 +122,9 @@ func (p *Parser) Next() (Value, error) {
 
 			v, err := p.Next()
 			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return nil, p.lexer.errf("unexpected EOF")
+				}
 				return nil, err
 			}
 
@@ -123,6 +143,9 @@ func (p *Parser) Next() (Value, error) {
 		for {
 			t, err = p.lexer.Get()
 			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return nil, p.lexer.errf("unexpected EOF")
+				}
 				return nil, err
 			}
 			if t.Type == ')' {
@@ -132,6 +155,9 @@ func (p *Parser) Next() (Value, error) {
 
 			v, err := p.Next()
 			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return nil, p.lexer.errf("unexpected EOF")
+				}
 				return nil, err
 			}
 			elements = append(elements, v)
@@ -142,6 +168,9 @@ func (p *Parser) Next() (Value, error) {
 		for {
 			t, err = p.lexer.Get()
 			if err != nil {
+				if errors.Is(err, io.EOF) {
+					return nil, p.lexer.errf("unexpected EOF")
+				}
 				return nil, err
 			}
 			switch t.Type {
