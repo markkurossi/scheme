@@ -75,6 +75,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 	scm.DefineBuiltins(bytevectorBuiltins)
 	scm.DefineBuiltins(loadBuiltins)
 
+	scm.DefineBuiltins(rnrsUnicodeBuiltins)
 	scm.DefineBuiltins(rnrsFilesBuiltins)
 
 	if !scm.Params.NoRuntime {

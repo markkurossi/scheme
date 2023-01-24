@@ -96,8 +96,7 @@
 
 (runner 'section "1. Standard libraries")
 
-;; XXX 1. Unicode
-
+(load "test-lib-01-unicode.scm")
 (load "test-lib-02-bytevectors.scm")
 (load "test-lib-03-list-utilities.scm")
 
