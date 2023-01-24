@@ -5,8 +5,7 @@
 ;;;
 
 (library (rnrs unicode)                 ;(6)
-  (export char-ci=? char-ci<? char-ci>? char-ci<=? char-ci>=?
-          )
+  (export char-ci=? char-ci<? char-ci>? char-ci<=? char-ci>=?)
   (import (rnrs))
 
   (define (char-ci=? char1 char2 . rest)
