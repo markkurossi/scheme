@@ -359,6 +359,14 @@ var listBuiltins = []Builtin{
 		},
 	},
 	{
+		Name: "null?",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			return Boolean(args[0] == nil), nil
+		},
+	},
+	// (rnrs mutable-pairs (6))
+	{
 		Name: "set-car!",
 		Args: []string{"pair", "obj"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
@@ -386,13 +394,6 @@ var listBuiltins = []Builtin{
 				return nil, err
 			}
 			return nil, nil
-		},
-	},
-	{
-		Name: "null?",
-		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			return Boolean(args[0] == nil), nil
 		},
 	},
 }

@@ -27,11 +27,19 @@ structured data operations.
  - [ ] VM
    - [ ] Error handlers
    - [ ] Call with current continuation
- - [ ] Runtime
-   - [ ] 6.5.5. Numerical operations
+ - [ ] Base Library `(rnrs base (6))`
+   - [ ] 11.7. Arithmetic
      - [ ] complex?
      - [ ] real?
      - [ ] rational?
+     - [ ] real-valued?
+     - [ ] rational-valued?
+     - [ ] integer-valued?
+     - [ ] inexact
+     - [ ] exact
+     - [ ] finite?
+     - [ ] infinite?
+     - [ ] nan?
      - [ ] abs
      - [ ] div-and-mod
      - [ ] div
@@ -55,17 +63,17 @@ structured data operations.
      - [ ] asin
      - [ ] acos
      - [ ] atan
+     - [X] sqrt
+     - [ ] exact-integer-sqrt
      - [ ] make-rectangular
      - [ ] make-polar
+     - [ ] real-part
      - [ ] imag-part
      - [ ] magnitude
      - [ ] angle
-     - [ ] exact->inexact
-     - [ ] inexact->exact
-   - [ ] 6.5.6. Numerical input and output
      - [ ] number->string
      - [ ] string->number
-   - [ ] 6.7. Strings
+   - [ ] 11.12. Strings XXX continue todo update from here
 	 - [ ] string-set!
 	 - [ ] string-ci=?
 	 - [ ] string-ci<?

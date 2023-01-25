@@ -473,6 +473,9 @@ var numberBuiltins = []Builtin{
 			return Boolean(ok), nil
 		},
 	},
+	// XXX complex?
+	// XXX real?
+	// XXX rational?
 	{
 		Name: "integer?",
 		Args: []string{"obj"},
@@ -488,6 +491,9 @@ var numberBuiltins = []Builtin{
 			return Boolean(false), nil
 		},
 	},
+	// XXX real-valued?
+	// XXX rational-valued?
+	// XXX integer-valued?
 	{
 		Name: "exact?",
 		Args: []string{"obj"},
@@ -518,6 +524,8 @@ var numberBuiltins = []Builtin{
 			return Boolean(true), nil
 		},
 	},
+	// XXX inexact
+	// XXX exact
 	{
 		Name: "scheme::=",
 		Args: []string{"z1", "z2"},
