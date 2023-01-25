@@ -35,7 +35,7 @@ func TestAPI(t *testing.T) {
 		t.Fatalf("scheme.Eval: %v", err)
 	}
 
-	v, err = scm.Value("add1")
+	v, err = scm.Global("add1")
 	if err != nil {
 		t.Fatalf("add1 not defined: %v", err)
 	}

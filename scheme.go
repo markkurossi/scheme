@@ -200,11 +200,24 @@ func (scm *Scheme) evalRuntime(source string, in io.Reader) (Value, error) {
 	return scm.Apply(values[4], nil)
 }
 
-// Value returns the global value of the symbol.
-func (scm *Scheme) Value(name string) (Value, error) {
+// Global returns the global value of the symbol.
+func (scm *Scheme) Global(name string) (Value, error) {
 	id, ok := scm.symbols[name]
 	if !ok || id.Flags&FlagDefined == 0 {
 		return nil, fmt.Errorf("undefined symbol '%s'", name)
 	}
 	return id.Global, nil
+}
+
+// SetGlobal sets the value of the global symbol. The function returns
+// an error if the symbols was defined to be a FlagFinal. The symbol
+// will became defined if it was undefined before the call.
+func (scm *Scheme) SetGlobal(name string, value Value) error {
+	id := scm.Intern(name)
+	if id.Flags&FlagFinal != 0 {
+		return fmt.Errorf("can't reset final symbol '%s'", name)
+	}
+	id.Flags |= FlagDefined
+	id.Global = value
+	return nil
 }
