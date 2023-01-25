@@ -161,9 +161,12 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			scm.accu = instr.V
 
 		case OpDefine:
-			if instr.Sym.Flags&FlagDefined != 0 {
-				return nil, scm.Breakf("symbol '%s' already defined",
+			if instr.Sym.Flags&FlagFinal != 0 {
+				return nil, scm.Breakf("redefining final symbol '%s'",
 					instr.Sym.Name)
+			}
+			if instr.Sym.Flags&FlagDefined != 0 && !scm.Params.NoWarnDefine {
+				scm.VMWarningf("redefining symbol '%s'", instr.Sym.Name)
 			}
 			instr.Sym.Global = scm.accu
 			instr.Sym.Flags |= FlagDefined
@@ -393,6 +396,20 @@ func (scm *Scheme) Location() (source string, line int, err error) {
 		pc = frame.PC
 	}
 	return
+}
+
+// VMWarningf prints a virtual machine warning.
+func (scm *Scheme) VMWarningf(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+
+	source, line, err := scm.Location()
+	if err != nil || line == 0 || len(source) == 0 {
+		fmt.Printf("warning: %v\n", msg)
+	} else if line == 0 {
+		fmt.Printf("%s: warning: %v\n", source, msg)
+	} else {
+		fmt.Printf("%s:%v: %s\n", source, line, msg)
+	}
 }
 
 // VMErrorf creates a virtual machine error.

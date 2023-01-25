@@ -493,41 +493,25 @@ func (c *Compiler) compileDefine(env *Env, list []Pair) error {
 		if err != nil {
 			return err
 		}
-		return c.define(env, name)
+		return c.define(list[1], env, name)
 	}
 
 	// (define (name args?) body)
 	return c.compileLambda(env, true, list)
 }
 
-func (c *Compiler) define(env *Env, name *Identifier) error {
-	prev, ok := c.exported[name.Name]
-	if c.exportAll {
-		// All symbols are exported. Check that the symbol is not
-		// redefined.
-		if ok {
-			return name.Point.Errorf("symbol '%s' already defined at %s",
-				name.Name, prev.Point)
-		}
-		// XXX Define global symbol.
+func (c *Compiler) define(loc Locator, env *Env, name *Identifier) error {
+	_, ok := c.exported[name.Name]
+	if c.exportAll || ok {
+		// XXX Defined global symbol.
 	} else {
-		// Only listed symbols are exported.
-		if ok {
-			if prev != nil {
-				// Exported symbol redefined.
-				return name.Point.Errorf("symbol '%s' already defined at %s",
-					name.Name, prev.Point)
-			}
-			// XXX Defined global symbol.
-		} else {
-			// XXX Define library symbol.
-		}
+		// XXX Define library symbol.
 	}
 
 	c.exported[name.Name] = name
 	c.exports = NewPair(name, c.exports)
 
-	instr := c.addInstr(nil, OpDefine, nil, 0)
+	instr := c.addInstr(loc, OpDefine, nil, 0)
 	instr.Sym = c.scm.Intern(name.Name)
 
 	return nil
@@ -630,14 +614,14 @@ func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 		}
 	}
 
-	c.addInstr(nil, OpLambda, nil, len(c.lambdas))
+	c.addInstr(list[0], OpLambda, nil, len(c.lambdas))
 	c.lambdas = append(c.lambdas, &LambdaBody{
 		Args: args,
 		Body: list[2:],
 		Env:  capture,
 	})
 	if define {
-		return c.define(env, name)
+		return c.define(list[0], env, name)
 	}
 
 	return nil

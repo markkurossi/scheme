@@ -45,6 +45,9 @@ type Params struct {
 	// NoRuntime specifies if the Scheme-implemented runtime is
 	// initialized.
 	NoRuntime bool
+
+	// Do not warn when redefining global symbols.
+	NoWarnDefine bool
 }
 
 // New creates a new Scheme interpreter.
