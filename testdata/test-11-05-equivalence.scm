@@ -25,7 +25,7 @@
         (lambda () (not (eqv? (lambda (x) x)
                               (lambda (x) x))))
         (lambda () (not (eqv? '(a) '(a))))
-        (lambda () (not (eqv? "a" "a")))
+        (lambda () (eqv? "a" "a"))
 
         ;; Specified eqv? result.
         (lambda () (let ((x '(a)))

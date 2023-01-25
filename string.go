@@ -11,7 +11,17 @@ import (
 )
 
 // String implements string values.
-type String []byte
+type String string
+
+// IsString tests if the value is string.
+func IsString(value Value) (v string, ok bool) {
+	var str String
+	str, ok = value.(String)
+	if !ok {
+		return
+	}
+	return string(str), true
+}
 
 // Scheme returns the value as a Scheme string.
 func (v String) Scheme() string {
@@ -20,28 +30,13 @@ func (v String) Scheme() string {
 
 // Eq tests if the argument value is eq? to this value.
 func (v String) Eq(o Value) bool {
-	ov, ok := o.(String)
-	if !ok {
-		return false
-	}
-	if len(v) == 0 && len(ov) == 0 {
-		return true
-	}
-	return false
+	return v.Equal(o)
 }
 
 // Equal tests if the argument value is equal to this value.
 func (v String) Equal(o Value) bool {
 	ov, ok := o.(String)
-	if !ok || len(v) != len(ov) {
-		return false
-	}
-	for i := 0; i < len(v); i++ {
-		if v[i] != ov[i] {
-			return false
-		}
-	}
-	return true
+	return ok && v == ov
 }
 
 func (v String) String() string {

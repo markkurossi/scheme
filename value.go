@@ -19,7 +19,7 @@ var (
 	_ Value = Keyword(0)
 	_ Value = &Number{}
 	_ Value = Boolean(true)
-	_ Value = &String{}
+	_ Value = String("string")
 	_ Value = Character('@')
 	_ Value = &Lambda{}
 	_ Value = &Frame{}
