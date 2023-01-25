@@ -109,10 +109,10 @@ structured data operations.
        - [ ] read
        - [ ] write-char
        - [ ] write
-   - [ ] 9. File system `(rnrs files (6))`
+   - [X] 9. File system `(rnrs files (6))`
    - [ ] 10. Command-line access and exit values `(rnrs programs (6))`
      - [ ] command-line
-     - [ ] exit
+     - [X] exit
    - [ ] 11. Arithmetic
    - [ ] 12. syntax-case `(rnrs syntax-case (6))`
    - [ ] 13. Hashtables `(rnrs hashtables (6))`
