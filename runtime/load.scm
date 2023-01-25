@@ -58,9 +58,9 @@
 (define scheme::libraries
   '(
     ((rnrs) (6) initialized)
-    ((rnrs bytevectors) (6) initialized)
     ((rnrs lists) (6) initialized)
     ((rnrs files) (6) initialized)
+    ((rnrs programs) (6) initialized)
     ((rnrs mutable-pairs) (6) initialized)
     ))
 

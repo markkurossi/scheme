@@ -3,6 +3,8 @@
 //
 // All rights reserved.
 //
+// The (rnrs programs (6)) library.
+//
 
 package scheme
 
@@ -11,6 +13,24 @@ import (
 )
 
 var osBuiltins = []Builtin{
+	{
+		Name: "command-line",
+		Args: []string{"[obj]"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var head, tail Pair
+
+			for _, arg := range os.Args {
+				pair := NewPair(String(arg), nil)
+				if tail == nil {
+					head = pair
+				} else {
+					tail.SetCdr(pair)
+				}
+				tail = pair
+			}
+			return head, nil
+		},
+	},
 	{
 		Name: "exit",
 		Args: []string{"[obj]"},
