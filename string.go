@@ -177,7 +177,6 @@ var stringBuiltins = []Builtin{
 			return Character(chars[k]), nil
 		},
 	},
-	// XXX string-set!
 	{
 		Name: "scheme::string=?",
 		Args: []string{"string1", "string2"},
@@ -193,7 +192,6 @@ var stringBuiltins = []Builtin{
 			return Boolean(string(str1) == string(str2)), nil
 		},
 	},
-	// XXX string-ci=?
 	{
 		Name: "scheme::string<?",
 		Args: []string{"string1", "string2"},
@@ -224,10 +222,6 @@ var stringBuiltins = []Builtin{
 			return Boolean(string(str1) > string(str2)), nil
 		},
 	},
-	// XXX string-ci<?
-	// XXX string-ci>?
-	// XXX string-ci<=?
-	// XXX string-ci>=?
 	{
 		Name: "substring",
 		Args: []string{"string", "start", "end"},
@@ -330,5 +324,13 @@ var stringBuiltins = []Builtin{
 			return String(string(new)), nil
 		},
 	},
+	// XXX string-ci=?
+	// XXX string-ci<?
+	// XXX string-ci>?
+	// XXX string-ci<=?
+	// XXX string-ci>=?
+
+	// (rnrs mutable-strings (6))
+	// XXX string-set!
 	// XXX string-fill!
 }

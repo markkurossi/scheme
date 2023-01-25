@@ -73,35 +73,56 @@ structured data operations.
      - [ ] angle
      - [ ] number->string
      - [ ] string->number
-   - [ ] 11.12. Strings XXX continue todo update from here
-	 - [ ] string-set!
+ - [ ] R6RS Libraries
+   - [ ] 1. Unicode `(rnrs unicode (6))`
+     - [ ] xxx
 	 - [ ] string-ci=?
 	 - [ ] string-ci<?
 	 - [ ] string-ci>?
 	 - [ ] string-ci<=?
 	 - [ ] string-ci>=?
+   - [ ] 2. Bytevectors `(rnrs bytevectors (6))`
+     - [ ] xxx
+   - [ ] 3. List utilities `(rnrs lists (6))`
+     - [ ] find
+     - [ ] xxx
+   - [ ] 4. Sorting `(rnrs sorting (6))`
+   - [ ] 5. Control structures `(rnrs control (6))`
+   - [ ] 6. Records
+   - [ ] 7. Exceptions and conditions
+   - [ ] 8. I/O
+     - [ ] 8.2. Port I/O `(rnrs io ports (6))`
+     - [ ] 8.3. Simple I/O `(rnrs io simple (6))`
+       - [ ] eof-object
+       - [ ] eof-object?
+       - [ ] call-with-input-file
+       - [ ] call-with-output-file
+       - [ ] current-input-port
+       - [ ] with-input-from-file
+       - [ ] with-output-to-file
+       - [ ] open-input-file
+       - [ ] open-output-file
+       - [ ] close-input-port
+       - [ ] close-output-port
+       - [ ] read-char
+       - [ ] peek-char
+       - [ ] read
+       - [ ] write-char
+       - [ ] write
+   - [ ] 9. File system `(rnrs files (6))`
+   - [ ] 10. Command-line access and exit values `(rnrs programs (6))`
+     - [ ] command-line
+     - [ ] exit
+   - [ ] 11. Arithmetic
+   - [ ] 12. syntax-case `(rnrs syntax-case (6))`
+   - [ ] 13. Hashtables `(rnrs hashtables (6))`
+   - [ ] 14. Enumerations `(rnrs enums (6))`
+   - [ ] 15. Composite library `(rnrs (6))`
+   - [ ] 16. Eval `(rnrs eval (6))`
+   - [X] 17. Mutable pairs `(rnrs mutable-pairs (6))`
+   - [ ] 18. Mutable strings `(rnrs mutable-strings (6))`
+	 - [ ] string-set!
 	 - [ ] string-fill!
-   - [ ] 6.9. Control features
+   - [ ] 19. R5RS compatibility `(rnrs r5rs (6))`
+     - [ ] delay
      - [ ] force
-   - [ ] 6.10.1. Ports
-     - [ ] call-with-input-file
-     - [ ] call-with-output-file
-     - [ ] current-input-port
-     - [ ] with-input-from-file
-     - [ ] with-output-to-file
-     - [ ] open-input-file
-     - [ ] open-output-file
-     - [ ] close-input-port
-     - [ ] close-output-port
-   - [ ] 6.10.2. Input
-     - [ ] read
-     - [ ] read-char
-     - [ ] peek-char
-     - [ ] eof-object?
-     - [ ] char-ready?
-   - [ ] 6.10.3. Output
-     - [ ] write
-     - [ ] write-char
-   - [ ] 6.10.4. System interface
-     - [ ] transcript-on
-     - [ ] transcript-off
