@@ -57,8 +57,10 @@
 
 (define scheme::libraries
   '(
-    ((rnrs) initialized)
-    ((rnrs files) initialized)      ; (rnrs files (6))
+    ((rnrs) (6) initialized)
+    ((rnrs files) (6) initialized)
+    ((rnrs lists) (6) initialized)
+    ((rnrs mutable-pairs) (6) initialized)
     ))
 
 (define (scheme::init-library library)
@@ -66,13 +68,38 @@
             (lambda (name)
               (equal? name '(main))))
 
+           (parse-lib-name
+            (lambda (name)
+              (let ((l (length name)))
+                (cond
+                 ((< l 2) name)
+                 ((pair? (list-ref name (- l 1)))
+                  (reverse (list-tail (reverse name) 1)))
+                 (else name)))))
+
+           (parse-lib-version
+            (lambda (name)
+              (let ((l (length name)))
+                (cond
+                 ((< l 2) '())
+                 ((pair? (list-ref name (- l 1))) (list-ref name (- l 1)))
+                 (else '())))))
+
+           (lib-version (lambda (v) (cadr v)))
+           (lib-status (lambda (v) (caddr v)))
+
+           (set-lib-status!
+            (lambda (lib status)
+              (set-car! (cddr lib) status)))
+
            ;; The importer imports all library imports and returns a
            ;; boolean success status.
            (importer
             (lambda (imports)
               (if (null? imports)
                   #t
-                  (let* ((lib-name (car imports))
+                  (let* ((lib-name (parse-lib-name (car imports)))
+                         (lib-version (parse-lib-version (car imports)))
                          (lib (assoc lib-name scheme::libraries)))
                     (cond
                      ((not lib)
@@ -81,17 +108,18 @@
 
                       ;; Check that the library was initialized.
                       (set! lib (assoc lib-name scheme::libraries))
-                      (if (and lib (eq? (cadr lib) 'initialized))
+                      (if (and lib (eq? (lib-status lib) 'initialized))
                           (importer (cdr imports))
                           #f))
-                     ((eq? (cadr lib) 'initialized)
+                     ((eq? (lib-status lib) 'initialized)
                       ;; Import initialized.
                       (importer (cdr imports)))
                      (else
                       ;; Dependency error.
                       #f)))))))
 
-    (let* ((lib-name (cadr library))
+    (let* ((lib-name (parse-lib-name (cadr library)))
+           (lib-version (parse-lib-version (cadr library)))
            (lib-exports (caddr library))
            (lib-imports (cadddr library))
            (lib-init (cadddr (cdr library)))
@@ -109,11 +137,11 @@
       (if this
           ;; Library seen, check that is has been initialized
           ;; successfully.
-          ((eq? (cadr this) 'initialized) #t)
+          ((eq? (lib-status this) 'initialized) #t)
 
           ;; Library not seen before. Initialize it now.
           (begin
-            (set! this (list lib-name 'initializing))
+            (set! this (list lib-name lib-version 'initializing))
             (if (not (main? lib-name))
                 (set! scheme::libraries (cons this scheme::libraries)))
 
@@ -122,8 +150,8 @@
                 (begin
                   ;; Imports loaded, now init this module.
                   (set! result (lib-init))
-                  (set-car! (cdr this) 'initialized))
-                (set-cdr! this 'error))
+                  (set-lib-status! this 'initialized))
+                (set-lib-status! this 'error))
 
             ;; XXX return an error if init fails
             result)))))

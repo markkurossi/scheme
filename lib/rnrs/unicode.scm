@@ -4,7 +4,7 @@
 ;;; All rights reserved.
 ;;;
 
-(library (rnrs unicode)                 ;(6)
+(library (rnrs unicode (6))
   (export char-ci=? char-ci<? char-ci>? char-ci<=? char-ci>=?)
   (import (rnrs))
 

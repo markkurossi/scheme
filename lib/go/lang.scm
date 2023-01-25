@@ -4,7 +4,7 @@
 ;;; All rights reserved.
 ;;;
 
-(library (go lang)
+(library (go lang (1 19))
   (export len)
   (import (rnrs))
 
