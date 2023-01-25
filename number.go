@@ -18,6 +18,16 @@ type Number struct {
 	Value interface{}
 }
 
+// IsNumber tests if the value is number.
+func IsNumber(value Value) (v Number, ok bool) {
+	var num Number
+	num, ok = value.(Number)
+	if !ok {
+		return
+	}
+	return num, true
+}
+
 // NewNumber creates a new numeric value.
 func NewNumber(base int, value interface{}) Number {
 	var numValue interface{}

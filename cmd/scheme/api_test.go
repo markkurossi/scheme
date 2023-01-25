@@ -19,7 +19,7 @@ func TestAPI(t *testing.T) {
 		t.Fatalf("scheme.New(): %v", err)
 	}
 
-	v, err := scm.Eval("{data}", strings.NewReader(`(define msg "foo") msg`))
+	v, err := scm.Eval("{data}", strings.NewReader(`(define msg "foo")`))
 	if err != nil {
 		t.Fatalf("scheme.Eval: %v", err)
 	}
@@ -35,7 +35,19 @@ func TestAPI(t *testing.T) {
 		t.Fatalf("scheme.Eval: %v", err)
 	}
 
-	// get value for "add1"
-	// apply add1 to 41
-	// check result is 42
+	v, err = scm.Value("add1")
+	if err != nil {
+		t.Fatalf("add1 not defined: %v", err)
+	}
+	v, err = scm.Apply(v, []scheme.Value{scheme.NewNumber(0, 41)})
+	if err != nil {
+		t.Fatalf("scm.Apply: %v", err)
+	}
+	number, ok := scheme.IsNumber(v)
+	if !ok {
+		t.Fatalf("expected number: %v", v)
+	}
+	if number.Int64() != 42 {
+		t.Errorf("expected 42, got %v", number.Int64())
+	}
 }

@@ -520,13 +520,13 @@ func (scm *Scheme) StackTrace() []StackFrame {
 }
 
 // Intern interns the name and returns the interned symbol.
-func (scm *Scheme) Intern(val string) *Identifier {
-	id, ok := scm.symbols[val]
+func (scm *Scheme) Intern(name string) *Identifier {
+	id, ok := scm.symbols[name]
 	if !ok {
 		id = &Identifier{
-			Name: val,
+			Name: name,
 		}
-		scm.symbols[val] = id
+		scm.symbols[name] = id
 	}
 	return id
 }

@@ -199,3 +199,12 @@ func (scm *Scheme) evalRuntime(source string, in io.Reader) (Value, error) {
 
 	return scm.Apply(values[4], nil)
 }
+
+// Value returns the global value of the symbol.
+func (scm *Scheme) Value(name string) (Value, error) {
+	id, ok := scm.symbols[name]
+	if !ok || id.Flags&FlagDefined == 0 {
+		return nil, fmt.Errorf("undefined symbol '%s'", name)
+	}
+	return id.Global, nil
+}
