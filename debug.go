@@ -69,14 +69,28 @@ var debugBuiltins = []Builtin{
 						}
 
 					default:
-						names = append(names, k)
+						if flags&fLambda == 0 {
+							names = append(names, k)
+						}
 					}
 				}
 			}
 			sort.Strings(names)
-			fmt.Printf("Global symbols:\n")
+
+			var max int
 			for _, name := range names {
-				fmt.Printf("%19s : %s\n", name, scm.symbols[name].Global)
+				if len(name) > max {
+					max = len(name)
+				}
+			}
+
+			fmt.Printf("Global symbols:\n")
+
+			for _, name := range names {
+				for i := 0; i+len(name) < max; i++ {
+					fmt.Print(" ")
+				}
+				fmt.Printf("%s : %s\n", name, scm.symbols[name].Global)
 			}
 			fmt.Printf("%d symbols matched\n", len(names))
 			return nil, nil
