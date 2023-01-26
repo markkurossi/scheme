@@ -7,41 +7,43 @@
 package scheme
 
 import (
+	"strings"
 	"unicode"
 )
 
 // rnrs unicode (6)
 
 var rnrsUnicodeBuiltins = []Builtin{
+	// 1.1. Characters
 	{
 		Name: "char-upcase",
-		Args: []string{"obj"},
+		Args: []string{"char"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+				return nil, l.Errorf("invalid character: %v", args[0])
 			}
 			return Character(unicode.ToUpper(rune(ch))), nil
 		},
 	},
 	{
 		Name: "char-downcase",
-		Args: []string{"obj"},
+		Args: []string{"char"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+				return nil, l.Errorf("invalid character: %v", args[0])
 			}
 			return Character(unicode.ToLower(rune(ch))), nil
 		},
 	},
 	{
 		Name: "char-titlecase",
-		Args: []string{"obj"},
+		Args: []string{"char"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+				return nil, l.Errorf("invalid character: %v", args[0])
 			}
 			return Character(unicode.ToTitle(rune(ch))), nil
 		},
@@ -49,68 +51,112 @@ var rnrsUnicodeBuiltins = []Builtin{
 	// XXX char-foldcase
 	{
 		Name: "char-alphabetic?",
-		Args: []string{"obj"},
+		Args: []string{"char"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+				return nil, l.Errorf("invalid character: %v", args[0])
 			}
 			return Boolean(unicode.IsLetter(rune(ch))), nil
 		},
 	},
 	{
 		Name: "char-numeric?",
-		Args: []string{"obj"},
+		Args: []string{"char"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+				return nil, l.Errorf("invalid character: %v", args[0])
 			}
 			return Boolean(unicode.IsDigit(rune(ch))), nil
 		},
 	},
 	{
 		Name: "char-whitespace?",
-		Args: []string{"obj"},
+		Args: []string{"char"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+				return nil, l.Errorf("invalid character: %v", args[0])
 			}
 			return Boolean(unicode.IsSpace(rune(ch))), nil
 		},
 	},
 	{
 		Name: "char-upper-case?",
-		Args: []string{"obj"},
+		Args: []string{"char"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+				return nil, l.Errorf("invalid character: %v", args[0])
 			}
 			return Boolean(unicode.IsUpper(rune(ch))), nil
 		},
 	},
 	{
 		Name: "char-lower-case?",
-		Args: []string{"obj"},
+		Args: []string{"char"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+				return nil, l.Errorf("invalid character: %v", args[0])
 			}
 			return Boolean(unicode.IsLower(rune(ch))), nil
 		},
 	},
 	{
 		Name: "char-title-case?",
-		Args: []string{"obj"},
+		Args: []string{"char"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+				return nil, l.Errorf("invalid character: %v", args[0])
 			}
 			return Boolean(unicode.IsTitle(rune(ch))), nil
 		},
 	},
+	// XXX char-general-category
+
+	// 1.2. Strings
+	{
+		Name: "string-upcase",
+		Args: []string{"string"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			str, ok := args[0].(String)
+			if !ok {
+				return nil, l.Errorf("invalid string: %v", args[0])
+			}
+			return String(strings.ToUpper(string(str))), nil
+		},
+	},
+	{
+		Name: "string-downcase",
+		Args: []string{"string"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			str, ok := args[0].(String)
+			if !ok {
+				return nil, l.Errorf("invalid string: %v", args[0])
+			}
+			return String(strings.ToLower(string(str))), nil
+		},
+	},
+	{
+		Name: "string-titlecase",
+		Args: []string{"string"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			str, ok := args[0].(String)
+			if !ok {
+				return nil, l.Errorf("invalid string: %v", args[0])
+			}
+			// Deprecated: The rule Title uses for word boundaries
+			// does not handle Unicode punctuation properly. Use
+			// golang.org/x/text/cases instead.
+			return String(strings.Title(strings.ToLower(string(str)))), nil
+		},
+	},
+	// XXX string-foldcase
+	// XXX string-normalize-nfd
+	// XXX string-normalize-nfkd
+	// XXX string-normalize-nfc
+	// XXX string-normalize-nfkc
 }

@@ -75,12 +75,14 @@ structured data operations.
      - [ ] string->number
  - [ ] R6RS Libraries
    - [ ] 1. Unicode `(rnrs unicode (6))`
-     - [ ] xxx
-	 - [ ] string-ci=?
-	 - [ ] string-ci<?
-	 - [ ] string-ci>?
-	 - [ ] string-ci<=?
-	 - [ ] string-ci>=?
+     - [ ] char-foldcase
+     - [ ] char-general-category
+     - [ ] string-titlecase
+     - [ ] string-foldcase
+     - [ ] string-normalize-nfd
+     - [ ] string-normalize-nfkd
+     - [ ] string-normalize-nfc
+     - [ ] string-normalize-nfkc
    - [ ] 2. Bytevectors `(rnrs bytevectors (6))`
      - [ ] xxx
    - [ ] 3. List utilities `(rnrs lists (6))`

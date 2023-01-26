@@ -319,11 +319,6 @@ var stringBuiltins = []Builtin{
 			return String(string(new)), nil
 		},
 	},
-	// XXX string-ci=?
-	// XXX string-ci<?
-	// XXX string-ci>?
-	// XXX string-ci<=?
-	// XXX string-ci>=?
 
 	// (rnrs mutable-strings (6))
 	// XXX string-set!
