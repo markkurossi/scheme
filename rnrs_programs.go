@@ -12,7 +12,7 @@ import (
 	"os"
 )
 
-var osBuiltins = []Builtin{
+var rnrsProgramsBuiltins = []Builtin{
 	{
 		Name: "command-line",
 		Args: []string{"[obj]"},

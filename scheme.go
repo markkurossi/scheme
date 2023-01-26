@@ -69,7 +69,6 @@ func NewWithParams(params Params) (*Scheme, error) {
 	scm.DefineBuiltins(debugBuiltins)
 	scm.DefineBuiltins(listBuiltins)
 	scm.DefineBuiltins(numberBuiltins)
-	scm.DefineBuiltins(osBuiltins)
 	scm.DefineBuiltins(outputBuiltins)
 	scm.DefineBuiltins(procedureBuiltins)
 	scm.DefineBuiltins(stringBuiltins)
@@ -80,6 +79,9 @@ func NewWithParams(params Params) (*Scheme, error) {
 
 	scm.DefineBuiltins(rnrsUnicodeBuiltins)
 	scm.DefineBuiltins(rnrsFilesBuiltins)
+	scm.DefineBuiltins(rnrsMutablePairsBuiltins)
+	scm.DefineBuiltins(rnrsMutableStringsBuiltins)
+	scm.DefineBuiltins(rnrsProgramsBuiltins)
 
 	if !scm.Params.NoRuntime {
 		err := scm.loadRuntime("runtime")

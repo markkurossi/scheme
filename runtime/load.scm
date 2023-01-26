@@ -62,6 +62,7 @@
     ((rnrs files) (6) initialized)
     ((rnrs programs) (6) initialized)
     ((rnrs mutable-pairs) (6) initialized)
+    ((rnrs mutable-strings) (6) initialized)
     ))
 
 (define (scheme::init-library library)

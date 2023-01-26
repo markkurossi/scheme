@@ -319,8 +319,4 @@ var stringBuiltins = []Builtin{
 			return String(string(new)), nil
 		},
 	},
-
-	// (rnrs mutable-strings (6))
-	// XXX string-set!
-	// XXX string-fill!
 }
