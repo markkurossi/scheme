@@ -58,7 +58,6 @@
 (define scheme::libraries
   '(
     ((rnrs) (6) initialized)
-    ((rnrs lists) (6) initialized)
     ((rnrs files) (6) initialized)
     ((rnrs programs) (6) initialized)
     ((rnrs mutable-pairs) (6) initialized)
@@ -93,6 +92,13 @@
            (set-lib-status!
             (lambda (lib status)
               (set-car! (cddr lib) status)))
+
+           (assoc
+            (lambda (obj alist)
+              (cond
+               ((null? alist) #f)
+               ((equal? obj (caar alist)) (car alist))
+               (else (assoc obj (cdr alist))))))
 
            ;; The importer imports all library imports and returns a
            ;; boolean success status.
