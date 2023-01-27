@@ -506,6 +506,7 @@ func (c *Compiler) define(loc Locator, env *Env, name *Identifier) error {
 		// XXX Defined global symbol.
 	} else {
 		// XXX Define library symbol.
+		// fmt.Printf("XXX define local symbol %v\n", name)
 	}
 
 	c.exported[name.Name] = name
