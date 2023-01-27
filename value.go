@@ -133,24 +133,6 @@ func (args *Args) Init() {
 	}
 }
 
-// Seen implements uniqueness checker for argument names.
-type Seen map[string]bool
-
-// NewSeen creates a new argument name checker.
-func NewSeen() Seen {
-	return make(Seen)
-}
-
-// Add adds the argument name to the name checker.
-func (seen Seen) Add(name string) error {
-	_, ok := seen[name]
-	if ok {
-		return fmt.Errorf("argument '%s' already seen", name)
-	}
-	seen[name] = true
-	return nil
-}
-
 // Scheme returns the value as a Scheme string.
 func (v *Lambda) Scheme() string {
 	return v.String()

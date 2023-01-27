@@ -105,7 +105,7 @@ func lookupCharacter(name []rune) (rune, error) {
 	// #\ooo
 	valid8 := true
 	for i := 0; i < len(name); i++ {
-		if !IsDigit8(name[i]) {
+		if !isDigit8(name[i]) {
 			valid8 = false
 			break
 		}

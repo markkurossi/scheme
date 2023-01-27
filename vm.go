@@ -330,12 +330,12 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			}
 
 		case OpIf:
-			if True(scm.accu) {
+			if IsTrue(scm.accu) {
 				scm.pc += instr.I
 			}
 
 		case OpIfNot:
-			if !True(scm.accu) {
+			if !IsTrue(scm.accu) {
 				scm.pc += instr.I
 			}
 

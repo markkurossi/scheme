@@ -550,7 +550,7 @@ func (l *Lexer) Get() (*Token, error) {
 				if err != io.EOF {
 					return nil, err
 				}
-			} else if IsDigit10(n) {
+			} else if isDigit10(n) {
 				l.UnreadRune()
 				val, err := l.parseDigit(10)
 				if err != nil {
@@ -565,7 +565,7 @@ func (l *Lexer) Get() (*Token, error) {
 			return token, nil
 
 		default:
-			if IsIdentifierInitial(r) {
+			if isIdentifierInitial(r) {
 				id := []rune{r}
 				for {
 					r, _, err := l.ReadRune()
@@ -575,7 +575,7 @@ func (l *Lexer) Get() (*Token, error) {
 						}
 						return nil, err
 					}
-					if !IsIdentifierSubsequent(r) {
+					if !isIdentifierSubsequent(r) {
 						l.UnreadRune()
 						break
 					}
@@ -593,7 +593,7 @@ func (l *Lexer) Get() (*Token, error) {
 				token.Identifier = string(id)
 				return token, nil
 			}
-			if IsDigit10(r) {
+			if isDigit10(r) {
 				l.UnreadRune()
 				val, err := l.parseDigit(10)
 				if err != nil {
@@ -679,7 +679,7 @@ func (l *Lexer) parseNumber() (*Token, error) {
 			}
 			// Continue from the top.
 
-		} else if IsDigit10(r) ||
+		} else if isDigit10(r) ||
 			'a' <= r && r <= 'f' ||
 			'A' <= r && r <= 'F' {
 			l.UnreadRune()
@@ -763,7 +763,7 @@ func (l *Lexer) parseDigit(base int64) (*big.Int, error) {
 
 // IsIdentifierInitial tests if the argument rune is a Scheme
 // identifier initial character.
-func IsIdentifierInitial(r rune) bool {
+func isIdentifierInitial(r rune) bool {
 	switch r {
 	// Special initial.
 	case '!', '$', '%', '&', '*', '/', ':', '<', '=', '>', '?', '~', '_', '^':
@@ -777,7 +777,7 @@ func IsIdentifierInitial(r rune) bool {
 
 // IsIdentifierSubsequent tests if the argument rune is a Scheme
 // identifier subsequent character.
-func IsIdentifierSubsequent(r rune) bool {
+func isIdentifierSubsequent(r rune) bool {
 	switch r {
 	// Special subsequent.
 	case '.', '+', '-':
@@ -785,17 +785,17 @@ func IsIdentifierSubsequent(r rune) bool {
 
 	default:
 		// Digit or Identifier initial.
-		return IsDigit10(r) || IsIdentifierInitial(r)
+		return isDigit10(r) || isIdentifierInitial(r)
 	}
 }
 
 // IsDigit8 tests if the rune is a 8-base digit.
-func IsDigit8(r rune) bool {
+func isDigit8(r rune) bool {
 	return '0' <= r && r <= '8'
 }
 
 // IsDigit10 tests if the rune is a 10-base digit.
-func IsDigit10(r rune) bool {
+func isDigit10(r rune) bool {
 	return '0' <= r && r <= '9'
 }
 

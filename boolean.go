@@ -43,8 +43,9 @@ func (v Boolean) String() string {
 	return BooleanToScheme(bool(v))
 }
 
-// True tests if the argument value is true.
-func True(v Value) bool {
+// IsTrue tests if the argument value is true according to Scheme
+// truth semantics i.e. the value is true unless it is boolean #f.
+func IsTrue(v Value) bool {
 	b, ok := v.(Boolean)
 	if !ok {
 		return true
@@ -96,7 +97,7 @@ var booleanBuiltins = []Builtin{
 		Name: "not",
 		Args: []string{"obj"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			return Boolean(!True(args[0])), nil
+			return Boolean(!IsTrue(args[0])), nil
 		},
 	},
 	{

@@ -27,7 +27,7 @@ type Compiler struct {
 
 	code      Code
 	pcmap     PCMap
-	lambdas   []*LambdaBody
+	lambdas   []*lambdaBody
 	nextLabel int
 }
 
@@ -518,6 +518,21 @@ func (c *Compiler) define(loc Locator, env *Env, name *Identifier) error {
 	return nil
 }
 
+type seen map[string]bool
+
+func newSeen() seen {
+	return make(seen)
+}
+
+func (seen seen) add(name string) error {
+	_, ok := seen[name]
+	if ok {
+		return fmt.Errorf("argument '%s' already seen", name)
+	}
+	seen[name] = true
+	return nil
+}
+
 func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 
 	// (define (name args?) body)
@@ -527,14 +542,14 @@ func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 	var name *Identifier
 	var args Args
 
-	seen := NewSeen()
+	seen := newSeen()
 
 	arg, ok := isIdentifier(list[1].Car())
 	if ok {
 		if define {
 			return list[1].Errorf("invalid define: %v", list[0])
 		}
-		err := seen.Add(arg.Name)
+		err := seen.add(arg.Name)
 		if err != nil {
 			return list[1].Errorf("%v", err)
 		}
@@ -552,7 +567,7 @@ func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 			if define && name == nil {
 				name = arg
 			} else {
-				err := seen.Add(arg.Name)
+				err := seen.add(arg.Name)
 				if err != nil {
 					return pair.Errorf("%v", err)
 				}
@@ -562,7 +577,7 @@ func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 			arg, ok = isIdentifier(pair.Cdr())
 			if ok {
 				// Rest arguments.
-				err := seen.Add(arg.Name)
+				err := seen.add(arg.Name)
 				if err != nil {
 					return fmt.Errorf("%s: %v", pair.To(), err)
 				}
@@ -616,7 +631,7 @@ func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 	}
 
 	c.addInstr(list[0], OpLambda, nil, len(c.lambdas))
-	c.lambdas = append(c.lambdas, &LambdaBody{
+	c.lambdas = append(c.lambdas, &lambdaBody{
 		Args: args,
 		Body: list[2:],
 		Env:  capture,
@@ -1126,7 +1141,7 @@ func isNamedIdentifier(value Value, name string) bool {
 
 // LambdaBody defines the lambda body and its location in the compiled
 // bytecode.
-type LambdaBody struct {
+type lambdaBody struct {
 	Start int
 	End   int
 	Args  Args
