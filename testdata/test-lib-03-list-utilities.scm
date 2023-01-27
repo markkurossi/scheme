@@ -14,6 +14,25 @@
 
   (let ((loop '(1 1 1 1 1)))
     (set-cdr! (cddddr loop) loop)
+
+    (runner 'test "remp"
+            (lambda () (equal? (remp even? '(3 1 4 1 5 9 2 6 5))
+                               '(3 1 1 5 9 5)))
+            (lambda () (eq? (remp even? loop) #f))
+            )
+    (runner 'test "remove"
+            (lambda () (equal? (remove 1 '(3 1 4 1 5 9 2 6 5))
+                               '(3 4 5 9 2 6 5)))
+            )
+    (runner 'test "remv"
+            (lambda () (equal? (remv 1 '(3 1 4 1 5 9 2 6 5))
+                               '(3 4 5 9 2 6 5)))
+            )
+    (runner 'test "remq"
+            (lambda () (equal? (remq 'foo '(foo bar baz))
+                               '(bar baz)))
+            )
+
     (runner 'test "memp"
             (lambda () (equal? (memp even? '(3 1 4 1 5 9 2 6 5))
                                '(4 1 5 9 2 6 5)))

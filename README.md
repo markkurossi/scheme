@@ -87,8 +87,21 @@ structured data operations.
      - [ ] xxx
    - [ ] 3. List utilities `(rnrs lists (6))`
      - [ ] find
-     - [ ] xxx
+     - [ ] for-all
+     - [ ] exists
+     - [ ] filter
+     - [ ] partition
+     - [ ] fold-left
+     - [ ] fold-right
+     - [X] remp
+     - [X] remove
+     - [X] remv
+     - [X] remq
+     - [ ] cons*
    - [ ] 4. Sorting `(rnrs sorting (6))`
+     - [ ] list-sort
+     - [ ] vector-sort
+     - [ ] vector-sort!
    - [ ] 5. Control structures `(rnrs control (6))`
    - [ ] 6. Records
    - [ ] 7. Exceptions and conditions

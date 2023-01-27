@@ -5,8 +5,53 @@
 ;;;
 
 (library (rnrs lists (6))
-  (export memp member memv memq assp assoc assv assq)
+  (export remp remove remv remq
+          memp member memv memq
+          assp assoc assv assq)
   (import (rnrs))
+
+  ;; XXX  find
+  ;; XXX  for-all
+  ;; XXX  exists
+  ;; XXX  filter
+  ;; XXX  partition
+  ;; XXX  fold-left
+  ;; XXX  fold-right
+
+  (define (remp proc list)
+    (letrec ((head '())
+             (tail '())
+             (turtle '())
+             (iter
+              (lambda (even proc list)
+                (cond
+                 ((null? list) head)
+                 ((or (not (pair? list))
+                      (eq? turtle list))
+                  ;; XXX (error 'remp "not a list" proc list)
+                  #f)
+                 (else
+                  (if even
+                      (if (null? turtle)
+                          (set! turtle list)
+                          (set! turtle (cdr turtle))))
+                  (if (not (proc (car list)))
+                      (let ((p (cons (car list) '())))
+                        (if (null? tail)
+                            (set! head p)
+                            (set-cdr! tail p))
+                        (set! tail p)))
+                  (iter (not even) proc (cdr list)))))))
+      (iter #t proc list)))
+
+  (define (remove obj list)
+    (remp (lambda (item) (equal? obj item)) list))
+
+  (define (remv obj list)
+    (remp (lambda (item) (eqv? obj item)) list))
+
+  (define (remq obj list)
+    (remp (lambda (item) (eq? obj item)) list))
 
   (define (memp proc list)
     (letrec ((turtle '())
@@ -67,4 +112,6 @@
 
   (define (assq obj alist)
     (assp (lambda (item) (eq? obj item)) alist))
+
+  ;; XXX cons*
   )
