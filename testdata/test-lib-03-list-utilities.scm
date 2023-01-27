@@ -21,6 +21,11 @@
             (lambda () (eq? (find even? loop) #f))
             )
 
+    (runner 'test "filter"
+            (lambda () (equal? (filter even? '(3 1 4 1 5 9 2 6))
+                               '(4 2 6)))
+            )
+
     (runner 'test "remp"
             (lambda () (equal? (remp even? '(3 1 4 1 5 9 2 6 5))
                                '(3 1 1 5 9 5)))

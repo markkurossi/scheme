@@ -5,7 +5,7 @@
 ;;;
 
 (library (rnrs lists (6))
-  (export find
+  (export find filter
           remp remove remv remq
           memp member memv memq
           assp assoc assv assq)
@@ -33,7 +33,10 @@
 
   ;; XXX  for-all
   ;; XXX  exists
-  ;; XXX  filter
+
+  (define (filter proc list)
+    (remp (lambda (item) (not (proc item))) list))
+
   ;; XXX  partition
   ;; XXX  fold-left
   ;; XXX  fold-right
