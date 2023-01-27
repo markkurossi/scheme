@@ -86,7 +86,7 @@ structured data operations.
    - [ ] 2. Bytevectors `(rnrs bytevectors (6))`
      - [ ] xxx
    - [ ] 3. List utilities `(rnrs lists (6))`
-     - [ ] find
+     - [X] find
      - [ ] for-all
      - [ ] exists
      - [ ] filter

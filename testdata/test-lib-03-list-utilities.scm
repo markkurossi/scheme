@@ -15,6 +15,12 @@
   (let ((loop '(1 1 1 1 1)))
     (set-cdr! (cddddr loop) loop)
 
+    (runner 'test "find"
+            (lambda () (eq? (find even? '(3 1 4 1 5 9)) 4))
+            (lambda () (eq? (find even? '(3 1 5 1 5 9)) #f))
+            (lambda () (eq? (find even? loop) #f))
+            )
+
     (runner 'test "remp"
             (lambda () (equal? (remp even? '(3 1 4 1 5 9 2 6 5))
                                '(3 1 1 5 9 5)))

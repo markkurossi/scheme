@@ -5,12 +5,32 @@
 ;;;
 
 (library (rnrs lists (6))
-  (export remp remove remv remq
+  (export find
+          remp remove remv remq
           memp member memv memq
           assp assoc assv assq)
   (import (rnrs))
 
-  ;; XXX  find
+  (define (find proc list)
+    (letrec ((turtle '())
+             (iter
+              (lambda (even proc list)
+                (cond
+                 ((null? list) #f)
+                 ((or (not (pair? list))
+                      (eq? turtle list))
+                  ;; XXX (error 'find "not a list" proc list)
+                  #f)
+                 (else
+                  (if even
+                      (if (null? turtle)
+                          (set! turtle list)
+                          (set! turtle (cdr turtle))))
+                  (if (proc (car list))
+                      (car list)
+                      (iter (not even) proc (cdr list))))))))
+      (iter #t proc list)))
+
   ;; XXX  for-all
   ;; XXX  exists
   ;; XXX  filter
