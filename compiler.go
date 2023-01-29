@@ -22,13 +22,18 @@ type Compiler struct {
 	libraryName Value
 	exportAll   bool
 	exports     Value
-	exported    map[string]*Identifier
+	exported    map[string]*export
 	imports     Value
 
 	code      Code
 	pcmap     PCMap
 	lambdas   []*lambdaBody
 	nextLabel int
+}
+
+type export struct {
+	from Locator
+	id   *Identifier
 }
 
 // Library implements a Scheme compilation unit.
@@ -94,7 +99,7 @@ func (code Code) Print() {
 func NewCompiler(scm *Scheme) *Compiler {
 	return &Compiler{
 		scm:      scm,
-		exported: make(map[string]*Identifier),
+		exported: make(map[string]*export),
 	}
 }
 
@@ -258,8 +263,8 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 
 	// Check that all exported names were defined.
 	for k, v := range c.exported {
-		if v == nil {
-			return nil, fmt.Errorf("exported symbol '%s' not defined", k)
+		if v.id == nil {
+			return nil, v.from.Errorf("exported symbol '%s' not defined", k)
 		}
 	}
 
@@ -296,7 +301,9 @@ func (c *Compiler) parseLibraryHeader(list []Pair) error {
 		if !ok {
 			return l[i].Errorf("invalid export name: %v", l[i])
 		}
-		c.exported[id.Name] = nil
+		c.exported[id.Name] = &export{
+			from: l[i],
+		}
 	}
 
 	// Import.
@@ -501,15 +508,16 @@ func (c *Compiler) compileDefine(env *Env, list []Pair) error {
 }
 
 func (c *Compiler) define(loc Locator, env *Env, name *Identifier) error {
-	_, ok := c.exported[name.Name]
+	export, ok := c.exported[name.Name]
 	if c.exportAll || ok {
 		// XXX Defined global symbol.
 	} else {
 		// XXX Define library symbol.
 		// fmt.Printf("XXX define local symbol %v\n", name)
 	}
-
-	c.exported[name.Name] = name
+	if ok {
+		export.id = name
+	}
 	c.exports = NewPair(name, c.exports)
 
 	instr := c.addInstr(loc, OpDefine, nil, 0)
