@@ -73,7 +73,7 @@ func (p *Port) Equal(o Value) bool {
 	return p.Eq(o)
 }
 
-var outputBuiltins = []Builtin{
+var rnrsIOSimpleBuiltins = []Builtin{
 	{
 		Name: "input-port?",
 		Args: []string{"obj"},
@@ -111,6 +111,26 @@ var outputBuiltins = []Builtin{
 		},
 	},
 	{
+		Name: "newline",
+		Args: []string{"[port]"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var ok bool
+			port := scm.Stdout
+
+			if len(args) == 1 {
+				port, ok = args[0].(*Port)
+				if !ok {
+					return nil, l.Errorf("invalid output port: %v", args[0])
+				}
+			}
+			_, err := port.Println()
+			if err != nil {
+				return nil, err
+			}
+			return nil, nil
+		},
+	},
+	{
 		Name: "display",
 		Args: []string{"obj", "[port]"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
@@ -131,21 +151,21 @@ var outputBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "newline",
-		Args: []string{"[port]"},
+		Name: "write",
+		Args: []string{"obj", "[port]"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			var ok bool
 			port := scm.Stdout
 
-			if len(args) == 1 {
-				port, ok = args[0].(*Port)
+			if len(args) == 2 {
+				port, ok = args[1].(*Port)
 				if !ok {
-					return nil, l.Errorf("invalid output port: %v", args[0])
+					return nil, l.Errorf("invalid output port: %v", args[1])
 				}
 			}
-			_, err := port.Println()
+			_, err := port.Printf("%v", args[0].Scheme())
 			if err != nil {
-				return nil, err
+				return nil, l.Errorf("%v", err)
 			}
 			return nil, nil
 		},

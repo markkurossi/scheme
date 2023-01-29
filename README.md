@@ -16,18 +16,23 @@ structured data operations.
  - [ ] API
    - [ ] Marshal / unmarshal
    - [ ] Access to global symbols
- - [ ] Compiler
-   - [ ] 4.2.4. Iteration
-     - [ ] do
-     - [ ] Named let
-   - [ ] 4.2.5. Delayed evaluation
-     - [ ] delay
-   - [ ] 4.2.6. Quasiquotation
-     - [ ] quasiquote
  - [ ] VM
+   - [ ] 5.8. Multiple return values
    - [ ] Error handlers
    - [ ] Call with current continuation
- - [ ] Base Library `(rnrs base (6))`
+ - [ ] Compiler
+   - [ ] 7.1. Library form
+     - [ ] import/export
+     - [ ] rename
+     - [ ] xxx
+   - [ ] 8. Top-level programs
+   - [ ] 9. Primitive syntax
+     - [ ] 9.2. Macros
+   - [ ] 10. Expansion process
+ - [ ] 11. Base Library `(rnrs base (6))`
+   - [ ] 11.2.2. Syntax definitions
+     - [ ] define-syntax
+   - [ ] 11.3. Bodies
    - [ ] 11.7. Arithmetic
      - [ ] complex?
      - [ ] real?
@@ -73,6 +78,12 @@ structured data operations.
      - [ ] angle
      - [ ] number->string
      - [ ] string->number
+   - [ ] 11.16. Iteration
+     - [ ] Named let
+   - [ ] 11.17. Quasiquotation
+     - [ ] quasiquote
+     - [ ] unquote
+     - [ ] unquote-splicing
  - [ ] R6RS Libraries
    - [ ] 1. Unicode `(rnrs unicode (6))`
      - [ ] char-foldcase
@@ -109,6 +120,10 @@ structured data operations.
      - [ ] vector-sort
      - [ ] vector-sort!
    - [ ] 5. Control structures `(rnrs control (6))`
+      - [ ] when
+      - [ ] unless
+      - [ ] do
+      - [ ] case-lambda
    - [ ] 6. Records
    - [ ] 7. Exceptions and conditions
    - [ ] 8. I/O
@@ -129,7 +144,6 @@ structured data operations.
        - [ ] peek-char
        - [ ] read
        - [ ] write-char
-       - [ ] write
    - [X] 9. File system `(rnrs files (6))`
    - [X] 10. Command-line access and exit values `(rnrs programs (6))`
    - [ ] 11. Arithmetic
