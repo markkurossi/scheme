@@ -6,7 +6,7 @@
 ;;; Tests for the r6rs lists library.
 ;;;
 
-(library (test rnrs lists)
+(library (main)
   (export)
   (import (rnrs lists))
 

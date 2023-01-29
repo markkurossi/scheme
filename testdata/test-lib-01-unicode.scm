@@ -6,7 +6,7 @@
 ;;; Tests for the r6rs unicode library.
 ;;;
 
-(library (test rnrs unicode)
+(library (main)
   (export)
   (import (rnrs unicode))
 
