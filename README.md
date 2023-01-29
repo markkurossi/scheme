@@ -84,12 +84,18 @@ structured data operations.
      - [ ] string-normalize-nfc
      - [ ] string-normalize-nfkc
    - [ ] 2. Bytevectors `(rnrs bytevectors (6))`
+     - [ ] endianness
+     - [ ] native-endianness
+     - [ ] bytevector-u8-set!
+     - [ ] bytevector-s8-set!
+     - [ ] bytevector->u8-list
+     - [ ] u8-list->bytevector
      - [ ] xxx
    - [ ] 3. List utilities `(rnrs lists (6))`
      - [X] find
      - [ ] for-all
      - [ ] exists
-     - [ ] filter
+     - [X] filter
      - [ ] partition
      - [ ] fold-left
      - [ ] fold-right
