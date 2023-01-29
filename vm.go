@@ -663,3 +663,17 @@ func (scm *Scheme) printStackLimit(limit int) {
 		fmt.Printf("\u2575.....\u2575\n")
 	}
 }
+
+var vmBuiltins = []Builtin{
+	{
+		Name: "error",
+		Args: []string{"who", "message", "irritant..."},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			message, ok := args[1].(String)
+			if !ok {
+				return nil, l.Errorf("invalid message: %v", args[1])
+			}
+			return nil, fmt.Errorf("%v: %v", args[0], message)
+		},
+	},
+}

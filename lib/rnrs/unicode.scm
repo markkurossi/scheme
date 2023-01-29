@@ -6,7 +6,7 @@
 
 (library (rnrs unicode (6))
   (export char-ci=? char-ci<? char-ci>? char-ci<=? char-ci>=?)
-  (import (rnrs))
+  (import (rnrs base))
 
   (define (char-ci=? char1 char2 . rest)
     (scheme::compare (lambda (x y)

@@ -9,7 +9,7 @@
           remp remove remv remq
           memp member memv memq
           assp assoc assv assq)
-  (import (rnrs))
+  (import (rnrs base))
 
   (define (find proc list)
     (letrec ((turtle '())

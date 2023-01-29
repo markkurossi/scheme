@@ -31,6 +31,9 @@
                               (set! tail p)))
                           items)
                 head)))
+           (strings-join
+            (lambda (items sep)
+              (apply string-append (join items sep))))
 
            ;; The make-path creates an operating system file path for
            ;; the argument library name.
@@ -43,7 +46,10 @@
            (iter
             (lambda (path)
               (if (null? path)
-                  #f
+                  (error 'load-library
+                         (string-append "library '("
+                                        (strings-join name-string-list " ")
+                                        ")' not found"))
                   (let ((filename (make-path (car path))))
                     (if (file-exists? filename)
                         (load filename)
@@ -57,7 +63,7 @@
 
 (define scheme::libraries
   '(
-    ((rnrs) (6) initialized)
+    ((rnrs base) (6) initialized)
     ((rnrs files) (6) initialized)
     ((rnrs programs) (6) initialized)
     ((rnrs mutable-pairs) (6) initialized)

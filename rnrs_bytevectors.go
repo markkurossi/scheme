@@ -60,7 +60,7 @@ func (v ByteVector) String() string {
 	return str.String()
 }
 
-var bytevectorBuiltins = []Builtin{
+var rnrsBytevectorBuiltins = []Builtin{
 	{
 		Name: "bytevector?",
 		Args: []string{"obj"},
