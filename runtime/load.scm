@@ -10,9 +10,9 @@
       (home (getenv "HOME"))
       (gopath "/src/github.com/markkurossi/scheme/lib"))
   (cond
-   ((> (string-length gohome) 0)
+   (gohome
     (set! load-path (cons (string-append gohome gopath) load-path)))
-   ((> (string-length home) 0)
+   (home
     (set! load-path (cons (string-append home "/go" gopath) load-path)))))
 
 ;; (display "load-path=") (display load-path) (newline)

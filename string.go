@@ -148,7 +148,7 @@ var stringBuiltins = []Builtin{
 				return NewNumber(0, len([]rune(string(v)))), nil
 
 			default:
-				return nil, l.Errorf("invalid argument")
+				return nil, l.Errorf("invalid argument: %v", args[0])
 			}
 		},
 	},

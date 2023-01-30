@@ -62,7 +62,7 @@
     runner))
 
 (define (color spec)
-  (if (zero? (string-length (getenv "INSIDE_EMACS")))
+  (if (not (getenv "INSIDE_EMACS"))
       (begin
         (display "\x1b;[") (display spec) (display "m"))))
 

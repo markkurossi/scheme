@@ -62,7 +62,10 @@ var rnrsProgramsBuiltins = []Builtin{
 			if !ok {
 				return nil, l.Errorf("invalid variable name: %v", args[0])
 			}
-			val, _ := os.LookupEnv(string(name))
+			val, found := os.LookupEnv(string(name))
+			if !found {
+				return Boolean(false), nil
+			}
 			return String(val), nil
 		},
 	},
