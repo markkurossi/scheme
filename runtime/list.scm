@@ -38,7 +38,7 @@
 (define (cdddar x) (cdr (cdr (cdr (car x)))))
 (define (cddddr x) (cdr (cdr (cdr (cdr x)))))
 
-(define (list? obj) (for-each (lambda (x)) obj))
+(define (list? obj) (for-each (lambda (x) #t) obj))
 
 (define (list . items) items)
 

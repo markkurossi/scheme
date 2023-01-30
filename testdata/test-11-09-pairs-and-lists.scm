@@ -126,8 +126,8 @@
           (lambda () (eq? (list-ref loop-odd 100) #f))
           (lambda () (eq? (list-ref loop-even 100) #f))
 
-          (lambda () (eq? (for-each (lambda (x)) loop-odd) #f))
-          (lambda () (eq? (for-each (lambda (x)) loop-even) #f))
+          (lambda () (eq? (for-each (lambda (x) #t) loop-odd) #f))
+          (lambda () (eq? (for-each (lambda (x) #t) loop-even) #f))
           (lambda () (eq? (map (lambda (x) x) loop-odd) #f))
           (lambda () (eq? (map (lambda (x) x) loop-even) #f))
           ))

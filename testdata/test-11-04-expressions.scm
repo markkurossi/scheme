@@ -29,15 +29,13 @@
                            (+ (p x) x))
                          5)
                         11))
-        (lambda () (eq? (begin
-                          (define reverse-subtract
-                            (lambda (x y) (- y x)))
+        (lambda () (eq? (letrec ((reverse-subtract
+                                  (lambda (x y) (- y x))))
                           (reverse-subtract 7 10))
                         3))
-        (lambda () (eq? (begin
-                          (define add4
-                            (let ((x 4))
-                              (lambda (y) (+ x y))))
+        (lambda () (eq? (letrec ((add4
+                                  (let ((x 4))
+                                    (lambda (y) (+ x y)))))
                           (add4 6))
                         10))
         (lambda () (equal? ((lambda x x) 3 4 5 6)
