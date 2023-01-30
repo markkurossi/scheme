@@ -546,6 +546,9 @@ func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 	// (define (name args?) body)
 	// (lambda (args?) body)
 	// (lambda args body)
+	if len(list) < 3 {
+		return list[0].Errorf("missing lambda body: %v", list[0])
+	}
 
 	var name *Identifier
 	var args Args
