@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022, 2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime/pprof"
 	"strings"
 
 	"github.com/markkurossi/scheme"
@@ -25,9 +26,22 @@ func main() {
 	verbose := flag.Bool("v", false, "verbose output")
 	noRuntime := flag.Bool("no-runtime", false, "do not load Scheme runtime")
 	bc := flag.Bool("bc", false, "compile scheme into bytecode")
+	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
 	flag.Parse()
 
 	fmt.Printf("Go Scheme Version 0.0\n")
+
+	if len(*cpuprofile) > 0 {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
 
 	scm, err := scheme.NewWithParams(scheme.Params{
 		Verbose:   *verbose,
