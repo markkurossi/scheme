@@ -17,6 +17,7 @@ structured data operations.
    - [ ] Marshal / unmarshal
    - [ ] Access to global symbols
  - [ ] VM
+   - [ ] Optimize bytecode execution
    - [ ] 5.8. Multiple return values
    - [ ] Error handlers
    - [ ] Call with current continuation
