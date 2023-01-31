@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -72,13 +72,9 @@ var vectorBuiltins = []Builtin{
 		Name: "make-vector",
 		Args: []string{"k", "[fill]"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			k, ok := args[0].(Number)
-			if !ok {
+			length, err := Int64(args[0])
+			if err != nil || length < 0 {
 				return nil, l.Errorf("invalid length: %v", args[0])
-			}
-			length := k.Int64()
-			if length < 0 {
-				return nil, l.Errorf("negative length: %v", k)
 			}
 
 			var fill Value
@@ -119,12 +115,11 @@ var vectorBuiltins = []Builtin{
 			if !ok {
 				return nil, l.Errorf("invalid vector: %v", args[0])
 			}
-			kn, ok := args[1].(Number)
-			if !ok {
+			k, err := Int64(args[1])
+			if err != nil {
 				return nil, l.Errorf("invalid index: %v", args[1])
 			}
-			k := int(kn.Int64())
-			if k < 0 || k >= len(vector) {
+			if k < 0 || k >= int64(len(vector)) {
 				return nil, l.Errorf("index %v out of range for vector %v",
 					k, args[0])
 			}
@@ -139,12 +134,11 @@ var vectorBuiltins = []Builtin{
 			if !ok {
 				return nil, l.Errorf("invalid vector: %v", args[0])
 			}
-			kn, ok := args[1].(Number)
-			if !ok {
+			k, error := Int64(args[1])
+			if error != nil {
 				return nil, l.Errorf("invalid index: %v", args[1])
 			}
-			k := int(kn.Int64())
-			if k < 0 || k >= len(vector) {
+			if k < 0 || k >= int64(len(vector)) {
 				return nil, l.Errorf("index %v out of range for vector %v",
 					k, args[0])
 			}

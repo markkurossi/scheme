@@ -43,11 +43,11 @@ func TestAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("scm.Apply: %v", err)
 	}
-	number, ok := scheme.IsNumber(v)
-	if !ok {
-		t.Fatalf("expected number: %v", v)
+	number, err := scheme.Int64(v)
+	if err != nil {
+		t.Fatalf("expected number: %v", err)
 	}
-	if number.Int64() != 42 {
-		t.Errorf("expected 42, got %v", number.Int64())
+	if number != 42 {
+		t.Errorf("expected 42, got %v", number)
 	}
 }

@@ -158,11 +158,11 @@ var characterBuiltins = []Builtin{
 		Name: "integer->char",
 		Args: []string{"obj"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			n, ok := args[0].(Number)
-			if !ok {
+			n, err := Int64(args[0])
+			if err != nil {
 				return nil, l.Errorf("invalid number %v", args[0])
 			}
-			return Character(rune(n.Int64())), nil
+			return Character(rune(n)), nil
 		},
 	},
 	{

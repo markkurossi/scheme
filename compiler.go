@@ -449,11 +449,11 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 		// Vector literals must be quoted like list constants.
 		return loc.Errorf("invalid syntax: %v", v)
 
-	case ByteVector, Boolean, String, Character, Number:
+	case ByteVector, Boolean, String, Character, Int, *BigInt:
 		c.addInstr(nil, OpConst, v, 0)
 
 	default:
-		return fmt.Errorf("compile value: %v(%T)", v, v)
+		return fmt.Errorf("compileValue: unsupported value: %v(%T)", v, v)
 	}
 	return nil
 }

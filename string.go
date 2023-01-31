@@ -97,13 +97,9 @@ var stringBuiltins = []Builtin{
 		Name: "make-string",
 		Args: []string{"k", "[char]"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			k, ok := args[0].(Number)
-			if !ok {
+			length, err := Int64(args[0])
+			if err != nil || length < 0 {
 				return nil, l.Errorf("invalid length: %v", args[0])
-			}
-			length := k.Int64()
-			if length < 0 {
-				return nil, l.Errorf("negative length: %v", k)
 			}
 
 			fill := ' '
@@ -160,13 +156,10 @@ var stringBuiltins = []Builtin{
 			if !ok {
 				return nil, l.Errorf("invalid string: %v", args[0])
 			}
-			kn, ok := args[1].(Number)
-			if !ok {
-				return nil, l.Errorf("invalid index: %v", args[1])
-			}
-			k := kn.Int64()
 			chars := []rune(string(str))
-			if k < 0 || k >= int64(len(chars)) {
+
+			k, err := Int64(args[1])
+			if err != nil || k < 0 || k >= int64(len(chars)) {
 				return nil, l.Errorf("invalid index: %v", args[1])
 			}
 			return Character(chars[k]), nil
@@ -227,17 +220,15 @@ var stringBuiltins = []Builtin{
 			}
 			str := []rune(string(strv))
 
-			startn, ok := args[1].(Number)
-			if !ok {
+			start, err := Int64(args[1])
+			if err != nil {
 				return nil, l.Errorf("invalid start index: %v", args[1])
 			}
-			start := startn.Int64()
 
-			endn, ok := args[2].(Number)
-			if !ok {
+			end, err := Int64(args[2])
+			if err != nil {
 				return nil, l.Errorf("invalid end index: %v", args[2])
 			}
-			end := endn.Int64()
 
 			if start < 0 || end < start || end > int64(len(strv)) {
 				return nil, l.Errorf("invalid indices: 0 <= %v <= %v <= %v",

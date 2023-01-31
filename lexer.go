@@ -197,7 +197,7 @@ type Token struct {
 	To         Point
 	Identifier string
 	Bool       bool
-	Number     Number
+	Number     Value
 	Char       rune
 	Str        string
 	Keyword    Keyword

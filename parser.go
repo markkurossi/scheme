@@ -178,8 +178,8 @@ func (p *Parser) Next() (Value, error) {
 				return ByteVector(elements), nil
 
 			case TNumber:
-				v := t.Number.Int64()
-				if v < 0 || v > 0xff {
+				v, err := Int64(t.Number)
+				if err != nil || v < 0 || v > 0xff {
 					return nil, t.Errorf("invalid bytevector initializer: '%v'",
 						v)
 				}

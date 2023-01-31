@@ -73,22 +73,18 @@ var rnrsBytevectorBuiltins = []Builtin{
 		Name: "make-bytevector",
 		Args: []string{"k", "[fill]"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			k, ok := args[0].(Number)
-			if !ok {
-				return nil, l.Errorf("invalid length: %v", args[0])
-			}
-			length := k.Int64()
-			if length < 0 {
-				return nil, l.Errorf("negative length: %v", k)
+			length, err := Int64(args[0])
+			if err != nil || length < 0 {
+				return nil, l.Errorf("negative length: %v", args[0])
 			}
 
 			var fill byte
 			if len(args) == 2 {
-				f, ok := args[1].(Number)
-				if !ok || f.Int64() < -128 || f.Int64() > 255 {
+				f, err := Int64(args[1])
+				if err != nil || f < -128 || f > 255 {
 					return nil, l.Errorf("invalid fill: %v", args[1])
 				}
-				fill = byte(f.Int64())
+				fill = byte(f)
 			}
 			elements := make([]byte, length, length)
 			for i := 0; i < int(length); i++ {
@@ -132,11 +128,11 @@ var rnrsBytevectorBuiltins = []Builtin{
 			if !ok {
 				return nil, l.Errorf("invalid bytevector: %v", args[0])
 			}
-			f, ok := args[1].(Number)
-			if !ok || f.Int64() < -128 || f.Int64() > 255 {
+			f, err := Int64(args[1])
+			if err != nil || f < -128 || f > 255 {
 				return nil, l.Errorf("invalid fill: %v", args[1])
 			}
-			fill := byte(f.Int64())
+			fill := byte(f)
 
 			for i := 0; i < len(v); i++ {
 				v[i] = fill
@@ -157,29 +153,26 @@ var rnrsBytevectorBuiltins = []Builtin{
 			if !ok {
 				return nil, l.Errorf("invalid target: %v", args[2])
 			}
-			nSourceStart, ok := args[1].(Number)
-			if !ok || nSourceStart.Int64() < 0 {
+			sourceStart, err := Int64(args[1])
+			if err != nil || sourceStart < 0 {
 				return nil, l.Errorf("invalid source-start: %v", args[1])
 			}
-			sourceStart := int(nSourceStart.Int64())
 
-			nTargetStart, ok := args[3].(Number)
-			if !ok || nTargetStart.Int64() < 0 {
+			targetStart, err := Int64(args[3])
+			if err != nil || targetStart < 0 {
 				return nil, l.Errorf("invalid target-start: %v", args[3])
 			}
-			targetStart := int(nTargetStart.Int64())
 
-			nK, ok := args[4].(Number)
-			if !ok || nK.Int64() < 0 {
+			k, err := Int64(args[4])
+			if err != nil || k < 0 {
 				return nil, l.Errorf("invalid k: %v", args[4])
 			}
-			k := int(nK.Int64())
 
-			if sourceStart+k > len(source) {
+			if sourceStart+k > int64(len(source)) {
 				return nil, l.Errorf("invalid source range: %v+%v>%v",
 					sourceStart, k, len(source))
 			}
-			if targetStart+k > len(target) {
+			if targetStart+k > int64(len(target)) {
 				return nil, l.Errorf("invalid target range: %v+%v>%v",
 					targetStart, k, len(target))
 			}
@@ -212,11 +205,10 @@ var rnrsBytevectorBuiltins = []Builtin{
 			if !ok {
 				return nil, l.Errorf("not a bytevector: %v", args[0])
 			}
-			kn, ok := args[1].(Number)
-			if !ok {
+			k, err := Int64(args[1])
+			if err != nil {
 				return nil, l.Errorf("invalid index: %v", args[1])
 			}
-			k := kn.Int64()
 			if k < 0 || k >= int64(len(v)) {
 				return nil, l.Errorf("invalid index: 0 <= %v < %v", k, len(v))
 			}
@@ -232,11 +224,10 @@ var rnrsBytevectorBuiltins = []Builtin{
 			if !ok {
 				return nil, l.Errorf("not a bytevector: %v", args[0])
 			}
-			kn, ok := args[1].(Number)
-			if !ok {
+			k, err := Int64(args[1])
+			if err != nil {
 				return nil, l.Errorf("invalid index: %v", args[1])
 			}
-			k := kn.Int64()
 			if k < 0 || k >= int64(len(v)) {
 				return nil, l.Errorf("invalid index: 0 <= %v < %v", k, len(v))
 			}
