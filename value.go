@@ -17,7 +17,6 @@ var (
 	_ Value = &Vector{}
 	_ Value = &Identifier{}
 	_ Value = Keyword(0)
-	_ Value = &Number{}
 	_ Value = Boolean(true)
 	_ Value = String("string")
 	_ Value = Character('@')

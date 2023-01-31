@@ -17,11 +17,10 @@ var rnrsMutableStringsBuiltins = []Builtin{
 			if !ok {
 				return nil, l.Errorf("invalid string: %v", args[0])
 			}
-			kn, ok := args[1].(Number)
-			if !ok {
+			k, err := Int64(args[1])
+			if err != nil {
 				return nil, l.Errorf("invalid index: %v", args[1])
 			}
-			k := kn.Int64()
 			_ = str
 			_ = k
 			return nil, l.Errorf("not implemented yet")

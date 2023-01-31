@@ -38,8 +38,11 @@ var rnrsProgramsBuiltins = []Builtin{
 			code := 0
 			if len(args) == 1 {
 				switch v := args[0].(type) {
-				case Number:
-					code = int(v.Int64())
+				case Int:
+					code = int(v)
+
+				case *BigInt:
+					code = int(v.I.Int64())
 
 				case Boolean:
 					if !v {
