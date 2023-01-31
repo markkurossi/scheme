@@ -514,15 +514,15 @@ type BigInt struct {
 	I *big.Int
 }
 
-func (v BigInt) String() string {
+func (v *BigInt) String() string {
 	return v.I.String()
 }
 
-func (v BigInt) Scheme() string {
+func (v *BigInt) Scheme() string {
 	return v.String()
 }
 
-func (v BigInt) Eq(o Value) bool {
+func (v *BigInt) Eq(o Value) bool {
 	ov, ok := o.(*BigInt)
 	if !ok {
 		return false
@@ -530,7 +530,7 @@ func (v BigInt) Eq(o Value) bool {
 	return v.I.Cmp(ov.I) == 0
 }
 
-func (v BigInt) Equal(o Value) bool {
+func (v *BigInt) Equal(o Value) bool {
 	switch ov := o.(type) {
 	case Int:
 		return v.I.Cmp(big.NewInt(int64(ov))) == 0
