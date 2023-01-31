@@ -38,16 +38,19 @@ var (
 	}
 )
 
+// Int implements inexact integer numbers.
 type Int int64
 
 func (v Int) String() string {
 	return fmt.Sprintf("%v", int64(v))
 }
 
+// Scheme returns the value as a Scheme string.
 func (v Int) Scheme() string {
 	return v.String()
 }
 
+// Eq tests if the argument value is eq? to this value.
 func (v Int) Eq(o Value) bool {
 	ov, ok := o.(Int)
 	if !ok {
@@ -56,6 +59,7 @@ func (v Int) Eq(o Value) bool {
 	return v == ov
 }
 
+// Equal tests if the argument value is equal? to this value.
 func (v Int) Equal(o Value) bool {
 	switch ov := o.(type) {
 	case Int:
@@ -69,6 +73,7 @@ func (v Int) Equal(o Value) bool {
 	}
 }
 
+// BigInt implements exact integer numbers.
 type BigInt struct {
 	I *big.Int
 }
@@ -77,10 +82,12 @@ func (v *BigInt) String() string {
 	return v.I.String()
 }
 
+// Scheme returns the value as a Scheme string.
 func (v *BigInt) Scheme() string {
 	return v.String()
 }
 
+// Eq tests if the argument value is eq? to this value.
 func (v *BigInt) Eq(o Value) bool {
 	ov, ok := o.(*BigInt)
 	if !ok {
@@ -89,6 +96,7 @@ func (v *BigInt) Eq(o Value) bool {
 	return v.I.Cmp(ov.I) == 0
 }
 
+// Equal tests if the argument value is equal? to this value.
 func (v *BigInt) Equal(o Value) bool {
 	switch ov := o.(type) {
 	case Int:
@@ -102,6 +110,8 @@ func (v *BigInt) Equal(o Value) bool {
 	}
 }
 
+// Int64 returns the number value as int64 integer number. The
+// function returns an error if the argument is not a number.
 func Int64(v Value) (int64, error) {
 	switch val := v.(type) {
 	case Int:
@@ -115,282 +125,7 @@ func Int64(v Value) (int64, error) {
 	}
 }
 
-func Add(z1, z2 Value) (Value, error) {
-	switch v1 := z1.(type) {
-	case Int:
-		switch v2 := z2.(type) {
-		case Int:
-			return v1 + v2, nil
-
-		case *BigInt:
-			return Int(int64(v1) + v2.I.Int64()), nil
-
-		default:
-			return Int(0), fmt.Errorf("+: unsupport number: %v", z2)
-		}
-
-	case *BigInt:
-		switch v2 := z2.(type) {
-		case Int:
-			return Int(v1.I.Int64() + int64(v2)), nil
-
-		case *BigInt:
-			return &BigInt{
-				I: new(big.Int).Add(v1.I, v2.I),
-			}, nil
-
-		default:
-			return Int(0), fmt.Errorf("+: unsupport number: %v", z2)
-		}
-
-	default:
-		return Int(0), fmt.Errorf("+: unsupport number: %v", z1)
-	}
-}
-
-func Sub(z1, z2 Value) (Value, error) {
-	switch v1 := z1.(type) {
-	case Int:
-		switch v2 := z2.(type) {
-		case Int:
-			return v1 - v2, nil
-
-		case *BigInt:
-			return Int(int64(v1) - v2.I.Int64()), nil
-
-		default:
-			return Int(0), fmt.Errorf("-: unsupport number: %v", z2)
-		}
-
-	case *BigInt:
-		switch v2 := z2.(type) {
-		case Int:
-			return Int(v1.I.Int64() - int64(v2)), nil
-
-		case *BigInt:
-			return &BigInt{
-				I: new(big.Int).Sub(v1.I, v2.I),
-			}, nil
-
-		default:
-			return Int(0), fmt.Errorf("-: unsupport number: %v", z2)
-		}
-
-	default:
-		return Int(0), fmt.Errorf("-: unsupport number: %v", z1)
-	}
-}
-
-func Mul(z1, z2 Value) (Value, error) {
-	switch v1 := z1.(type) {
-	case Int:
-		switch v2 := z2.(type) {
-		case Int:
-			return v1 * v2, nil
-
-		case *BigInt:
-			return Int(int64(v1) * v2.I.Int64()), nil
-
-		default:
-			return Int(0), fmt.Errorf("*: unsupport number: %v", z2)
-		}
-
-	case *BigInt:
-		switch v2 := z2.(type) {
-		case Int:
-			return Int(v1.I.Int64() * int64(v2)), nil
-
-		case *BigInt:
-			return &BigInt{
-				I: new(big.Int).Mul(v1.I, v2.I),
-			}, nil
-
-		default:
-			return Int(0), fmt.Errorf("*: unsupport number: %v", z2)
-		}
-
-	default:
-		return Int(0), fmt.Errorf("*: unsupport number: %v", z1)
-	}
-}
-
-func Div(z1, z2 Value) (Value, error) {
-	switch v1 := z1.(type) {
-	case Int:
-		switch v2 := z2.(type) {
-		case Int:
-			return v1 / v2, nil
-
-		case *BigInt:
-			return Int(int64(v1) / v2.I.Int64()), nil
-
-		default:
-			return Int(0), fmt.Errorf("/: unsupport number: %v", z2)
-		}
-
-	case *BigInt:
-		switch v2 := z2.(type) {
-		case Int:
-			return Int(v1.I.Int64() / int64(v2)), nil
-
-		case *BigInt:
-			return &BigInt{
-				I: new(big.Int).Div(v1.I, v2.I),
-			}, nil
-
-		default:
-			return Int(0), fmt.Errorf("/: unsupport number: %v", z2)
-		}
-
-	default:
-		return Int(0), fmt.Errorf("/: unsupport number: %v", z1)
-	}
-}
-
-func Mod(z1, z2 Value) (Value, error) {
-	switch v1 := z1.(type) {
-	case Int:
-		switch v2 := z2.(type) {
-		case Int:
-			return v1 % v2, nil
-
-		case *BigInt:
-			return Int(int64(v1) % v2.I.Int64()), nil
-
-		default:
-			return Int(0), fmt.Errorf("mod: unsupport number: %v", z2)
-		}
-
-	case *BigInt:
-		switch v2 := z2.(type) {
-		case Int:
-			return Int(v1.I.Int64() % int64(v2)), nil
-
-		case *BigInt:
-			return &BigInt{
-				I: new(big.Int).Mod(v1.I, v2.I),
-			}, nil
-
-		default:
-			return Int(0), fmt.Errorf("mod: unsupport number: %v", z2)
-		}
-
-	default:
-		return Int(0), fmt.Errorf("mod: unsupport number: %v", z1)
-	}
-}
-
-func Sqrt(z Value) (Value, error) {
-	switch v := z.(type) {
-	case Int:
-		return Int(math.Sqrt(float64(v))), nil
-
-	case *BigInt:
-		return &BigInt{
-			I: new(big.Int).Sqrt(v.I),
-		}, nil
-
-	default:
-		return Int(0), fmt.Errorf("sqrt: unsupport number: %v", z)
-	}
-}
-
-func Expt(z1, z2 Value) (Value, error) {
-	switch v1 := z1.(type) {
-	case Int:
-		switch v2 := z2.(type) {
-		case Int:
-			return Int(math.Pow(float64(v1), float64(v2))), nil
-
-		case *BigInt:
-			return Int(math.Pow(float64(v1), float64(v2.I.Int64()))), nil
-
-		default:
-			return Int(0), fmt.Errorf("expt: unsupport number: %v", z2)
-		}
-
-	case *BigInt:
-		switch v2 := z2.(type) {
-		case Int:
-			return Int(math.Pow(float64(v1.I.Int64()), float64(v2))), nil
-
-		case *BigInt:
-			return &BigInt{
-				I: new(big.Int).Exp(v1.I, v2.I, nil),
-			}, nil
-
-		default:
-			return Int(0), fmt.Errorf("expt: unsupport number: %v", z2)
-		}
-
-	default:
-		return Int(0), fmt.Errorf("expt: unsupport number: %v", z1)
-	}
-}
-
-func Lt(z1, z2 Value) (Value, error) {
-	switch v1 := z1.(type) {
-	case Int:
-		switch v2 := z2.(type) {
-		case Int:
-			return Boolean(v1 < v2), nil
-
-		case *BigInt:
-			return Boolean(big.NewInt(int64(v1)).Cmp(v2.I) == -1), nil
-
-		default:
-			return Boolean(false), fmt.Errorf("<: unsupport number: %v", z2)
-		}
-
-	case *BigInt:
-		switch v2 := z2.(type) {
-		case Int:
-			return Boolean(v1.I.Cmp(big.NewInt(int64(v2))) == -1), nil
-
-		case *BigInt:
-			return Boolean(v1.I.Cmp(v2.I) == -1), nil
-
-		default:
-			return Boolean(false), fmt.Errorf("<: unsupport number: %v", z2)
-		}
-
-	default:
-		return Boolean(false), fmt.Errorf("<: unsupport number: %v", z1)
-	}
-}
-
-func Gt(z1, z2 Value) (Value, error) {
-	switch v1 := z1.(type) {
-	case Int:
-		switch v2 := z2.(type) {
-		case Int:
-			return Boolean(v1 > v2), nil
-
-		case *BigInt:
-			return Boolean(big.NewInt(int64(v1)).Cmp(v2.I) == 1), nil
-
-		default:
-			return Boolean(false), fmt.Errorf(">: unsupport number: %v", z2)
-		}
-
-	case *BigInt:
-		switch v2 := z2.(type) {
-		case Int:
-			return Boolean(v1.I.Cmp(big.NewInt(int64(v2))) == 1), nil
-
-		case *BigInt:
-			return Boolean(v1.I.Cmp(v2.I) == 1), nil
-
-		default:
-			return Boolean(false), fmt.Errorf(">: unsupport number: %v", z2)
-		}
-
-	default:
-		return Boolean(false), fmt.Errorf(">: unsupport number: %v", z1)
-	}
-}
-
-func Bit(z Value, i int) (uint, error) {
+func bit(z Value, i int) (uint, error) {
 	switch v := z.(type) {
 	case Int:
 		return uint((v >> i) & 0x1), nil
@@ -399,7 +134,7 @@ func Bit(z Value, i int) (uint, error) {
 		return v.I.Bit(i), nil
 
 	default:
-		return 0, fmt.Errorf("bit: unsupport number: %v", z)
+		return 0, fmt.Errorf("bit: invalid number: %v", z)
 	}
 }
 
@@ -485,21 +220,79 @@ var numberBuiltins = []Builtin{
 		Name: "scheme::<",
 		Args: []string{"x1", "x2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			return Lt(args[0], args[1])
+			switch v1 := args[0].(type) {
+			case Int:
+				switch v2 := args[1].(type) {
+				case Int:
+					return Boolean(v1 < v2), nil
+
+				case *BigInt:
+					return Boolean(big.NewInt(int64(v1)).Cmp(v2.I) == -1), nil
+
+				default:
+					return Boolean(false), l.Errorf("invalid number: %v",
+						args[1])
+				}
+
+			case *BigInt:
+				switch v2 := args[1].(type) {
+				case Int:
+					return Boolean(v1.I.Cmp(big.NewInt(int64(v2))) == -1), nil
+
+				case *BigInt:
+					return Boolean(v1.I.Cmp(v2.I) == -1), nil
+
+				default:
+					return Boolean(false), l.Errorf("invalid number: %v",
+						args[1])
+				}
+
+			default:
+				return Boolean(false), l.Errorf("invalid number: %v", args[0])
+			}
 		},
 	},
 	{
 		Name: "scheme::>",
 		Args: []string{"x1", "x2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			return Gt(args[0], args[1])
+			switch v1 := args[0].(type) {
+			case Int:
+				switch v2 := args[1].(type) {
+				case Int:
+					return Boolean(v1 > v2), nil
+
+				case *BigInt:
+					return Boolean(big.NewInt(int64(v1)).Cmp(v2.I) == 1), nil
+
+				default:
+					return Boolean(false), l.Errorf("invalid number: %v",
+						args[1])
+				}
+
+			case *BigInt:
+				switch v2 := args[1].(type) {
+				case Int:
+					return Boolean(v1.I.Cmp(big.NewInt(int64(v2))) == 1), nil
+
+				case *BigInt:
+					return Boolean(v1.I.Cmp(v2.I) == 1), nil
+
+				default:
+					return Boolean(false), l.Errorf("invalid number: %v",
+						args[1])
+				}
+
+			default:
+				return Boolean(false), l.Errorf("invalid number: %v", args[0])
+			}
 		},
 	},
 	{
 		Name: "odd?",
 		Args: []string{"z"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			bit, err := Bit(args[0], 0)
+			bit, err := bit(args[0], 0)
 			if err != nil {
 				return nil, l.Errorf("invalid argument: %v", args[0])
 			}
@@ -510,7 +303,7 @@ var numberBuiltins = []Builtin{
 		Name: "even?",
 		Args: []string{"z"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			bit, err := Bit(args[0], 0)
+			bit, err := bit(args[0], 0)
 			if err != nil {
 				return nil, l.Errorf("invalid argument: %v", args[0])
 			}
@@ -521,49 +314,236 @@ var numberBuiltins = []Builtin{
 		Name: "scheme::+",
 		Args: []string{"z1", "z2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			return Add(args[0], args[1])
+			switch v1 := args[0].(type) {
+			case Int:
+				switch v2 := args[1].(type) {
+				case Int:
+					return v1 + v2, nil
+
+				case *BigInt:
+					return Int(int64(v1) + v2.I.Int64()), nil
+
+				default:
+					return Int(0), l.Errorf("invalid number: %v", args[1])
+				}
+
+			case *BigInt:
+				switch v2 := args[1].(type) {
+				case Int:
+					return Int(v1.I.Int64() + int64(v2)), nil
+
+				case *BigInt:
+					return &BigInt{
+						I: new(big.Int).Add(v1.I, v2.I),
+					}, nil
+
+				default:
+					return Int(0), l.Errorf("invalid number: %v", args[1])
+				}
+
+			default:
+				return Int(0), l.Errorf("invalid number: %v", args[0])
+			}
 		},
 	},
 	{
 		Name: "scheme::*",
 		Args: []string{"z1", "z2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			return Mul(args[0], args[1])
+			switch v1 := args[0].(type) {
+			case Int:
+				switch v2 := args[1].(type) {
+				case Int:
+					return v1 * v2, nil
+
+				case *BigInt:
+					return Int(int64(v1) * v2.I.Int64()), nil
+
+				default:
+					return Int(0), l.Errorf("invalid number: %v", args[1])
+				}
+
+			case *BigInt:
+				switch v2 := args[1].(type) {
+				case Int:
+					return Int(v1.I.Int64() * int64(v2)), nil
+
+				case *BigInt:
+					return &BigInt{
+						I: new(big.Int).Mul(v1.I, v2.I),
+					}, nil
+
+				default:
+					return Int(0), l.Errorf("invalid number: %v", args[1])
+				}
+
+			default:
+				return Int(0), l.Errorf("invalid number: %v", args[0])
+			}
 		},
 	},
 	{
 		Name: "scheme::-",
 		Args: []string{"z1", "z2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			return Sub(args[0], args[1])
+			switch v1 := args[0].(type) {
+			case Int:
+				switch v2 := args[1].(type) {
+				case Int:
+					return v1 - v2, nil
+
+				case *BigInt:
+					return Int(int64(v1) - v2.I.Int64()), nil
+
+				default:
+					return Int(0), l.Errorf("invalid number: %v", args[1])
+				}
+
+			case *BigInt:
+				switch v2 := args[1].(type) {
+				case Int:
+					return Int(v1.I.Int64() - int64(v2)), nil
+
+				case *BigInt:
+					return &BigInt{
+						I: new(big.Int).Sub(v1.I, v2.I),
+					}, nil
+
+				default:
+					return Int(0), l.Errorf("invalid number: %v", args[1])
+				}
+
+			default:
+				return Int(0), l.Errorf("invalid number: %v", args[0])
+			}
 		},
 	},
 	{
 		Name: "scheme::/",
 		Args: []string{"z1", "z2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			return Div(args[0], args[1])
+			switch v1 := args[0].(type) {
+			case Int:
+				switch v2 := args[1].(type) {
+				case Int:
+					return v1 / v2, nil
+
+				case *BigInt:
+					return Int(int64(v1) / v2.I.Int64()), nil
+
+				default:
+					return Int(0), l.Errorf("invalid number: %v", args[1])
+				}
+
+			case *BigInt:
+				switch v2 := args[1].(type) {
+				case Int:
+					return Int(v1.I.Int64() / int64(v2)), nil
+
+				case *BigInt:
+					return &BigInt{
+						I: new(big.Int).Div(v1.I, v2.I),
+					}, nil
+
+				default:
+					return Int(0), l.Errorf("invalid number: %v", args[1])
+				}
+
+			default:
+				return Int(0), l.Errorf("invalid number: %v", args[0])
+			}
 		},
 	},
 	{
 		Name: "mod",
 		Args: []string{"z1", "z2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			return Mod(args[0], args[1])
+			switch v1 := args[0].(type) {
+			case Int:
+				switch v2 := args[1].(type) {
+				case Int:
+					return v1 % v2, nil
+
+				case *BigInt:
+					return Int(int64(v1) % v2.I.Int64()), nil
+
+				default:
+					return Int(0), l.Errorf("invalid number: %v", args[1])
+				}
+
+			case *BigInt:
+				switch v2 := args[1].(type) {
+				case Int:
+					return Int(v1.I.Int64() % int64(v2)), nil
+
+				case *BigInt:
+					return &BigInt{
+						I: new(big.Int).Mod(v1.I, v2.I),
+					}, nil
+
+				default:
+					return Int(0), l.Errorf("invalid number: %v", args[1])
+				}
+
+			default:
+				return Int(0), l.Errorf("invalid number: %v", args[0])
+			}
 		},
 	},
 	{
 		Name: "sqrt",
 		Args: []string{"z"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			return Sqrt(args[0])
+			switch v := args[0].(type) {
+			case Int:
+				return Int(math.Sqrt(float64(v))), nil
+
+			case *BigInt:
+				return &BigInt{
+					I: new(big.Int).Sqrt(v.I),
+				}, nil
+
+			default:
+				return Int(0), l.Errorf("invalid number: %v", args[0])
+			}
 		},
 	},
 	{
 		Name: "expt",
 		Args: []string{"z1", "z2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			return Expt(args[0], args[1])
+			switch v1 := args[0].(type) {
+			case Int:
+				switch v2 := args[1].(type) {
+				case Int:
+					return Int(math.Pow(float64(v1), float64(v2))), nil
+
+				case *BigInt:
+					return Int(math.Pow(float64(v1),
+						float64(v2.I.Int64()))), nil
+
+				default:
+					return Int(0), l.Errorf("invalid number: %v", args[1])
+				}
+
+			case *BigInt:
+				switch v2 := args[1].(type) {
+				case Int:
+					return Int(math.Pow(float64(v1.I.Int64()),
+						float64(v2))), nil
+
+				case *BigInt:
+					return &BigInt{
+						I: new(big.Int).Exp(v1.I, v2.I, nil),
+					}, nil
+
+				default:
+					return Int(0), l.Errorf("invalid number: %v", args[1])
+				}
+
+			default:
+				return Int(0), l.Errorf("expt: invalid number: %v", args[0])
+			}
 		},
 	},
 }
