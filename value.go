@@ -238,6 +238,7 @@ type Native func(scm *Scheme, l *Lambda, args []Value) (Value, error)
 // Builtin defines a built-in native function.
 type Builtin struct {
 	Name    string
+	Aliases []string
 	Args    []string
 	MinArgs int
 	MaxArgs int

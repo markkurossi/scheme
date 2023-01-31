@@ -129,18 +129,18 @@ func (scm *Scheme) loadRuntime(dir string) error {
 // argument array.
 func (scm *Scheme) DefineBuiltins(builtins []Builtin) {
 	for _, bi := range builtins {
-		scm.DefineBuiltin(bi.Name, bi.Args, bi.Native)
+		scm.DefineBuiltin(bi)
 	}
 }
 
 // DefineBuiltin defines a built-in native function.
-func (scm *Scheme) DefineBuiltin(name string, args []string, native Native) {
+func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 
 	var minArgs, maxArgs int
 	var usage []*Identifier
 	var rest bool
 
-	for _, arg := range args {
+	for _, arg := range builtin.Args {
 		usage = append(usage, &Identifier{
 			Name: arg,
 		})
@@ -156,17 +156,29 @@ func (scm *Scheme) DefineBuiltin(name string, args []string, native Native) {
 		maxArgs = math.MaxInt
 	}
 
-	sym := scm.Intern(name)
+	args := Args{
+		Min:   minArgs,
+		Max:   maxArgs,
+		Fixed: usage,
+	}
+
+	sym := scm.Intern(builtin.Name)
 	sym.Global = &Lambda{
-		Name: name,
-		Args: Args{
-			Min:   minArgs,
-			Max:   maxArgs,
-			Fixed: usage,
-		},
-		Native: native,
+		Name:   builtin.Name,
+		Args:   args,
+		Native: builtin.Native,
 	}
 	sym.Flags |= FlagDefined
+
+	for _, alias := range builtin.Aliases {
+		sym = scm.Intern(alias)
+		sym.Global = &Lambda{
+			Name:   alias,
+			Args:   args,
+			Native: builtin.Native,
+		}
+		sym.Flags |= FlagDefined
+	}
 }
 
 // EvalFile evaluates the scheme file.

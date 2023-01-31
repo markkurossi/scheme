@@ -455,8 +455,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "mod",
-		Args: []string{"z1", "z2"},
+		Name:    "mod",
+		Aliases: []string{"modulo"},
+		Args:    []string{"z1", "z2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			switch v1 := args[0].(type) {
 			case Int:

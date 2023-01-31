@@ -158,5 +158,12 @@ structured data operations.
 	 - [ ] string-set!
 	 - [ ] string-fill!
    - [ ] 19. R5RS compatibility `(rnrs r5rs (6))`
+     - [ ] exact->inexact
+     - [ ] inexact->exact
+     - [ ] quotient
+     - [ ] remainder
+     - [X] modulo
      - [ ] delay
      - [ ] force
+     - [ ] null-environment
+     - [ ] scheme-report-environment
