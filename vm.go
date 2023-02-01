@@ -224,7 +224,25 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				return nil, scm.Breakf("%s: invalid function: %v",
 					instr.Op, scm.accu)
 			}
-			scm.pushFrame(lambda, instr.I != 0)
+
+			var scope []Value
+			var frame *Frame
+
+			l := len(scm.frameFL)
+			if l == 0 {
+				frame = new(Frame)
+				scope = []Value{frame}
+			} else {
+				scope = scm.frameFL[l-1]
+				scm.frameFL = scm.frameFL[:l-1]
+				frame = scope[0].(*Frame)
+			}
+			frame.Index = len(scm.stack)
+			frame.Next = scm.fp
+			frame.Lambda = lambda
+			frame.Toplevel = instr.I != 0
+
+			scm.stack = append(scm.stack, scope)
 
 		case OpPushS:
 			scm.pushScope(instr.I)
@@ -539,42 +557,12 @@ func (scm *Scheme) popScope() {
 	scm.stack = scm.stack[:len(scm.stack)-1]
 }
 
-func (scm *Scheme) pushFrame(lambda *Lambda, toplevel bool) *Frame {
-	// Check that frame is valid.
-	if scm.fp < len(scm.stack) {
-		if len(scm.stack[scm.fp]) != 1 {
-			panic(fmt.Sprintf("invalid frame: %v", scm.stack[scm.fp]))
-		}
-		_, ok := scm.stack[scm.fp][0].(*Frame)
-		if !ok {
-			panic(fmt.Sprintf("invalid frame: %v", scm.stack[scm.fp][0]))
-		}
-	}
-
-	f := &Frame{
-		Index:    len(scm.stack),
-		Lambda:   lambda,
-		Toplevel: toplevel,
-	}
-
-	f.Next = scm.fp
-
-	scm.pushScope(1)
-	scm.stack[f.Index][0] = f
-
-	return f
-}
-
 func (scm *Scheme) popFrame() bool {
-	// Check that frame is valid.
-	if len(scm.stack[scm.fp]) != 1 {
-		panic(fmt.Sprintf("invalid frame: %v", scm.stack[scm.fp]))
-	}
-	frame, ok := scm.stack[scm.fp][0].(*Frame)
-	if !ok {
-		panic(fmt.Sprintf("invalid frame: %v", scm.stack[scm.fp][0]))
-	}
+	frame := scm.stack[scm.fp][0].(*Frame)
+
+	scm.frameFL = append(scm.frameFL, scm.stack[scm.fp])
 	scm.stack = scm.stack[:scm.fp]
+
 	scm.fp = frame.Next
 
 	return frame.Toplevel

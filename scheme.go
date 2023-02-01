@@ -35,6 +35,8 @@ type Scheme struct {
 	accu    Value
 	stack   [][]Value
 	symbols map[string]*Identifier
+
+	frameFL [][]Value
 }
 
 // Params define the configuration parameters for Scheme.
