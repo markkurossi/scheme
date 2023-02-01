@@ -27,6 +27,8 @@ func main() {
 	noRuntime := flag.Bool("no-runtime", false, "do not load Scheme runtime")
 	bc := flag.Bool("bc", false, "compile scheme into bytecode")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
+	memprofile := flag.String("memprofile", "",
+		"write memory profile to `file`")
 	flag.Parse()
 
 	fmt.Printf("Go Scheme Version 0.0\n")
@@ -64,6 +66,15 @@ func main() {
 	}
 	if *replp || len(flag.Args()) == 0 {
 		repl(scm)
+	} else if len(*memprofile) > 0 {
+		f, err := os.Create(*memprofile)
+		if err != nil {
+			log.Fatal("could not create memory profile: ", err)
+		}
+		defer f.Close()
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			log.Fatal("could not write memory profile: ", err)
+		}
 	}
 }
 
