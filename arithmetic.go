@@ -8,8 +8,11 @@ package scheme
 
 import (
 	"fmt"
+	"io"
 	"math"
 	"math/big"
+	"strconv"
+	"strings"
 )
 
 // NewNumber creates a new numeric value.
@@ -544,6 +547,106 @@ var numberBuiltins = []Builtin{
 
 			default:
 				return Int(0), l.Errorf("expt: invalid number: %v", args[0])
+			}
+		},
+	},
+	{
+		Name: "number->string",
+		Args: []string{"z", "[radix]", "[precision]"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var radix int = 10
+			var precision int
+
+			if len(args) > 1 {
+				v, err := Int64(args[1])
+				if err != nil {
+					return nil, l.Errorf("invalid radix: %v", args[1])
+				}
+				radix = int(v)
+			}
+			switch radix {
+			case 2, 8, 10, 16:
+
+			default:
+				return nil, fmt.Errorf("invalid radix %v: expected %v",
+					args[1], "2, 8, 10, or 16")
+			}
+
+			if len(args) > 2 {
+				v, err := Int64(args[2])
+				if err != nil {
+					return nil, l.Errorf("invalid precision: %v", args[2])
+				}
+				precision = int(v)
+			}
+			_ = precision
+
+			switch v := args[0].(type) {
+			case Int:
+				return String(strconv.FormatInt(int64(v), radix)), nil
+
+			case *BigInt:
+				return String(v.I.Text(radix)), nil
+
+			default:
+				return nil, l.Errorf("invalid number: %v", args[0])
+			}
+		},
+	},
+	{
+		Name: "string->number",
+		Args: []string{"string", "[radix]"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			var radix int
+
+			str, ok := args[0].(String)
+			if !ok {
+				return nil, l.Errorf("invalid string: %v", args[0])
+			}
+
+			if len(args) > 1 {
+				v, err := Int64(args[1])
+				if err != nil {
+					return nil, l.Errorf("invalid radix: %v", args[1])
+				}
+				radix = int(v)
+
+				var prefix string
+				switch radix {
+				case 2:
+					prefix = "#b"
+				case 8:
+					prefix = "#o"
+				case 10:
+					prefix = "#d"
+				case 16:
+					prefix = "#x"
+
+				default:
+					return nil, fmt.Errorf("invalid radix %v: expected %v",
+						args[1], "2, 8, 10, or 16")
+				}
+				if str[0] != '#' {
+					str = String(prefix) + str
+				}
+			}
+
+			parser := NewParser("{data}", strings.NewReader(string(str)))
+			v, err := parser.Next()
+			if err != nil {
+				return Boolean(false), nil
+			}
+			_, err = parser.Next()
+			if err == nil || err != io.EOF {
+				return Boolean(false), nil
+			}
+
+			switch v.(type) {
+			case Int, *BigInt:
+				return v, nil
+
+			default:
+				return Boolean(false), nil
 			}
 		},
 	},

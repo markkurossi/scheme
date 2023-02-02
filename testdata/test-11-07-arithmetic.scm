@@ -171,6 +171,19 @@
         (lambda () (= (expt 0 0) 1))
         )
 
+(runner 'test "number->string"
+        (lambda () (eq? (number->string 42) "42"))
+        (lambda () (eq? (number->string 42 2) "101010"))
+        (lambda () (eq? (number->string 42 8) "52"))
+        (lambda () (eq? (number->string 42 10) "42"))
+        (lambda () (eq? (number->string 42 16) "2a"))
+        )
+(runner 'test "string->number"
+        (lambda () (eq? (string->number "100") 100))
+        (lambda () (eq? (string->number "100" 16) 256))
+        (lambda () (eq? (string->number "#t") #f))
+        )
+
 (letrec ((fact
           (lambda (n)
             (if (< n #e2)
