@@ -100,5 +100,8 @@
 (load "test-lib-02-bytevectors.scm")
 (load "test-lib-03-list-utilities.scm")
 
+(load "test-go-lang.scm")
+(load "test-go-format.scm")
+
 (runner 'stats)
 (runner 'status)

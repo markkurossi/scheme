@@ -6,7 +6,7 @@
 
 (library (go lang (1 19))
   (export len)
-  (import (rnrs))
+  (import (rnrs base))
 
   ;; (display "This is initializer for the (go lang) library.") (newline)
 
