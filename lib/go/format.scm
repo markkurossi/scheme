@@ -15,11 +15,21 @@
              (char->string
               (lambda (ch)
                 (list->string (cons ch '()))))
+             (escape-string
+              (lambda (str)
+                (apply string-append
+                       (append '("\"")
+                               (map (lambda (ch)
+                                      (case ch
+                                       ((#\") "\\\"")
+                                       ((#\\) "\\\\")
+                                       (else (char->string ch))))
+                                    (string->list str))
+                               '("\"")))))
+
              (missing-argument
               (lambda (escape)
-                (add (string-append "{missing argument for %"
-                                    (char->string escape)
-                                    "}"))))
+                (add (string-append "%!" (char->string escape) "(MISSING)"))))
 
              (add
               (lambda (str)
@@ -48,15 +58,56 @@
                 (if (null? chars)
                     (result)
                     (case (car chars)
-                      ((#\d)
-                       (format-arg number->string chars args))
                       ((#\%)
                        (add "%")
                        (iter (cdr chars) args))
+                      ((#\t)
+                       (format-arg (lambda (arg)
+                                     (if arg "true" "false"))
+                                   chars args))
+                      ((#\b)
+                       (format-arg (lambda (arg)
+                                     (number->string arg 2))
+                                   chars args))
+                      ((#\c)
+                       (format-arg (lambda (arg)
+                                     (list->string (cons (integer->char arg)
+                                                         '())))
+                                   chars args))
+                      ((#\d)
+                       (format-arg number->string chars args))
+                      ((#\o)
+                       (format-arg (lambda (arg)
+                                     (number->string arg 8))
+                                   chars args))
+                      ((#\O)
+                       (format-arg (lambda (arg)
+                                     (string-append "0o"
+                                                    (number->string arg 8)))
+                                   chars args))
+                      ((#\q)
+                       (format-arg
+                        (lambda (arg)
+                          (cond
+                           ((integer? arg)
+                            (string-append
+                             "#\\" (char->string (integer->char arg))))
+                           ((string? arg)
+                            (escape-string arg))
+                           (else
+                            "#!q(UNSUPPORTED)")))
+                        chars args))
+                      ((#\x)
+                       (format-arg (lambda (arg)
+                                     (number->string arg 16))
+                                   chars args))
+                      ((#\X)
+                       (format-arg (lambda (arg)
+                                     (string-upcase (number->string arg 16)))
+                                   chars args))
                       (else
-                       (add (string-append "{unknown escape %"
-                                           (char->string (car chars))
-                                           "}"))
+                       (add (string-append "%!" (char->string (car chars))
+                                           "(UNKNOWN)"))
                        (iter (cdr chars) args))))))
 
              (iter
