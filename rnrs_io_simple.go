@@ -143,7 +143,7 @@ var rnrsIOSimpleBuiltins = []Builtin{
 					return nil, l.Errorf("invalid output port: %v", args[1])
 				}
 			}
-			_, err := port.Printf("%v", args[0])
+			_, err := port.Printf("%v", ToString(args[0]))
 			if err != nil {
 				return nil, l.Errorf("%v", err)
 			}
@@ -163,7 +163,7 @@ var rnrsIOSimpleBuiltins = []Builtin{
 					return nil, l.Errorf("invalid output port: %v", args[1])
 				}
 			}
-			_, err := port.Printf("%v", args[0].Scheme())
+			_, err := port.Printf("%v", ToScheme(args[0]))
 			if err != nil {
 				return nil, l.Errorf("%v", err)
 			}
