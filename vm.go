@@ -104,10 +104,17 @@ func (i Instr) String() string {
 	case OpIf, OpIfNot, OpJmp:
 		return fmt.Sprintf("\t%s\t%v\t; l%v", i.Op, i.I, i.J)
 
+	case OpPopS, OpReturn:
+		var suffix string
+		if i.J != 0 {
+			suffix = "\u267b"
+		}
+		return fmt.Sprintf("\t%s%s", i.Op, suffix)
+
 	case OpCall:
 		var suffix string
 		if i.I != 0 {
-			suffix = "\ttail"
+			suffix += "t"
 		}
 		return fmt.Sprintf("\t%s%s", i.Op, suffix)
 
@@ -662,6 +669,13 @@ var vmBuiltins = []Builtin{
 				return nil, l.Errorf("invalid message: %v", args[1])
 			}
 			return nil, fmt.Errorf("%v: %v", args[0], message)
+		},
+	},
+	{
+		Name: "scheme::->scheme",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			return String(ToScheme(args[0])), nil
 		},
 	},
 }
