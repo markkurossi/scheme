@@ -32,6 +32,22 @@ type Value interface {
 	Equal(o Value) bool
 }
 
+// ToString returns a display representation of the value.
+func ToString(v Value) string {
+	if v == nil {
+		return "'()"
+	}
+	return fmt.Sprintf("%v", v)
+}
+
+// ToScheme returns a Scheme representation of the value.
+func ToScheme(v Value) string {
+	if v == nil {
+		return "'()"
+	}
+	return v.Scheme()
+}
+
 // Flags define symbol flags.
 type Flags int
 
