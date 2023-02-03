@@ -15,17 +15,6 @@
              (char->string
               (lambda (ch)
                 (list->string (cons ch '()))))
-             (escape-string
-              (lambda (str)
-                (apply string-append
-                       (append '("\"")
-                               (map (lambda (ch)
-                                      (case ch
-                                       ((#\") "\\\"")
-                                       ((#\\) "\\\\")
-                                       (else (char->string ch))))
-                                    (string->list str))
-                               '("\"")))))
 
              (missing-argument
               (lambda (escape)
@@ -39,70 +28,132 @@
                       (set-cdr! tail p))
                   (set! tail p))))
 
+             (make-padding
+              (lambda (accu pad len)
+                (if (<= len 0)
+                    accu
+                    (make-padding (string-append accu pad) pad (- len 1)))))
+
              (format-arg
-              (lambda (f chars args)
+              (lambda (right-align padding width f chars args)
                 (cond
                  ((null? args)
                   (missing-argument (car chars))
                   (iter (cdr chars) args))
                  (else
-                  (add (f (car args)))
-                  (iter (cdr chars) (cdr args))))))
+                  (let* ((str (f (car args)))
+                         (len (string-length str)))
+                    (if (> width len)
+                        (let ((pad (make-padding "" (char->string padding)
+                                                 (- width len))))
+                          (if right-align
+                              (add (string-append pad str))
+                              (add (string-append str pad))))
+                        (add str))
+                    (iter (cdr chars) (cdr args)))))))
 
              (result
-              (lambda ()
+              (lambda (args)
+                (if (not (null? args))
+                    (begin
+                      (add "%!(EXTRA")
+                      (for-each (lambda (item)
+                                  (add " ")
+                                  (add (scheme::->scheme item)))
+                                args)
+                      (add ")")))
                 (apply string-append head)))
 
              (%-escape
-              (lambda (chars args)
+              (lambda (right-align padding width chars args)
+                (cond
+                 ((null? chars)
+                  (result args))
+                 ((eq? (car chars) #\-)
+                  (%-padding #f padding width (cdr chars) args))
+                 (else
+                  (%-padding right-align padding width chars args)))))
+
+             (%-padding
+              (lambda (right-align padding width chars args)
+                (cond
+                 ((null? chars)
+                  (result args))
+                 ((eq? (car chars) #\0)
+                  (%-width right-align #\0 width (cdr chars) args))
+                 (else
+                  (%-width right-align padding width chars args)))))
+
+             (%-width
+              (lambda (right-align padding width chars args)
+                (cond
+                 ((null? chars)
+                  (result args))
+                 ((and (char<=? #\0 (car chars))
+                       (char<=? (car chars) #\9))
+                  (%-width right-align padding
+                           (+ (* width 10)
+                              (- (char->integer (car chars))
+                                 (char->integer #\0)))
+                           (cdr chars) args))
+                 (else
+                  (%-verbs right-align padding width chars args)))))
+
+             (%-verbs
+              (lambda (right-align padding width chars args)
                 (if (null? chars)
-                    (result)
+                    (result args)
                     (case (car chars)
                       ((#\%)
                        (add "%")
                        (iter (cdr chars) args))
                       ((#\t)
-                       (format-arg (lambda (arg)
+                       (format-arg right-align padding width
+                                   (lambda (arg)
                                      (if arg "true" "false"))
                                    chars args))
                       ((#\b)
-                       (format-arg (lambda (arg)
+                       (format-arg right-align padding width
+                                   (lambda (arg)
                                      (number->string arg 2))
                                    chars args))
                       ((#\c)
-                       (format-arg (lambda (arg)
+                       (format-arg right-align padding width
+                                   (lambda (arg)
                                      (list->string (cons (integer->char arg)
                                                          '())))
                                    chars args))
                       ((#\d)
-                       (format-arg number->string chars args))
+                       (format-arg right-align padding width
+                                   number->string chars args))
                       ((#\o)
-                       (format-arg (lambda (arg)
+                       (format-arg right-align padding width
+                                   (lambda (arg)
                                      (number->string arg 8))
                                    chars args))
                       ((#\O)
-                       (format-arg (lambda (arg)
+                       (format-arg right-align padding width
+                                   (lambda (arg)
                                      (string-append "0o"
                                                     (number->string arg 8)))
                                    chars args))
                       ((#\q)
-                       (format-arg
-                        (lambda (arg)
-                          (cond
-                           ((integer? arg)
-                            (string-append
-                             "#\\" (char->string (integer->char arg))))
-                           ((string? arg)
-                            (escape-string arg))
-                           (else
-                            "#!q(UNSUPPORTED)")))
-                        chars args))
+                       (format-arg right-align padding width
+                                   (lambda (arg)
+                                     (cond
+                                      ((integer? arg)
+                                       (scheme::->scheme (integer->char arg)))
+                                      (else
+                                       (scheme::->scheme arg))))
+                                   chars args))
                       ((#\x)
-                       (format-arg (lambda (arg)
+                       (format-arg right-align padding width
+                                   (lambda (arg)
                                      (number->string arg 16))
                                    chars args))
                       ((#\X)
-                       (format-arg (lambda (arg)
+                       (format-arg right-align padding width
+                                   (lambda (arg)
                                      (string-upcase (number->string arg 16)))
                                    chars args))
                       (else
@@ -114,9 +165,9 @@
               (lambda (chars args)
                 (cond
                  ((null? chars)
-                  (result))
+                  (result args))
                  ((char=? (car chars) #\%)
-                  (%-escape (cdr chars) args))
+                  (%-escape #t #\space 0 (cdr chars) args))
                  (else
                   (add (list->string (list (car chars))))
                   (iter (cdr chars) args))))))

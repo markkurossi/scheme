@@ -57,4 +57,10 @@
   (runner 'test "format %X"
           (lambda () (eq? (format "%X" 65535) "FFFF"))
           )
+  (runner 'test "format %-?[0-9]+d"
+          (lambda () (eq? (format "%10d" 42) "        42"))
+          (lambda () (eq? (format "%-10d" 42) "42        "))
+          (lambda () (eq? (format "%010d" 42) "0000000042"))
+          (lambda () (eq? (format "%-010d" 42) "4200000000"))
+          )
   )
