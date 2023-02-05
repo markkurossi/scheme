@@ -68,6 +68,9 @@
 
 (define runner (test "r6rs"))
 
+(runner 'section "Core language support")
+(load "test-core-language.scm")
+
 (runner 'section "11. Base library")
 
 ;; XXX 11.1. Base types

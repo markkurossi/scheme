@@ -13,6 +13,10 @@ structured data operations.
 
 # TODO
 
+ - [ ] Shortlist
+   - [ ] Top-levels with `(import)`
+   - [ ] Library local symbols
+   - [ ] Optimize memory allocations in VM
  - [ ] API
    - [ ] Marshal / unmarshal
    - [ ] Access to global symbols
