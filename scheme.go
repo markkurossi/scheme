@@ -33,10 +33,16 @@ type Scheme struct {
 	pc      int
 	fp      int
 	accu    Value
-	stack   [][]Value
+	stack   []*scope
 	symbols map[string]*Identifier
 
-	frameFL [][]Value
+	frameFL *scope
+	scopeFL [8]*scope
+}
+
+type scope struct {
+	next   *scope
+	values []Value
 }
 
 // Params define the configuration parameters for Scheme.
@@ -63,6 +69,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 		Params:  params,
 		Stdout:  NewPort(os.Stdout),
 		Stderr:  NewPort(os.Stderr),
+		stack:   make([]*scope, 0, 8192),
 		symbols: make(map[string]*Identifier),
 	}
 

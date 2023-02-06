@@ -90,7 +90,7 @@ type Lambda struct {
 	Name    string
 	Args    Args
 	Capture int
-	Locals  [][]Value
+	Locals  []*scope
 	Native  Native
 	Source  string
 	Code    Code
