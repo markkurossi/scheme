@@ -601,7 +601,6 @@ func (l *Lexer) Get() (*Token, error) {
 				}
 				return l.newNumber(false, false, 0, val)
 			}
-			l.UnreadRune()
 			return nil, l.errf("unexpected character: %c", r)
 		}
 	}

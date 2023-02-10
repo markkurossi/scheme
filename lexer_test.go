@@ -242,3 +242,21 @@ func TestLexer(t *testing.T) {
 		}
 	}
 }
+
+func FuzzLexer(f *testing.F) {
+	for _, test := range lexerTests {
+		f.Add(test.i)
+	}
+	f.Fuzz(func(t *testing.T, input string) {
+		lexer := NewLexer("{data}", strings.NewReader(input))
+		for {
+			token, err := lexer.Get()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+			}
+			_ = token
+		}
+	})
+}
