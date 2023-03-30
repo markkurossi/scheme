@@ -30,6 +30,8 @@ type Scheme struct {
 	Parsing bool
 	verbose bool
 
+	hasRuntime bool
+
 	pc      int
 	fp      int
 	accu    Value
@@ -119,11 +121,13 @@ func (scm *Scheme) loadRuntime(dir string) error {
 		if err != nil {
 			return err
 		}
-		_, err = scm.evalRuntime(file, bytes.NewReader(data))
+		_, err = scm.eval(file, bytes.NewReader(data))
 		if err != nil {
 			return err
 		}
 	}
+	scm.hasRuntime = true
+
 	return nil
 }
 
@@ -195,6 +199,13 @@ func (scm *Scheme) EvalFile(file string) (Value, error) {
 
 // Eval evaluates the scheme source.
 func (scm *Scheme) Eval(source string, in io.Reader) (Value, error) {
+	if scm.hasRuntime {
+		return scm.evalRuntime(source, in)
+	}
+	return scm.eval(source, in)
+}
+
+func (scm *Scheme) evalRuntime(source string, in io.Reader) (Value, error) {
 	library, err := scm.Load(source, in)
 	if err != nil {
 		return nil, err
@@ -204,7 +215,7 @@ func (scm *Scheme) Eval(source string, in io.Reader) (Value, error) {
 	return scm.Apply(sym.Global, []Value{library})
 }
 
-func (scm *Scheme) evalRuntime(source string, in io.Reader) (Value, error) {
+func (scm *Scheme) eval(source string, in io.Reader) (Value, error) {
 	library, err := scm.Load(source, in)
 	if err != nil {
 		return nil, err
