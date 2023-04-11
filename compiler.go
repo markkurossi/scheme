@@ -1000,13 +1000,11 @@ func (c *Compiler) compileCond(env *Env, list []Pair,
 			}
 
 			// Push value scope.
-			env.PushCaptureFrame(false, FUValue, 1)
+			valueFrame := env.PushCaptureFrame(false, FUValue, 1)
 			c.addInstr(clause[2], OpPushS, nil, 1)
 
-			valueFrame := env.Top()
-
 			// Save value
-			c.addInstr(clause[2], OpLocalSet, nil, valueFrame)
+			c.addInstr(clause[2], OpLocalSet, nil, valueFrame.Index)
 
 			// Compile function.
 			err := c.compileValue(env, clause[2], clause[2].Car(), false,
@@ -1020,12 +1018,12 @@ func (c *Compiler) compileCond(env *Env, list []Pair,
 			env.PushCaptureFrame(captures, FUFrame, 1)
 
 			// Push argument scope.
-			env.PushCaptureFrame(false, FUArgs, 1)
+			argsFrame := env.PushCaptureFrame(false, FUArgs, 1)
 			c.addInstr(clause[2], OpPushS, nil, 1)
 
 			// Set argument.
-			c.addInstr(clause[2], OpLocal, nil, valueFrame)
-			c.addInstr(clause[2], OpLocalSet, nil, env.Top())
+			c.addInstr(clause[2], OpLocal, nil, valueFrame.Index)
+			c.addInstr(clause[2], OpLocalSet, nil, argsFrame.Index)
 
 			env.PopFrame() // Argument
 			env.PopFrame() // Call
