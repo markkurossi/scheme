@@ -16,8 +16,10 @@ type Env struct {
 	Frames []*EnvFrame
 }
 
+// FrameType defines the frame type.
 type FrameType int
 
+// Frame types.
 const (
 	TypeStack FrameType = iota
 	TypeEnv
@@ -30,8 +32,10 @@ func (ft FrameType) String() string {
 	return "e"
 }
 
+// FrameUsage defines how frame is used.
 type FrameUsage int
 
+// Frame usages.
 const (
 	FUFrame FrameUsage = iota
 	FUArgs
@@ -106,6 +110,8 @@ func (e *Env) Depth() int {
 	return len(e.Frames)
 }
 
+// PushCaptureFrame pushes a new stack frame. The capture argument
+// specifies if the frame is an env or a stack frame.
 func (e *Env) PushCaptureFrame(captures bool, usage FrameUsage,
 	size int) *EnvFrame {
 
