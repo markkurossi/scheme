@@ -106,11 +106,6 @@ func (e *Env) Depth() int {
 	return len(e.Frames)
 }
 
-// Top returns the index of the environment's top frame.
-func (e *Env) Top() int {
-	return len(e.Frames) - 1
-}
-
 func (e *Env) PushCaptureFrame(captures bool, usage FrameUsage,
 	size int) *EnvFrame {
 
