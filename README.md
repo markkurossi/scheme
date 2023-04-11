@@ -11,6 +11,21 @@ API gives a clean and high-level abstraction, for example,
 configuration file parsing, data encoding and decoding, and other
 structured data operations.
 
+# Stack
+
+```
+sp --->
+        Value{n}
+        ...
+        Value{0}
+        Arg{n}
+        ...
+        Arg{0}
+fp ---> Next fp ---+
+                   |
+                   v
+```
+
 # TODO
 
  - [ ] Shortlist
@@ -21,6 +36,7 @@ structured data operations.
    - [ ] Marshal / unmarshal
    - [ ] Access to global symbols
  - [ ] VM
+   - [ ] Tail-call within same function as jump
    - [ ] Optimize bytecode execution
    - [ ] 5.8. Multiple return values
    - [ ] Error handlers

@@ -9,6 +9,7 @@ package scheme
 import (
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"strings"
 )
 
@@ -250,6 +251,7 @@ func MapPairs(f func(idx int, p Pair) error, list Value) error {
 	}
 	pair, ok := list.(Pair)
 	if !ok {
+		debug.PrintStack()
 		return ErrorInvalidList
 	}
 
@@ -264,6 +266,7 @@ func MapPairs(f func(idx int, p Pair) error, list Value) error {
 			return fmt.Errorf("%s: %v", point, err)
 		}
 		if pair == turtle {
+			debug.PrintStack()
 			return ErrorInvalidList
 		}
 		if idx%2 == 0 {
@@ -278,6 +281,7 @@ func MapPairs(f func(idx int, p Pair) error, list Value) error {
 					pair = nil
 
 				default:
+					debug.PrintStack()
 					return ErrorInvalidList
 				}
 			}
@@ -290,6 +294,7 @@ func MapPairs(f func(idx int, p Pair) error, list Value) error {
 			pair = nil
 
 		default:
+			debug.PrintStack()
 			return ErrorInvalidList
 		}
 	}

@@ -92,9 +92,10 @@ func (scm *Scheme) Load(source string, in io.Reader) (Value, error) {
 				NewPair(library.Imports,
 					NewPair(
 						&Lambda{
-							Source: library.Source,
-							Code:   library.Init,
-							PCMap:  library.PCMap,
+							Source:   library.Source,
+							Code:     library.Init,
+							PCMap:    library.PCMap,
+							Captures: true,
 						},
 						nil))))), nil
 }

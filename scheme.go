@@ -33,12 +33,11 @@ type Scheme struct {
 	hasRuntime bool
 
 	pc      int
-	fp      int
 	accu    Value
-	stack   [][]Value
+	sp      int
+	fp      int
+	stack   []Value
 	symbols map[string]*Identifier
-
-	frameFL [][]Value
 }
 
 // Params define the configuration parameters for Scheme.
@@ -65,6 +64,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 		Params:  params,
 		Stdout:  NewPort(os.Stdout),
 		Stderr:  NewPort(os.Stderr),
+		stack:   make([]Value, 4096), // XXX initial stack depth
 		symbols: make(map[string]*Identifier),
 	}
 
