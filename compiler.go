@@ -1066,9 +1066,8 @@ func (c *Compiler) compileCase(env *Env, list []Pair,
 	labelEnd := c.newLabel()
 
 	// Push value scope.
-	env.PushCaptureFrame(false, FUValue, 1)
+	valueFrame := env.PushCaptureFrame(false, FUValue, 1)
 	c.addInstr(list[1], OpPushS, nil, 1)
-	valueFrame := env.Top()
 
 	// Compile key.
 	err := c.compileValue(env, list[1], list[1].Car(), false, captures)
@@ -1077,7 +1076,7 @@ func (c *Compiler) compileCase(env *Env, list []Pair,
 	}
 
 	// Save value.
-	c.addInstr(list[1], OpLocalSet, nil, valueFrame)
+	c.addInstr(list[1], OpLocalSet, nil, valueFrame.Index)
 
 	// Compile clauses
 
@@ -1127,17 +1126,17 @@ func (c *Compiler) compileCase(env *Env, list []Pair,
 				instr.Sym = c.scm.Intern("eqv?")
 
 				c.addInstr(datum, OpPushF, nil, 0)
-				eqvEnv.PushCaptureFrame(captures, FUFrame, 1)
+				eqvEnv.PushCaptureFrame(false, FUFrame, 1)
 
 				c.addInstr(datum, OpPushS, nil, 2)
-				eqvEnv.PushCaptureFrame(false, FUArgs, 2)
+				eqvArgFrame := eqvEnv.PushCaptureFrame(false, FUArgs, 2)
 
-				c.addInstr(datum, OpLocal, nil, valueFrame)
-				instr = c.addInstr(datum, OpLocalSet, nil, eqvEnv.Top())
+				c.addInstr(datum, OpLocal, nil, valueFrame.Index)
+				instr = c.addInstr(datum, OpLocalSet, nil, eqvArgFrame.Index)
 				instr.J = 0
 
 				c.addInstr(datum, OpConst, datum.Car(), 0)
-				instr = c.addInstr(datum, OpLocalSet, nil, eqvEnv.Top())
+				instr = c.addInstr(datum, OpLocalSet, nil, eqvArgFrame.Index)
 				instr.J = 1
 
 				c.addCall(datum, 2, false)
