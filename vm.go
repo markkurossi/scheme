@@ -257,7 +257,10 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			scm.sp++
 
 		case OpPushS:
-			scm.sp += instr.I
+			for i := 0; i < instr.I; i++ {
+				scm.stack[scm.sp] = nil
+				scm.sp++
+			}
 
 		case OpPushE:
 			env = append(env, make([]Value, instr.I, instr.I))
