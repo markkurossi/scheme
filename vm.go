@@ -150,7 +150,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 	}
 
 	var err error
-	env := make([][]Value, 0, 100)
+	var env *VMEnvFrame
 
 	scm.accu = lambda
 
@@ -199,14 +199,12 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			lambda := &Lambda{
 				Args:     tmpl.Args,
 				Captures: tmpl.Captures,
+				Locals:   env,
 				Native:   tmpl.Native,
 				Source:   tmpl.Source,
 				Code:     tmpl.Code,
 				PCMap:    tmpl.PCMap,
 				Body:     tmpl.Body,
-			}
-			for _, e := range env {
-				lambda.Locals = append(lambda.Locals, e)
 			}
 			scm.accu = lambda
 
@@ -218,7 +216,16 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			scm.accu = scm.stack[scm.fp+1+instr.I]
 
 		case OpEnv:
-			scm.accu = env[instr.I][instr.J]
+			var e *VMEnvFrame
+			for e = env; e != nil; e = e.Next {
+				if e.Index == instr.I {
+					scm.accu = e.Values[instr.J]
+					break
+				}
+			}
+			if e == nil {
+				return nil, scm.Breakf("invalid env frame %v", instr.I)
+			}
 
 		case OpGlobal:
 			if instr.Sym.Flags&FlagDefined == 0 {
@@ -230,7 +237,16 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			scm.stack[scm.fp+1+instr.I+instr.J] = scm.accu
 
 		case OpEnvSet:
-			env[instr.I][instr.J] = scm.accu
+			var e *VMEnvFrame
+			for e = env; e != nil; e = e.Next {
+				if e.Index == instr.I {
+					e.Values[instr.J] = scm.accu
+					break
+				}
+			}
+			if e == nil {
+				return nil, scm.Breakf("invalid env frame %v", instr.I)
+			}
 
 		case OpGlobalSet:
 			if instr.Sym.Flags&FlagDefined == 0 {
@@ -263,13 +279,21 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			}
 
 		case OpPushE:
-			env = append(env, make([]Value, instr.I, instr.I))
+			var index int
+			if env != nil {
+				index = env.Index + 1
+			}
+			env = &VMEnvFrame{
+				Next:   env,
+				Index:  index,
+				Values: make([]Value, instr.I),
+			}
 
 		case OpPopS:
 			scm.sp -= instr.I
 
 		case OpPopE:
-			env = env[:len(env)-1]
+			env = env.Next
 
 		case OpPushA:
 			var count int
@@ -315,11 +339,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			// Save current excursion.
 			callFrame.PC = scm.pc
 			callFrame.Code = code
-
-			callFrame.Env = callFrame.Env[:0]
-			for _, f := range env {
-				callFrame.Env = append(callFrame.Env, f)
-			}
+			callFrame.Env = env
 
 			if lambda.Native != nil {
 				scm.accu, err = callFrame.Lambda.Native(scm, lambda, args)
@@ -341,17 +361,19 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 					args = scm.stack[scm.sp-numArgs : scm.sp]
 				}
 
-				env = env[:0]
-
-				// Push capture frames.
-				for _, frame := range lambda.Locals {
-					env = append(env, frame)
-				}
+				env = lambda.Locals
 
 				if lambda.Captures {
-					frame := make([]Value, len(args))
-					copy(frame, args)
-					env = append(env, frame)
+					var index int
+					if env != nil {
+						index = env.Index + 1
+					}
+					env = &VMEnvFrame{
+						Next:   env,
+						Index:  index,
+						Values: make([]Value, len(args)),
+					}
+					copy(env.Values, args)
 					scm.sp -= len(args)
 				}
 
@@ -397,11 +419,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			}
 			scm.pc = frame.PC
 			code = frame.Code
-
-			env = env[:0]
-			for _, f := range frame.Env {
-				env = append(env, f)
-			}
+			env = frame.Env
 
 			if scm.popFrame() {
 				return scm.accu, nil
@@ -604,7 +622,7 @@ type Frame struct {
 	Lambda *Lambda
 	PC     int
 	Code   Code
-	Env    [][]Value
+	Env    *VMEnvFrame
 }
 
 // Scheme returns the value as a Scheme string.
@@ -636,6 +654,13 @@ func (f *Frame) Equal(o Value) bool {
 		f.Lambda == ov.Lambda &&
 		f.PC == ov.PC &&
 		f.Toplevel == ov.Toplevel
+}
+
+// VMEnvFrame implement a virtual machine environment frame.
+type VMEnvFrame struct {
+	Next   *VMEnvFrame
+	Index  int
+	Values []Value
 }
 
 func (f *Frame) String() string {

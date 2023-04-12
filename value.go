@@ -90,7 +90,7 @@ type Lambda struct {
 	Name     string
 	Args     Args
 	Captures bool
-	Locals   [][]Value
+	Locals   *VMEnvFrame
 	Native   Native
 	Source   string
 	Code     Code
