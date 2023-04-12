@@ -38,6 +38,7 @@ type Scheme struct {
 	fp      int
 	stack   []Value
 	symbols map[string]*Identifier
+	frameFL *Frame
 }
 
 // Params define the configuration parameters for Scheme.

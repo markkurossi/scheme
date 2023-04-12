@@ -262,12 +262,18 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 					instr.Op, scm.accu)
 			}
 
-			frame := &Frame{
-				Index:    len(scm.stack),
-				Next:     scm.fp,
-				Toplevel: instr.I != 0,
-				Lambda:   lambda,
+			var frame *Frame
+			if scm.frameFL != nil {
+				frame = scm.frameFL
+				scm.frameFL = frame.flNext
+			} else {
+				frame = new(Frame)
 			}
+
+			frame.Index = len(scm.stack)
+			frame.Next = scm.fp
+			frame.Toplevel = instr.I != 0
+			frame.Lambda = lambda
 
 			scm.stack[scm.sp] = frame
 			scm.sp++
@@ -386,6 +392,9 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 							scm.stack[callFrame.Next])
 					}
 					nextFrame.Lambda = callFrame.Lambda
+
+					callFrame.flNext = scm.frameFL
+					scm.frameFL = callFrame
 
 					count := scm.sp - scm.fp - 1
 					copy(scm.stack[next+1:], scm.stack[scm.fp+1:scm.fp+1+count])
@@ -605,10 +614,11 @@ func (scm *Scheme) Intern(name string) *Identifier {
 func (scm *Scheme) popFrame() bool {
 	frame := scm.stack[scm.fp].(*Frame)
 
-	// scm.stack = scm.stack[:scm.fp]
 	scm.sp = scm.fp
-
 	scm.fp = frame.Next
+
+	frame.flNext = scm.frameFL
+	scm.frameFL = frame
 
 	return frame.Toplevel
 }
@@ -623,6 +633,7 @@ type Frame struct {
 	PC     int
 	Code   Code
 	Env    *VMEnvFrame
+	flNext *Frame
 }
 
 // Scheme returns the value as a Scheme string.
