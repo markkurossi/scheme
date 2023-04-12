@@ -326,10 +326,6 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				if err != nil {
 					return nil, scm.Breakf("%v", err)
 				}
-				//scm.pc = callFrame.PC
-				//code = callFrame.Code
-				//env = callFrame.Env
-
 				scm.popFrame()
 			} else {
 				// Handle rest arguments.
