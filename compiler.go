@@ -673,10 +673,7 @@ func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 
 	checkLambda = func(idx int, p Pair) error {
 		if idx == 0 && (isKeyword(p.Car(), KwLambda) ||
-			isKeyword(p.Car(), KwDefine) ||
-			isKeyword(p.Car(), KwLet) ||
-			isKeyword(p.Car(), KwLetStar) ||
-			isKeyword(p.Car(), KwLetrec)) {
+			isKeyword(p.Car(), KwDefine)) {
 			lambdas++
 			return ErrNext
 		}
