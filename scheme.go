@@ -33,7 +33,6 @@ type Scheme struct {
 	hasRuntime bool
 
 	pc      int
-	accu    Value
 	sp      int
 	fp      int
 	stack   []Value

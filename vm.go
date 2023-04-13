@@ -151,8 +151,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 
 	var err error
 	var env *VMEnvFrame
-
-	scm.accu = lambda
+	var accu Value = lambda
 
 	code := []*Instr{
 		{
@@ -178,7 +177,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 
 		switch instr.Op {
 		case OpConst:
-			scm.accu = instr.V
+			accu = instr.V
 
 		case OpDefine:
 			if instr.Sym.Flags&FlagFinal != 0 {
@@ -188,7 +187,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			if instr.Sym.Flags&FlagDefined != 0 && !scm.Params.NoWarnDefine {
 				scm.VMWarningf("redefining symbol '%s'", instr.Sym.Name)
 			}
-			instr.Sym.Global = scm.accu
+			instr.Sym.Global = accu
 			instr.Sym.Flags |= FlagDefined
 
 		case OpLambda:
@@ -207,20 +206,20 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				PCMap:    tmpl.PCMap,
 				Body:     tmpl.Body,
 			}
-			scm.accu = lambda
+			accu = lambda
 
 		case OpLabel:
 
 		case OpLocal:
 			// fmt.Printf("*** local: %v.%v\n", scm.fp+1+instr.I, instr.J)
 			// scm.printStack()
-			scm.accu = scm.stack[scm.fp+1+instr.I]
+			accu = scm.stack[scm.fp+1+instr.I]
 
 		case OpEnv:
 			var e *VMEnvFrame
 			for e = env; e != nil; e = e.Next {
 				if e.Index == instr.I {
-					scm.accu = e.Values[instr.J]
+					accu = e.Values[instr.J]
 					break
 				}
 			}
@@ -232,16 +231,16 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			if instr.Sym.Flags&FlagDefined == 0 {
 				return nil, scm.Breakf("undefined symbol '%s' ", instr.Sym.Name)
 			}
-			scm.accu = instr.Sym.Global
+			accu = instr.Sym.Global
 
 		case OpLocalSet:
-			scm.stack[scm.fp+1+instr.I+instr.J] = scm.accu
+			scm.stack[scm.fp+1+instr.I+instr.J] = accu
 
 		case OpEnvSet:
 			var e *VMEnvFrame
 			for e = env; e != nil; e = e.Next {
 				if e.Index == instr.I {
-					e.Values[instr.J] = scm.accu
+					e.Values[instr.J] = accu
 					break
 				}
 			}
@@ -253,14 +252,14 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			if instr.Sym.Flags&FlagDefined == 0 {
 				return nil, scm.Breakf("undefined symbol '%s'", instr.Sym.Name)
 			}
-			instr.Sym.Global = scm.accu
+			instr.Sym.Global = accu
 
 		case OpPushF:
 			// i.I != 0 for toplevel frames.
-			lambda, ok := scm.accu.(*Lambda)
+			lambda, ok := accu.(*Lambda)
 			if !ok {
 				return nil, scm.Breakf("%s: invalid function: %v",
-					instr.Op, scm.accu)
+					instr.Op, accu)
 			}
 
 			var frame *Frame
@@ -309,17 +308,16 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				scm.sp++
 				count++
 				return nil
-			}, scm.accu)
+			}, accu)
 			if err != nil {
 				return nil, scm.Breakf("pusha: invalid arguments: %v", err)
 			}
-			scm.accu = Int(count)
+			accu = Int(count)
 
 		case OpCall:
-			vi, ok := scm.accu.(Int)
+			vi, ok := accu.(Int)
 			if !ok {
-				return nil, scm.Breakf("%s: invalid #args: %v",
-					instr.Op, scm.accu)
+				return nil, scm.Breakf("%s: invalid #args: %v", instr.Op, accu)
 			}
 			numArgs := int(vi)
 			args := scm.stack[scm.sp-numArgs : scm.sp]
@@ -349,7 +347,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			callFrame.Env = env
 
 			if lambda.Native != nil {
-				scm.accu, err = callFrame.Lambda.Native(scm, lambda, args)
+				accu, err = callFrame.Lambda.Native(scm, lambda, args)
 				if err != nil {
 					return nil, scm.Breakf("%v", err)
 				}
@@ -413,12 +411,12 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			}
 
 		case OpIf:
-			if IsTrue(scm.accu) {
+			if IsTrue(accu) {
 				scm.pc += instr.I
 			}
 
 		case OpIfNot:
-			if !IsTrue(scm.accu) {
+			if !IsTrue(accu) {
 				scm.pc += instr.I
 			}
 
@@ -436,7 +434,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			env = frame.Env
 
 			if scm.popFrame() {
-				return scm.accu, nil
+				return accu, nil
 			}
 
 		default:
