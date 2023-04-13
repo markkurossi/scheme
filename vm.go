@@ -170,6 +170,8 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		},
 	}
 	scm.pc = 0
+	scm.fp = 0
+	scm.sp = 0
 
 	for {
 		instr := code[scm.pc]
@@ -517,7 +519,7 @@ func (scm *Scheme) popToplevel() {
 			panic("corrupted stack")
 		}
 		if frame.Toplevel {
-			scm.stack = scm.stack[:fp]
+			scm.sp = fp
 			scm.fp = frame.Next
 			break
 		}
