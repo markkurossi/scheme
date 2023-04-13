@@ -13,7 +13,13 @@ import (
 
 // Env implements environment bindings.
 type Env struct {
+	Stats  *EnvStats
 	Frames []*EnvFrame
+}
+
+// EnvStats define environment statistics.
+type EnvStats struct {
+	MaxStack int
 }
 
 // FrameType defines the frame type.
@@ -76,16 +82,19 @@ type EnvBinding struct {
 
 // NewEnv creates a new empty environment.
 func NewEnv() *Env {
-	return &Env{}
+	return &Env{
+		Stats: new(EnvStats),
+	}
 }
 
 // Copy creates a new copy of the environment that shares the contents
-// of the environment frames.
+// of the environment frames and statistics.
 func (e *Env) Copy() *Env {
 	frames := make([]*EnvFrame, len(e.Frames))
 	copy(frames, e.Frames)
 
 	return &Env{
+		Stats:  e.Stats,
 		Frames: frames,
 	}
 }
@@ -134,6 +143,10 @@ func (e *Env) PushFrame(t FrameType, usage FrameUsage, size int) *EnvFrame {
 				index++
 			}
 		}
+	}
+
+	if t == TypeStack && index+size > e.Stats.MaxStack {
+		e.Stats.MaxStack = index + size
 	}
 
 	frame := &EnvFrame{

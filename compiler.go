@@ -221,11 +221,6 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 		c.addInstr(nil, OpReturn, nil, 0)
 		lambda.End = len(c.code)
 
-		// fmt.Printf("Lambda %v: captures=%v\n", i, lambda.Captures)
-		// for pc := lambda.Start; pc < lambda.End; pc++ {
-		// 	fmt.Printf("%d:\t%v\n", pc, c.code[pc])
-		// }
-
 		pcmap := c.pcmap[pcmapStart:len(c.pcmap)]
 		for i := 0; i < len(pcmap); i++ {
 			pcmap[i].PC -= lambda.Start
@@ -252,11 +247,12 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 			instr.J = def.End
 			instr.V = &Lambda{
 				Args:     def.Args,
+				Captures: def.Captures,
 				Source:   c.source,
 				Code:     c.code[def.Start:def.End],
+				MaxStack: def.Env.Stats.MaxStack,
 				PCMap:    pcmap,
 				Body:     def.Body,
-				Captures: def.Captures,
 			}
 
 		case OpIf, OpIfNot, OpJmp:
@@ -1262,5 +1258,6 @@ type lambdaBody struct {
 	Args     Args
 	Body     []Pair
 	Env      *Env
+	MaxStack int
 	Captures bool
 }

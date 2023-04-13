@@ -199,10 +199,11 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			lambda := &Lambda{
 				Args:     tmpl.Args,
 				Captures: tmpl.Captures,
-				Locals:   env,
+				Capture:  env,
 				Native:   tmpl.Native,
 				Source:   tmpl.Source,
 				Code:     tmpl.Code,
+				MaxStack: tmpl.MaxStack,
 				PCMap:    tmpl.PCMap,
 				Body:     tmpl.Body,
 			}
@@ -367,7 +368,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 					args = scm.stack[scm.sp-numArgs : scm.sp]
 				}
 
-				env = lambda.Locals
+				env = lambda.Capture
 
 				if lambda.Captures {
 					var index int
@@ -400,6 +401,10 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 					copy(scm.stack[next+1:], scm.stack[scm.fp+1:scm.fp+1+count])
 					scm.sp = next + 1 + count
 					scm.fp = next
+				}
+				if scm.sp+lambda.MaxStack > len(scm.stack) {
+					return nil, scm.Breakf("out of stack: need %d, got %d",
+						lambda.MaxStack, len(scm.stack)-scm.sp)
 				}
 
 				// Jump to lambda code.

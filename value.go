@@ -90,10 +90,11 @@ type Lambda struct {
 	Name     string
 	Args     Args
 	Captures bool
-	Locals   *VMEnvFrame
+	Capture  *VMEnvFrame
 	Native   Native
 	Source   string
 	Code     Code
+	MaxStack int
 	PCMap    PCMap
 	Body     []Pair
 }
