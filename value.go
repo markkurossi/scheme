@@ -257,6 +257,7 @@ type Builtin struct {
 	Name    string
 	Aliases []string
 	Args    []string
+	Flags   Flags
 	MinArgs int
 	MaxArgs int
 	Native  Native

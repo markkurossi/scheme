@@ -175,6 +175,7 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 		Native: builtin.Native,
 	}
 	sym.Flags |= FlagDefined
+	sym.Flags |= builtin.Flags
 
 	for _, alias := range builtin.Aliases {
 		sym = scm.Intern(alias)

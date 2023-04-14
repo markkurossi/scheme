@@ -395,8 +395,17 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 
 		// Function call.
 
+		// Inlined unary functions.
+		ok, err := c.inlineUnary(env, list, captures)
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
+
 		// Compile function.
-		err := c.compileValue(env, v, v.Car(), false, captures)
+		err = c.compileValue(env, v, v.Car(), false, captures)
 		if err != nil {
 			return err
 		}
@@ -463,6 +472,37 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 	return nil
 }
 
+var inlineUnary = map[string]Operand{
+	"null?": OpNullp,
+	"not":   OpNot,
+}
+
+func (c *Compiler) inlineUnary(env *Env, list []Pair, captures bool) (
+	bool, error) {
+
+	if len(list) != 2 {
+		return false, nil
+	}
+	id, ok := list[0].Car().(*Identifier)
+	if !ok {
+		return false, nil
+	}
+
+	op, ok := inlineUnary[id.Name]
+	if !ok {
+		return false, nil
+	}
+
+	// Compile argument.
+	err := c.compileValue(env, list[1], list[1].Car(), false, captures)
+	if err != nil {
+		return false, err
+	}
+	c.addInstr(list[1], op, nil, 0)
+
+	return true, nil
+}
+
 func (c *Compiler) addCall(from Locator, numArgs int, tail bool) {
 	if numArgs >= 0 {
 		c.addInstr(from, OpConst, Int(numArgs), 0)
@@ -498,15 +538,10 @@ func (c *Compiler) addPopS(from Locator, size int, capture bool) {
 }
 
 func (c *Compiler) addInstr(from Locator, op Operand, v Value, i int) *Instr {
-	return c.addInstr2(from, op, v, i, 0)
-}
-
-func (c *Compiler) addInstr2(from Locator, op Operand, v Value, i, j int) *Instr {
 	instr := &Instr{
 		Op: op,
 		V:  v,
 		I:  i,
-		J:  j,
 	}
 	if from != nil {
 		p := from.From()

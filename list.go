@@ -359,8 +359,9 @@ var listBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "null?",
-		Args: []string{"obj"},
+		Name:  "null?",
+		Flags: FlagFinal,
+		Args:  []string{"obj"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			return Boolean(args[0] == nil), nil
 		},

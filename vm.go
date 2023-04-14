@@ -37,6 +37,8 @@ const (
 	OpIfNot
 	OpJmp
 	OpReturn
+	OpNullp
+	OpNot
 )
 
 var operands = map[Operand]string{
@@ -61,6 +63,8 @@ var operands = map[Operand]string{
 	OpIfNot:     "ifnot",
 	OpJmp:       "jmp",
 	OpReturn:    "return",
+	OpNullp:     "null?",
+	OpNot:       "not",
 }
 
 func (op Operand) String() string {
@@ -444,6 +448,12 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			if scm.popFrame() {
 				return accu, nil
 			}
+
+		case OpNullp:
+			accu = Boolean(accu == nil)
+
+		case OpNot:
+			accu = Boolean(!IsTrue(accu))
 
 		default:
 			return nil, scm.Breakf("%s: not implemented", instr.Op)
