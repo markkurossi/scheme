@@ -128,6 +128,73 @@ func Int64(v Value) (int64, error) {
 	}
 }
 
+func plus(l *Lambda, z1, z2 Value) (Value, error) {
+	switch v1 := z1.(type) {
+	case Int:
+		switch v2 := z2.(type) {
+		case Int:
+			return v1 + v2, nil
+
+		case *BigInt:
+			return Int(int64(v1) + v2.I.Int64()), nil
+
+		default:
+			return Int(0), l.Errorf("invalid number: %v", z2)
+		}
+
+	case *BigInt:
+		switch v2 := z2.(type) {
+		case Int:
+			return Int(v1.I.Int64() + int64(v2)), nil
+
+		case *BigInt:
+			return &BigInt{
+				I: new(big.Int).Add(v1.I, v2.I),
+			}, nil
+
+		default:
+			return Int(0), l.Errorf("invalid number: %v", z2)
+		}
+
+	default:
+		return Int(0), l.Errorf("invalid number: %v", z1)
+	}
+
+}
+
+func minus(l *Lambda, z1, z2 Value) (Value, error) {
+	switch v1 := z1.(type) {
+	case Int:
+		switch v2 := z2.(type) {
+		case Int:
+			return v1 - v2, nil
+
+		case *BigInt:
+			return Int(int64(v1) - v2.I.Int64()), nil
+
+		default:
+			return Int(0), l.Errorf("invalid number: %v", z2)
+		}
+
+	case *BigInt:
+		switch v2 := z2.(type) {
+		case Int:
+			return Int(v1.I.Int64() - int64(v2)), nil
+
+		case *BigInt:
+			return &BigInt{
+				I: new(big.Int).Sub(v1.I, v2.I),
+			}, nil
+
+		default:
+			return Int(0), l.Errorf("invalid number: %v", z2)
+		}
+
+	default:
+		return Int(0), l.Errorf("invalid number: %v", z1)
+	}
+}
+
 func bit(z Value, i int) (uint, error) {
 	switch v := z.(type) {
 	case Int:
@@ -314,39 +381,32 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::+",
-		Args: []string{"z1", "z2"},
+		Name: "+",
+		Args: []string{"z1..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			switch v1 := args[0].(type) {
+			if len(args) == 0 {
+				return Int(0), nil
+			}
+			var sum Value
+			var err error
+
+			switch v := args[0].(type) {
 			case Int:
-				switch v2 := args[1].(type) {
-				case Int:
-					return v1 + v2, nil
-
-				case *BigInt:
-					return Int(int64(v1) + v2.I.Int64()), nil
-
-				default:
-					return Int(0), l.Errorf("invalid number: %v", args[1])
-				}
+				sum = v
 
 			case *BigInt:
-				switch v2 := args[1].(type) {
-				case Int:
-					return Int(v1.I.Int64() + int64(v2)), nil
-
-				case *BigInt:
-					return &BigInt{
-						I: new(big.Int).Add(v1.I, v2.I),
-					}, nil
-
-				default:
-					return Int(0), l.Errorf("invalid number: %v", args[1])
-				}
+				sum = v
 
 			default:
-				return Int(0), l.Errorf("invalid number: %v", args[0])
+				return Int(0), l.Errorf("invalid number: %v", v)
 			}
+			for i := 1; i < len(args); i++ {
+				sum, err = plus(l, sum, args[i])
+				if err != nil {
+					return sum, err
+				}
+			}
+			return sum, nil
 		},
 	},
 	{
@@ -386,39 +446,39 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::-",
-		Args: []string{"z1", "z2"},
+		Name: "-",
+		Args: []string{"z1", "z2..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			switch v1 := args[0].(type) {
+			var diff Value
+			var err error
+
+			switch v := args[0].(type) {
 			case Int:
-				switch v2 := args[1].(type) {
-				case Int:
-					return v1 - v2, nil
-
-				case *BigInt:
-					return Int(int64(v1) - v2.I.Int64()), nil
-
-				default:
-					return Int(0), l.Errorf("invalid number: %v", args[1])
+				if len(args) == 1 {
+					return -v, nil
 				}
+				diff = v
 
 			case *BigInt:
-				switch v2 := args[1].(type) {
-				case Int:
-					return Int(v1.I.Int64() - int64(v2)), nil
-
-				case *BigInt:
-					return &BigInt{
-						I: new(big.Int).Sub(v1.I, v2.I),
-					}, nil
-
-				default:
-					return Int(0), l.Errorf("invalid number: %v", args[1])
+				if len(args) == 1 {
+					return minus(l, &BigInt{
+						I: big.NewInt(0),
+					}, v)
 				}
+				diff = v
 
 			default:
-				return Int(0), l.Errorf("invalid number: %v", args[0])
+				return Int(0), l.Errorf("invalid number: %v", v)
 			}
+
+			for i := 1; i < len(args); i++ {
+				diff, err = minus(l, diff, args[i])
+				if err != nil {
+					return diff, nil
+				}
+			}
+
+			return diff, nil
 		},
 	},
 	{
