@@ -426,9 +426,7 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 			}
 			li = pair.Cdr()
 
-			// XXX reference stack from fp
-			instr := c.addInstr(pair, OpLocalSet, nil, argFrame.Index)
-			instr.J = j
+			c.addInstr(pair, OpLocalSet, nil, argFrame.Index+j)
 		}
 
 		c.addCall(nil, length-1, tail)
@@ -1127,12 +1125,10 @@ func (c *Compiler) compileCase(env *Env, list []Pair,
 				eqvArgFrame := eqvEnv.PushCaptureFrame(false, FUArgs, 2)
 
 				c.addInstr(datum, OpLocal, nil, valueFrame.Index)
-				instr = c.addInstr(datum, OpLocalSet, nil, eqvArgFrame.Index)
-				instr.J = 0
+				c.addInstr(datum, OpLocalSet, nil, eqvArgFrame.Index)
 
 				c.addInstr(datum, OpConst, datum.Car(), 0)
-				instr = c.addInstr(datum, OpLocalSet, nil, eqvArgFrame.Index)
-				instr.J = 1
+				c.addInstr(datum, OpLocalSet, nil, eqvArgFrame.Index+1)
 
 				c.addCall(datum, 2, false)
 

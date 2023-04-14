@@ -104,7 +104,7 @@ func (i Instr) String() string {
 		return fmt.Sprintf("\t%s\tl%v:%v", i.Op, i.I, i.J)
 
 	case OpLocal, OpLocalSet:
-		return fmt.Sprintf("\t%s\t%v", i.Op, i.I+i.J)
+		return fmt.Sprintf("\t%s\t%v", i.Op, i.I)
 
 	case OpEnv, OpEnvSet:
 		return fmt.Sprintf("\t%s\t%v.%v", i.Op, i.I, i.J)
@@ -236,7 +236,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			accu = instr.Sym.Global
 
 		case OpLocalSet:
-			scm.stack[scm.fp+1+instr.I+instr.J] = accu
+			scm.stack[scm.fp+1+instr.I] = accu
 
 		case OpEnvSet:
 			var e *VMEnvFrame
@@ -343,74 +343,80 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			// Set fp for the call.
 			scm.fp = scm.sp - numArgs - 1
 
-			// Save current excursion.
-			callFrame.PC = scm.pc
-			callFrame.Code = code
-			callFrame.Env = env
-
 			if lambda.Native != nil {
 				accu, err = callFrame.Lambda.Native(scm, lambda, args)
 				if err != nil {
 					return nil, scm.Breakf("%v", err)
 				}
-				scm.popFrame()
-			} else {
-				// Handle rest arguments.
-				if lambda.Args.Rest != nil {
-					var rest Pair
-					for i := numArgs - 1; i >= lambda.Args.Min; i-- {
-						scm.sp--
-						rest = NewPair(scm.stack[scm.sp], rest)
-					}
-					scm.stack[scm.sp] = rest
-					scm.sp++
-					numArgs = lambda.Args.Min + 1
-					args = scm.stack[scm.sp-numArgs : scm.sp]
-				}
+				scm.sp = scm.fp
+				scm.fp = callFrame.Next
 
-				env = lambda.Capture
+				callFrame.flNext = scm.frameFL
+				scm.frameFL = callFrame
 
-				if lambda.Captures {
-					var index int
-					if env != nil {
-						index = env.Index + 1
-					}
-					env = &VMEnvFrame{
-						Next:   env,
-						Index:  index,
-						Values: make([]Value, len(args)),
-					}
-					copy(env.Values, args)
-					scm.sp -= len(args)
-				}
-
-				if instr.I != 0 {
-					// Tail-call.
-					next := callFrame.Next
-					nextFrame, ok := scm.stack[next].(*Frame)
-					if !ok {
-						return nil, scm.Breakf("invalid next frame: %v",
-							scm.stack[callFrame.Next])
-					}
-					nextFrame.Lambda = callFrame.Lambda
-
-					callFrame.flNext = scm.frameFL
-					scm.frameFL = callFrame
-
-					count := scm.sp - scm.fp - 1
-					copy(scm.stack[next+1:], scm.stack[scm.fp+1:scm.fp+1+count])
-					scm.sp = next + 1 + count
-					scm.fp = next
-				}
-				if scm.sp+lambda.MaxStack > len(scm.stack) {
-					return nil, scm.Breakf("out of stack: need %d, got %d",
-						lambda.MaxStack, len(scm.stack)-scm.sp)
-				}
-
-				// Jump to lambda code.
-				code = lambda.Code
-				scm.pc = 0
+				continue
 			}
+
+			// Save current excursion.
+			callFrame.PC = scm.pc
+			callFrame.Code = code
+			callFrame.Env = env
+
+			// Handle rest arguments.
+			if lambda.Args.Rest != nil {
+				var rest Pair
+				for i := numArgs - 1; i >= lambda.Args.Min; i-- {
+					scm.sp--
+					rest = NewPair(scm.stack[scm.sp], rest)
+				}
+				scm.stack[scm.sp] = rest
+				scm.sp++
+				numArgs = lambda.Args.Min + 1
+				args = scm.stack[scm.sp-numArgs : scm.sp]
+			}
+
+			env = lambda.Capture
+
+			if lambda.Captures {
+				var index int
+				if env != nil {
+					index = env.Index + 1
+				}
+				env = &VMEnvFrame{
+					Next:   env,
+					Index:  index,
+					Values: make([]Value, len(args)),
+				}
+				copy(env.Values, args)
+				scm.sp -= len(args)
+			}
+
+			if instr.I != 0 {
+				// Tail-call.
+				next := callFrame.Next
+				nextFrame, ok := scm.stack[next].(*Frame)
+				if !ok {
+					return nil, scm.Breakf("invalid next frame: %v",
+						scm.stack[callFrame.Next])
+				}
+				nextFrame.Lambda = callFrame.Lambda
+
+				callFrame.flNext = scm.frameFL
+				scm.frameFL = callFrame
+
+				count := scm.sp - scm.fp - 1
+				copy(scm.stack[next+1:], scm.stack[scm.fp+1:scm.fp+1+count])
+				scm.sp = next + 1 + count
+				scm.fp = next
+			}
+			if scm.sp+lambda.MaxStack > len(scm.stack) {
+				return nil, scm.Breakf("out of stack: need %d, got %d",
+					lambda.MaxStack, len(scm.stack)-scm.sp)
+			}
+
+			// Jump to lambda code.
+			code = lambda.Code
+			scm.pc = 0
 
 		case OpIf:
 			if IsTrue(accu) {
