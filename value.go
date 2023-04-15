@@ -87,15 +87,16 @@ func (v *Identifier) String() string {
 
 // Lambda implements lambda values.
 type Lambda struct {
-	Name    string
-	Args    Args
-	Capture int
-	Locals  [][]Value
-	Native  Native
-	Source  string
-	Code    Code
-	PCMap   PCMap
-	Body    []Pair
+	Name     string
+	Args     Args
+	Captures bool
+	Capture  *VMEnvFrame
+	Native   Native
+	Source   string
+	Code     Code
+	MaxStack int
+	PCMap    PCMap
+	Body     []Pair
 }
 
 // Args specify lambda arguments.
@@ -167,7 +168,7 @@ func (v *Lambda) Equal(o Value) bool {
 	if !v.Args.Equal(ov.Args) {
 		return false
 	}
-	if v.Capture != ov.Capture {
+	if v.Captures != ov.Captures {
 		return false
 	}
 	if v.Native == nil && ov.Native != nil {
@@ -256,6 +257,7 @@ type Builtin struct {
 	Name    string
 	Aliases []string
 	Args    []string
+	Flags   Flags
 	MinArgs int
 	MaxArgs int
 	Native  Native

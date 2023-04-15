@@ -93,7 +93,9 @@ var vectorBuiltins = []Builtin{
 		Name: "vector",
 		Args: []string{"obj..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			return Vector(args), nil
+			v := make([]Value, len(args))
+			copy(v, args)
+			return Vector(v), nil
 		},
 	},
 	{

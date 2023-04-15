@@ -21,18 +21,28 @@ const (
 	OpLambda
 	OpLabel
 	OpLocal
+	OpEnv
 	OpGlobal
 	OpLocalSet
+	OpEnvSet
 	OpGlobalSet
 	OpPushF
 	OpPushS
+	OpPushE
 	OpPopS
+	OpPopE
 	OpPushA
 	OpCall
 	OpIf
 	OpIfNot
 	OpJmp
 	OpReturn
+	OpNullp
+	OpNot
+	OpAdd
+	OpAddI64
+	OpSub
+	OpSubI64
 )
 
 var operands = map[Operand]string{
@@ -41,18 +51,28 @@ var operands = map[Operand]string{
 	OpLambda:    "lambda",
 	OpLabel:     "label",
 	OpLocal:     "local",
+	OpEnv:       "env",
 	OpGlobal:    "global",
 	OpLocalSet:  "local!",
+	OpEnvSet:    "env!",
 	OpGlobalSet: "global!",
 	OpPushF:     "pushf",
 	OpPushS:     "pushs",
+	OpPushE:     "pushe",
 	OpPopS:      "pops",
+	OpPopE:      "pope",
 	OpPushA:     "pusha",
 	OpCall:      "call",
 	OpIf:        "if",
 	OpIfNot:     "ifnot",
 	OpJmp:       "jmp",
 	OpReturn:    "return",
+	OpNullp:     "null?",
+	OpNot:       "not",
+	OpAdd:       "add",
+	OpAddI64:    "addi64",
+	OpSub:       "sub",
+	OpSubI64:    "subi64",
 }
 
 func (op Operand) String() string {
@@ -89,13 +109,16 @@ func (i Instr) String() string {
 	case OpPushF:
 		return fmt.Sprintf("\t%s\t%v", i.Op, i.I != 0)
 
-	case OpPushS:
+	case OpPushS, OpPushE:
 		return fmt.Sprintf("\t%s\t%v", i.Op, i.I)
 
 	case OpLambda:
 		return fmt.Sprintf("\t%s\tl%v:%v", i.Op, i.I, i.J)
 
 	case OpLocal, OpLocalSet:
+		return fmt.Sprintf("\t%s\t%v", i.Op, i.I)
+
+	case OpEnv, OpEnvSet:
 		return fmt.Sprintf("\t%s\t%v.%v", i.Op, i.I, i.J)
 
 	case OpGlobal, OpGlobalSet, OpDefine:
@@ -104,12 +127,8 @@ func (i Instr) String() string {
 	case OpIf, OpIfNot, OpJmp:
 		return fmt.Sprintf("\t%s\t%v\t; l%v", i.Op, i.I, i.J)
 
-	case OpPopS, OpReturn:
-		var suffix string
-		if i.J != 0 {
-			suffix = "\u267b"
-		}
-		return fmt.Sprintf("\t%s%s", i.Op, suffix)
+	case OpPopS:
+		return fmt.Sprintf("\t%s\t%v", i.Op, i.I)
 
 	case OpCall:
 		var suffix string
@@ -138,7 +157,10 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		tail = item
 	}
 
-	scm.accu = lambda
+	var err error
+	var env *VMEnvFrame
+	var accu Value = lambda
+
 	code := []*Instr{
 		{
 			Op: OpPushF,
@@ -156,8 +178,8 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		},
 	}
 	scm.pc = 0
-
-	var err error
+	scm.fp = 0
+	scm.sp = 0
 
 	for {
 		instr := code[scm.pc]
@@ -165,7 +187,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 
 		switch instr.Op {
 		case OpConst:
-			scm.accu = instr.V
+			accu = instr.V
 
 		case OpDefine:
 			if instr.Sym.Flags&FlagFinal != 0 {
@@ -175,7 +197,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			if instr.Sym.Flags&FlagDefined != 0 && !scm.Params.NoWarnDefine {
 				scm.VMWarningf("redefining symbol '%s'", instr.Sym.Name)
 			}
-			instr.Sym.Global = scm.accu
+			instr.Sym.Global = accu
 			instr.Sym.Flags |= FlagDefined
 
 		case OpLambda:
@@ -184,183 +206,233 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				return nil, scm.Breakf("lambda: invalid argument: %V", instr.V)
 			}
 			lambda := &Lambda{
-				Args:    tmpl.Args,
-				Capture: tmpl.Capture,
-				Native:  tmpl.Native,
-				Source:  tmpl.Source,
-				Code:    tmpl.Code,
-				PCMap:   tmpl.PCMap,
-				Body:    tmpl.Body,
+				Args:     tmpl.Args,
+				Captures: tmpl.Captures,
+				Capture:  env,
+				Native:   tmpl.Native,
+				Source:   tmpl.Source,
+				Code:     tmpl.Code,
+				MaxStack: tmpl.MaxStack,
+				PCMap:    tmpl.PCMap,
+				Body:     tmpl.Body,
 			}
-			for i := len(scm.stack) - tmpl.Capture; i < len(scm.stack); i++ {
-				lambda.Locals = append(lambda.Locals, scm.stack[i])
-			}
-			scm.accu = lambda
+			accu = lambda
 
 		case OpLabel:
 
 		case OpLocal:
 			// fmt.Printf("*** local: %v.%v\n", scm.fp+1+instr.I, instr.J)
 			// scm.printStack()
-			scm.accu = scm.stack[scm.fp+1+instr.I][instr.J]
+			accu = scm.stack[scm.fp+1+instr.I]
+
+		case OpEnv:
+			var e *VMEnvFrame
+			for e = env; e != nil; e = e.Next {
+				if e.Index == instr.I {
+					accu = e.Values[instr.J]
+					break
+				}
+			}
+			if e == nil {
+				return nil, scm.Breakf("invalid env frame %v", instr.I)
+			}
 
 		case OpGlobal:
 			if instr.Sym.Flags&FlagDefined == 0 {
 				return nil, scm.Breakf("undefined symbol '%s' ", instr.Sym.Name)
 			}
-			scm.accu = instr.Sym.Global
+			accu = instr.Sym.Global
 
 		case OpLocalSet:
-			// fmt.Printf("%d\tlocal! I=%v, J=%v, accu=%v\n",
-			// 	scm.pc-1, scm.fp+1+instr.I, instr.J, scm.accu)
-			// scm.printStack()
-			scm.stack[scm.fp+1+instr.I][instr.J] = scm.accu
-			// fmt.Printf(" =>\n")
-			// scm.printStack()
+			scm.stack[scm.fp+1+instr.I] = accu
+
+		case OpEnvSet:
+			var e *VMEnvFrame
+			for e = env; e != nil; e = e.Next {
+				if e.Index == instr.I {
+					e.Values[instr.J] = accu
+					break
+				}
+			}
+			if e == nil {
+				return nil, scm.Breakf("invalid env frame %v", instr.I)
+			}
 
 		case OpGlobalSet:
 			if instr.Sym.Flags&FlagDefined == 0 {
 				return nil, scm.Breakf("undefined symbol '%s'", instr.Sym.Name)
 			}
-			instr.Sym.Global = scm.accu
+			instr.Sym.Global = accu
 
 		case OpPushF:
 			// i.I != 0 for toplevel frames.
-			lambda, ok := scm.accu.(*Lambda)
+			lambda, ok := accu.(*Lambda)
 			if !ok {
 				return nil, scm.Breakf("%s: invalid function: %v",
-					instr.Op, scm.accu)
+					instr.Op, accu)
 			}
 
-			var scope []Value
 			var frame *Frame
-
-			l := len(scm.frameFL)
-			if l == 0 {
-				frame = new(Frame)
-				scope = []Value{frame}
+			if scm.frameFL != nil {
+				frame = scm.frameFL
+				scm.frameFL = frame.flNext
 			} else {
-				scope = scm.frameFL[l-1]
-				scm.frameFL = scm.frameFL[:l-1]
-				frame = scope[0].(*Frame)
+				frame = new(Frame)
 			}
+
 			frame.Index = len(scm.stack)
 			frame.Next = scm.fp
-			frame.Lambda = lambda
 			frame.Toplevel = instr.I != 0
+			frame.Lambda = lambda
 
-			scm.stack = append(scm.stack, scope)
+			scm.stack[scm.sp] = frame
+			scm.sp++
 
 		case OpPushS:
-			scm.pushScope(instr.I)
+			for i := 0; i < instr.I; i++ {
+				scm.stack[scm.sp] = nil
+				scm.sp++
+			}
+
+		case OpPushE:
+			var index int
+			if env != nil {
+				index = env.Index + 1
+			}
+			env = &VMEnvFrame{
+				Next:   env,
+				Index:  index,
+				Values: make([]Value, instr.I),
+			}
 
 		case OpPopS:
-			scm.popScope()
+			scm.sp -= instr.I
+
+		case OpPopE:
+			env = env.Next
 
 		case OpPushA:
-			var scope []Value
+			var count int
 			err = Map(func(idx int, v Value) error {
-				scope = append(scope, v)
+				scm.stack[scm.sp] = v
+				scm.sp++
+				count++
 				return nil
-			}, scm.accu)
+			}, accu)
 			if err != nil {
 				return nil, scm.Breakf("pusha: invalid arguments: %v", err)
 			}
-			scm.stack = append(scm.stack, scope)
+			accu = Int(count)
 
 		case OpCall:
-			stackTop := len(scm.stack) - 1
-			args := scm.stack[stackTop]
+			vi, ok := accu.(Int)
+			if !ok {
+				return nil, scm.Breakf("%s: invalid #args: %v", instr.Op, accu)
+			}
+			numArgs := int(vi)
+			args := scm.stack[scm.sp-numArgs : scm.sp]
 
-			callFrame, ok := scm.stack[stackTop-1][0].(*Frame)
+			callFrame, ok := scm.stack[scm.sp-numArgs-1].(*Frame)
 			if !ok || callFrame.Lambda == nil {
 				return nil, scm.Breakf("%s: invalid function: %v",
-					instr.Op, scm.stack[stackTop-1][0])
+					instr.Op, scm.stack[scm.sp-numArgs-1])
 			}
 			lambda := callFrame.Lambda
 
-			if len(args) < lambda.Args.Min {
+			if numArgs < lambda.Args.Min {
 				return nil, scm.Breakf("too few arguments: got %v, need %v",
-					len(args), lambda.Args.Min)
+					numArgs, lambda.Args.Min)
 			}
-			if len(args) > lambda.Args.Max {
+			if numArgs > lambda.Args.Max {
 				return nil, scm.Breakf("too many arguments: got %v, max %v",
-					len(args), lambda.Args.Max)
+					numArgs, lambda.Args.Max)
 			}
 
 			// Set fp for the call.
-			scm.fp = stackTop - 1
+			scm.fp = scm.sp - numArgs - 1
+
+			if lambda.Native != nil {
+				accu, err = callFrame.Lambda.Native(scm, lambda, args)
+				if err != nil {
+					return nil, scm.Breakf("%v", err)
+				}
+				scm.sp = scm.fp
+				scm.fp = callFrame.Next
+
+				callFrame.flNext = scm.frameFL
+				scm.frameFL = callFrame
+
+				continue
+			}
 
 			// Save current excursion.
 			callFrame.PC = scm.pc
 			callFrame.Code = code
+			callFrame.Env = env
 
-			if lambda.Native != nil {
-				scm.accu, err = callFrame.Lambda.Native(scm, lambda, args)
-				if err != nil {
-					return nil, scm.Breakf("%v", err)
+			// Handle rest arguments.
+			if lambda.Args.Rest != nil {
+				var rest Pair
+				for i := numArgs - 1; i >= lambda.Args.Min; i-- {
+					scm.sp--
+					rest = NewPair(scm.stack[scm.sp], rest)
 				}
-				scm.pc = callFrame.PC
-				code = callFrame.Code
-				scm.popFrame()
-			} else {
-				// Handle rest arguments.
-				if lambda.Args.Rest != nil {
-					var rest Pair
-					for i := len(args) - 1; i >= lambda.Args.Min; i-- {
-						rest = NewPair(args[i], rest)
-					}
-					args = args[:lambda.Args.Min]
-					args = append(args, rest)
-					scm.stack[stackTop] = args
-				}
-
-				if instr.I != 0 {
-					// Tail-call.
-
-					next := callFrame.Next
-
-					nextFrame, ok := scm.stack[next][0].(*Frame)
-					if !ok {
-						return nil, scm.Breakf("invalid next frame: %v",
-							scm.stack[callFrame.Next])
-					}
-
-					nextFrame.Lambda = callFrame.Lambda
-					scm.stack[next+1] = scm.stack[stackTop]
-					scm.stack = scm.stack[:next+2]
-
-					scm.fp = next
-				}
-
-				// Apply lambda capture.
-				if len(lambda.Locals) > 0 {
-					// Pop argument frame.
-					stackTop = len(scm.stack) - 1
-					args = scm.stack[stackTop]
-					scm.stack = scm.stack[:stackTop]
-
-					// Push capture frames.
-					for _, frame := range lambda.Locals {
-						scm.stack = append(scm.stack, frame)
-					}
-
-					// Push arguments top of capture frames.
-					scm.stack = append(scm.stack, args)
-				}
-
-				// Jump to lambda code.
-				code = lambda.Code
-				scm.pc = 0
+				scm.stack[scm.sp] = rest
+				scm.sp++
+				numArgs = lambda.Args.Min + 1
+				args = scm.stack[scm.sp-numArgs : scm.sp]
 			}
 
+			env = lambda.Capture
+
+			if lambda.Captures {
+				var index int
+				if env != nil {
+					index = env.Index + 1
+				}
+				env = &VMEnvFrame{
+					Next:   env,
+					Index:  index,
+					Values: make([]Value, len(args)),
+				}
+				copy(env.Values, args)
+				scm.sp -= len(args)
+			}
+
+			if instr.I != 0 {
+				// Tail-call.
+				next := callFrame.Next
+				nextFrame, ok := scm.stack[next].(*Frame)
+				if !ok {
+					return nil, scm.Breakf("invalid next frame: %v",
+						scm.stack[callFrame.Next])
+				}
+				nextFrame.Lambda = callFrame.Lambda
+
+				callFrame.flNext = scm.frameFL
+				scm.frameFL = callFrame
+
+				count := scm.sp - scm.fp - 1
+				copy(scm.stack[next+1:], scm.stack[scm.fp+1:scm.fp+1+count])
+				scm.sp = next + 1 + count
+				scm.fp = next
+			}
+			if scm.sp+lambda.MaxStack > len(scm.stack) {
+				return nil, scm.Breakf("out of stack: need %d, got %d",
+					lambda.MaxStack, len(scm.stack)-scm.sp)
+			}
+
+			// Jump to lambda code.
+			code = lambda.Code
+			scm.pc = 0
+
 		case OpIf:
-			if IsTrue(scm.accu) {
+			if IsTrue(accu) {
 				scm.pc += instr.I
 			}
 
 		case OpIfNot:
-			if !IsTrue(scm.accu) {
+			if !IsTrue(accu) {
 				scm.pc += instr.I
 			}
 
@@ -368,16 +440,42 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			scm.pc += instr.I
 
 		case OpReturn:
-			frame, ok := scm.stack[scm.fp][0].(*Frame)
+			frame, ok := scm.stack[scm.fp].(*Frame)
 			if !ok {
 				return nil, scm.Breakf("%s: invalid function: %v",
-					instr.Op, scm.stack[scm.fp][0])
+					instr.Op, scm.stack[scm.fp])
 			}
 			scm.pc = frame.PC
 			code = frame.Code
+			env = frame.Env
+
 			if scm.popFrame() {
-				return scm.accu, nil
+				return accu, nil
 			}
+
+		case OpNullp:
+			accu = Boolean(accu == nil)
+
+		case OpNot:
+			accu = Boolean(!IsTrue(accu))
+
+		case OpAdd:
+			accu, err = add(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+			if err != nil {
+				return nil, scm.Breakf("%v", err.Error())
+			}
+
+		case OpAddI64:
+			accu = scm.stack[scm.sp-2].(Int) + scm.stack[scm.sp-1].(Int)
+
+		case OpSub:
+			accu, err = sub(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+			if err != nil {
+				return nil, scm.Breakf("%v", err.Error())
+			}
+
+		case OpSubI64:
+			accu = scm.stack[scm.sp-2].(Int) - scm.stack[scm.sp-1].(Int)
 
 		default:
 			return nil, scm.Breakf("%s: not implemented", instr.Op)
@@ -405,7 +503,7 @@ func (scm *Scheme) Location() (source string, line int, err error) {
 	pc := scm.pc
 
 	for fp < len(scm.stack) {
-		frame, ok := scm.stack[fp][0].(*Frame)
+		frame, ok := scm.stack[fp].(*Frame)
 		if !ok {
 			err = errors.New("no stack")
 			return
@@ -454,12 +552,12 @@ func (scm *Scheme) popToplevel() {
 	fp := scm.fp
 
 	for fp < len(scm.stack) {
-		frame, ok := scm.stack[fp][0].(*Frame)
+		frame, ok := scm.stack[fp].(*Frame)
 		if !ok {
 			panic("corrupted stack")
 		}
 		if frame.Toplevel {
-			scm.stack = scm.stack[:fp]
+			scm.sp = fp
 			scm.fp = frame.Next
 			break
 		}
@@ -476,7 +574,7 @@ func (scm *Scheme) PrintStack() {
 	pc := scm.pc
 
 	for fp < len(scm.stack) {
-		frame, ok := scm.stack[fp][0].(*Frame)
+		frame, ok := scm.stack[fp].(*Frame)
 		if !ok {
 			panic("corrupted stack")
 		}
@@ -522,7 +620,7 @@ func (scm *Scheme) StackTrace() []StackFrame {
 	var result []StackFrame
 
 	for {
-		frame, ok := scm.stack[fp][0].(*Frame)
+		frame, ok := scm.stack[fp].(*Frame)
 		if !ok {
 			panic("corrupted stack")
 		}
@@ -556,21 +654,14 @@ func (scm *Scheme) Intern(name string) *Identifier {
 	return id
 }
 
-func (scm *Scheme) pushScope(size int) {
-	scm.stack = append(scm.stack, make([]Value, size, size))
-}
-
-func (scm *Scheme) popScope() {
-	scm.stack = scm.stack[:len(scm.stack)-1]
-}
-
 func (scm *Scheme) popFrame() bool {
-	frame := scm.stack[scm.fp][0].(*Frame)
+	frame := scm.stack[scm.fp].(*Frame)
 
-	scm.frameFL = append(scm.frameFL, scm.stack[scm.fp])
-	scm.stack = scm.stack[:scm.fp]
-
+	scm.sp = scm.fp
 	scm.fp = frame.Next
+
+	frame.flNext = scm.frameFL
+	scm.frameFL = frame
 
 	return frame.Toplevel
 }
@@ -584,6 +675,8 @@ type Frame struct {
 	Lambda *Lambda
 	PC     int
 	Code   Code
+	Env    *VMEnvFrame
+	flNext *Frame
 }
 
 // Scheme returns the value as a Scheme string.
@@ -617,6 +710,13 @@ func (f *Frame) Equal(o Value) bool {
 		f.Toplevel == ov.Toplevel
 }
 
+// VMEnvFrame implement a virtual machine environment frame.
+type VMEnvFrame struct {
+	Next   *VMEnvFrame
+	Index  int
+	Values []Value
+}
+
 func (f *Frame) String() string {
 	var toplevel = "#f"
 	if f.Toplevel {
@@ -632,14 +732,14 @@ func (scm *Scheme) printStack() {
 
 func (scm *Scheme) printStackLimit(limit int) {
 	var all bool
-	if limit > len(scm.stack) {
+	if limit > scm.sp {
 		limit = 0
 		all = true
 	} else {
-		limit = len(scm.stack) - limit
+		limit = scm.sp - limit
 	}
 	fmt.Printf("Stack:\u252c\u2574limit=%v\n", len(scm.stack)-limit)
-	for i := len(scm.stack) - 1; i >= limit; i-- {
+	for i := scm.sp - 1; i >= limit; i-- {
 		if scm.fp == i {
 			istr := fmt.Sprintf("%d", i)
 			// |123456 []

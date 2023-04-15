@@ -30,13 +30,14 @@ type Scheme struct {
 	Parsing bool
 	verbose bool
 
-	pc      int
-	fp      int
-	accu    Value
-	stack   [][]Value
-	symbols map[string]*Identifier
+	hasRuntime bool
 
-	frameFL [][]Value
+	pc      int
+	sp      int
+	fp      int
+	stack   []Value
+	symbols map[string]*Identifier
+	frameFL *Frame
 }
 
 // Params define the configuration parameters for Scheme.
@@ -63,6 +64,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 		Params:  params,
 		Stdout:  NewPort(os.Stdout),
 		Stderr:  NewPort(os.Stderr),
+		stack:   make([]Value, 4096), // XXX initial stack depth
 		symbols: make(map[string]*Identifier),
 	}
 
@@ -119,11 +121,13 @@ func (scm *Scheme) loadRuntime(dir string) error {
 		if err != nil {
 			return err
 		}
-		_, err = scm.evalRuntime(file, bytes.NewReader(data))
+		_, err = scm.eval(file, bytes.NewReader(data))
 		if err != nil {
 			return err
 		}
 	}
+	scm.hasRuntime = true
+
 	return nil
 }
 
@@ -171,6 +175,7 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 		Native: builtin.Native,
 	}
 	sym.Flags |= FlagDefined
+	sym.Flags |= builtin.Flags
 
 	for _, alias := range builtin.Aliases {
 		sym = scm.Intern(alias)
@@ -195,6 +200,13 @@ func (scm *Scheme) EvalFile(file string) (Value, error) {
 
 // Eval evaluates the scheme source.
 func (scm *Scheme) Eval(source string, in io.Reader) (Value, error) {
+	if scm.hasRuntime {
+		return scm.evalRuntime(source, in)
+	}
+	return scm.eval(source, in)
+}
+
+func (scm *Scheme) evalRuntime(source string, in io.Reader) (Value, error) {
 	library, err := scm.Load(source, in)
 	if err != nil {
 		return nil, err
@@ -204,7 +216,7 @@ func (scm *Scheme) Eval(source string, in io.Reader) (Value, error) {
 	return scm.Apply(sym.Global, []Value{library})
 }
 
-func (scm *Scheme) evalRuntime(source string, in io.Reader) (Value, error) {
+func (scm *Scheme) eval(source string, in io.Reader) (Value, error) {
 	library, err := scm.Load(source, in)
 	if err != nil {
 		return nil, err

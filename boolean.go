@@ -94,8 +94,9 @@ func Eq(a, b Value) bool {
 
 var booleanBuiltins = []Builtin{
 	{
-		Name: "not",
-		Args: []string{"obj"},
+		Name:  "not",
+		Flags: FlagFinal,
+		Args:  []string{"obj"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			return Boolean(!IsTrue(args[0])), nil
 		},
