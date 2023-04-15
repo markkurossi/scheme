@@ -413,7 +413,7 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 		}
 
 		// Compile function.
-		err = c.compileValue(env, v, v.Car(), false, captures)
+		err = c.compileValue(env, list[0], list[0].Car(), false, captures)
 		if err != nil {
 			return err
 		}
@@ -423,7 +423,7 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 		lambdaEnv := env.Copy()
 
 		// Create call frame.
-		c.addInstr(v, OpPushF, nil, 0)
+		c.addInstr(list[0], OpPushF, nil, 0)
 		lambdaEnv.PushFrame(TypeStack, FUFrame, 1)
 
 		// Push argument scope.
@@ -431,19 +431,13 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 		c.addInstr(v, OpPushS, nil, length-1)
 
 		// Evaluate arguments.
-		li := v.Cdr() // XXX remove li.
-		for j := 0; li != nil; j++ {
-			pair, ok := li.(Pair)
-			if !ok {
-				return v.Errorf("invalid list: %v", li)
-			}
-			err := c.compileValue(lambdaEnv, pair, pair.Car(), false, captures)
+		for i := 1; i < len(list); i++ {
+			err = c.compileValue(lambdaEnv, list[i], list[i].Car(), false,
+				captures)
 			if err != nil {
 				return err
 			}
-			li = pair.Cdr()
-
-			c.addInstr(pair, OpLocalSet, nil, argFrame.Index+j)
+			c.addInstr(list[i], OpLocalSet, nil, argFrame.Index+i-1)
 		}
 
 		c.addCall(nil, length-1, tail)
