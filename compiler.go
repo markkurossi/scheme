@@ -403,6 +403,14 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 		if ok {
 			return nil
 		}
+		// Inlined binary functions.
+		ok, err = c.inlineBinary(env, list, captures)
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
 
 		// Compile function.
 		err = c.compileValue(env, v, v.Car(), false, captures)
@@ -423,7 +431,7 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 		c.addInstr(v, OpPushS, nil, length-1)
 
 		// Evaluate arguments.
-		li := v.Cdr()
+		li := v.Cdr() // XXX remove li.
 		for j := 0; li != nil; j++ {
 			pair, ok := li.(Pair)
 			if !ok {
@@ -487,7 +495,6 @@ func (c *Compiler) inlineUnary(env *Env, list []Pair, captures bool) (
 	if !ok {
 		return false, nil
 	}
-
 	op, ok := inlineUnary[id.Name]
 	if !ok {
 		return false, nil
@@ -498,7 +505,47 @@ func (c *Compiler) inlineUnary(env *Env, list []Pair, captures bool) (
 	if err != nil {
 		return false, err
 	}
-	c.addInstr(list[1], op, nil, 0)
+	c.addInstr(list[0], op, nil, 0)
+
+	return true, nil
+}
+
+var inlineBinary = map[string]Operand{
+	"+": OpAdd,
+	"-": OpSub,
+}
+
+func (c *Compiler) inlineBinary(env *Env, list []Pair, captures bool) (
+	bool, error) {
+
+	if len(list) != 3 {
+		return false, nil
+	}
+	id, ok := list[0].Car().(*Identifier)
+	if !ok {
+		return false, nil
+	}
+	op, ok := inlineBinary[id.Name]
+	if !ok {
+		return false, nil
+	}
+
+	// Push argument scope.
+	argFrame := env.PushFrame(TypeStack, FUArgs, 2)
+	c.addInstr(list[0], OpPushS, nil, 2)
+
+	// Evaluate arguments.
+	for i := 1; i < len(list); i++ {
+		err := c.compileValue(env, list[i], list[i].Car(), false, captures)
+		if err != nil {
+			return false, err
+		}
+		c.addInstr(list[i], OpLocalSet, nil, argFrame.Index+i-1)
+	}
+	c.addInstr(list[0], op, nil, 0)
+
+	env.PopFrame()
+	c.addInstr(list[0], OpPopS, nil, 2)
 
 	return true, nil
 }

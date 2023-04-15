@@ -128,7 +128,7 @@ func Int64(v Value) (int64, error) {
 	}
 }
 
-func plus(l *Lambda, z1, z2 Value) (Value, error) {
+func add(z1, z2 Value) (Value, error) {
 	switch v1 := z1.(type) {
 	case Int:
 		switch v2 := z2.(type) {
@@ -139,7 +139,7 @@ func plus(l *Lambda, z1, z2 Value) (Value, error) {
 			return Int(int64(v1) + v2.I.Int64()), nil
 
 		default:
-			return Int(0), l.Errorf("invalid number: %v", z2)
+			return Int(0), fmt.Errorf("invalid number: %v", z2)
 		}
 
 	case *BigInt:
@@ -153,16 +153,16 @@ func plus(l *Lambda, z1, z2 Value) (Value, error) {
 			}, nil
 
 		default:
-			return Int(0), l.Errorf("invalid number: %v", z2)
+			return Int(0), fmt.Errorf("invalid number: %v", z2)
 		}
 
 	default:
-		return Int(0), l.Errorf("invalid number: %v", z1)
+		return Int(0), fmt.Errorf("invalid number: %v", z1)
 	}
 
 }
 
-func minus(l *Lambda, z1, z2 Value) (Value, error) {
+func sub(z1, z2 Value) (Value, error) {
 	switch v1 := z1.(type) {
 	case Int:
 		switch v2 := z2.(type) {
@@ -173,7 +173,7 @@ func minus(l *Lambda, z1, z2 Value) (Value, error) {
 			return Int(int64(v1) - v2.I.Int64()), nil
 
 		default:
-			return Int(0), l.Errorf("invalid number: %v", z2)
+			return Int(0), fmt.Errorf("invalid number: %v", z2)
 		}
 
 	case *BigInt:
@@ -187,11 +187,11 @@ func minus(l *Lambda, z1, z2 Value) (Value, error) {
 			}, nil
 
 		default:
-			return Int(0), l.Errorf("invalid number: %v", z2)
+			return Int(0), fmt.Errorf("invalid number: %v", z2)
 		}
 
 	default:
-		return Int(0), l.Errorf("invalid number: %v", z1)
+		return Int(0), fmt.Errorf("invalid number: %v", z1)
 	}
 }
 
@@ -401,9 +401,9 @@ var numberBuiltins = []Builtin{
 				return Int(0), l.Errorf("invalid number: %v", v)
 			}
 			for i := 1; i < len(args); i++ {
-				sum, err = plus(l, sum, args[i])
+				sum, err = add(sum, args[i])
 				if err != nil {
-					return sum, err
+					return sum, l.Errorf("%v", err.Error())
 				}
 			}
 			return sum, nil
@@ -461,7 +461,7 @@ var numberBuiltins = []Builtin{
 
 			case *BigInt:
 				if len(args) == 1 {
-					return minus(l, &BigInt{
+					return sub(&BigInt{
 						I: big.NewInt(0),
 					}, v)
 				}
@@ -472,9 +472,9 @@ var numberBuiltins = []Builtin{
 			}
 
 			for i := 1; i < len(args); i++ {
-				diff, err = minus(l, diff, args[i])
+				diff, err = sub(diff, args[i])
 				if err != nil {
-					return diff, nil
+					return diff, l.Errorf("%v", err.Error())
 				}
 			}
 

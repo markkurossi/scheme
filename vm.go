@@ -39,6 +39,10 @@ const (
 	OpReturn
 	OpNullp
 	OpNot
+	OpAdd
+	OpAddI64
+	OpSub
+	OpSubI64
 )
 
 var operands = map[Operand]string{
@@ -65,6 +69,10 @@ var operands = map[Operand]string{
 	OpReturn:    "return",
 	OpNullp:     "null?",
 	OpNot:       "not",
+	OpAdd:       "add",
+	OpAddI64:    "addi64",
+	OpSub:       "sub",
+	OpSubI64:    "subi64",
 }
 
 func (op Operand) String() string {
@@ -119,12 +127,8 @@ func (i Instr) String() string {
 	case OpIf, OpIfNot, OpJmp:
 		return fmt.Sprintf("\t%s\t%v\t; l%v", i.Op, i.I, i.J)
 
-	case OpPopS, OpPopE, OpReturn:
-		var suffix string
-		if i.J != 0 {
-			suffix = "\u267b"
-		}
-		return fmt.Sprintf("\t%s%s", i.Op, suffix)
+	case OpPopS:
+		return fmt.Sprintf("\t%s\t%v", i.Op, i.I)
 
 	case OpCall:
 		var suffix string
@@ -454,6 +458,24 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 
 		case OpNot:
 			accu = Boolean(!IsTrue(accu))
+
+		case OpAdd:
+			accu, err = add(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+			if err != nil {
+				return nil, scm.Breakf("%v", err.Error())
+			}
+
+		case OpAddI64:
+			accu = scm.stack[scm.sp-2].(Int) + scm.stack[scm.sp-1].(Int)
+
+		case OpSub:
+			accu, err = sub(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+			if err != nil {
+				return nil, scm.Breakf("%v", err.Error())
+			}
+
+		case OpSubI64:
+			accu = scm.stack[scm.sp-2].(Int) - scm.stack[scm.sp-1].(Int)
 
 		default:
 			return nil, scm.Breakf("%s: not implemented", instr.Op)
