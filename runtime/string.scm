@@ -5,13 +5,13 @@
 ;;;
 
 (define (string=? str1 str2 . rest)
-  (scheme::compare (lambda (x y) (scheme::string=? x y)) str1 str2 rest))
+  (scheme::compare scheme::string=? str1 str2 rest))
 
 (define (string<? str1 str2 . rest)
-  (scheme::compare (lambda (x y) (scheme::string<? x y)) str1 str2 rest))
+  (scheme::compare scheme::string<? str1 str2 rest))
 
 (define (string>? str1 str2 . rest)
-  (scheme::compare (lambda (x y) (scheme::string>? x y)) str1 str2 rest))
+  (scheme::compare scheme::string>? str1 str2 rest))
 
 (define (string<=? str1 str2 . rest)
   (scheme::compare (lambda (x y) (not (scheme::string>? x y))) str1 str2 rest))
