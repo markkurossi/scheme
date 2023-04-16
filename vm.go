@@ -259,6 +259,10 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			}
 
 		case OpGlobalSet:
+			if instr.Sym.Flags&FlagFinal != 0 {
+				return nil, scm.Breakf("setting final symbol '%s'",
+					instr.Sym.Name)
+			}
 			if instr.Sym.Flags&FlagDefined == 0 {
 				return nil, scm.Breakf("undefined symbol '%s'", instr.Sym.Name)
 			}
