@@ -38,6 +38,7 @@ const (
 	OpJmp
 	OpReturn
 	OpNullp
+	OpZerop
 	OpNot
 	OpAdd
 	OpAddI64
@@ -68,6 +69,7 @@ var operands = map[Operand]string{
 	OpJmp:       "jmp",
 	OpReturn:    "return",
 	OpNullp:     "null?",
+	OpZerop:     "zero?",
 	OpNot:       "not",
 	OpAdd:       "add",
 	OpAddI64:    "addi64",
@@ -203,7 +205,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		case OpLambda:
 			tmpl, ok := instr.V.(*Lambda)
 			if !ok {
-				return nil, scm.Breakf("lambda: invalid argument: %V", instr.V)
+				return nil, scm.Breakf("lambda: invalid argument: %v", instr.V)
 			}
 			lambda := &Lambda{
 				Args:     tmpl.Args,
@@ -459,6 +461,12 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 
 		case OpNullp:
 			accu = Boolean(accu == nil)
+
+		case OpZerop:
+			accu, err = zero(accu)
+			if err != nil {
+				return nil, scm.Breakf("%v", err.Error())
+			}
 
 		case OpNot:
 			accu = Boolean(!IsTrue(accu))

@@ -195,6 +195,19 @@ func sub(z1, z2 Value) (Value, error) {
 	}
 }
 
+func zero(z Value) (Value, error) {
+	switch v := z.(type) {
+	case Int:
+		return Boolean(v == 0), nil
+
+	case *BigInt:
+		return Boolean(v.I.BitLen() == 0), nil
+
+	default:
+		return Boolean(false), fmt.Errorf("zero?: invalid number: %v", z)
+	}
+}
+
 func bit(z Value, i int) (uint, error) {
 	switch v := z.(type) {
 	case Int:
@@ -356,6 +369,13 @@ var numberBuiltins = []Builtin{
 			default:
 				return Boolean(false), l.Errorf("invalid number: %v", args[0])
 			}
+		},
+	},
+	{
+		Name: "zero?",
+		Args: []string{"z"},
+		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+			return zero(args[0])
 		},
 	},
 	{

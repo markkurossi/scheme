@@ -26,9 +26,6 @@
 (define (>= x1 x2 . rest)
   (scheme::compare (lambda (x y) (not (scheme::< x y))) x1 x2 rest))
 
-(define (zero? z)
-  (scheme::= z 0))
-
 (define (positive? x)
   (scheme::> x 0))
 

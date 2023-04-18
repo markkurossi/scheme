@@ -476,6 +476,7 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 
 var inlineUnary = map[string]Operand{
 	"null?": OpNullp,
+	"zero?": OpZerop,
 	"not":   OpNot,
 }
 
