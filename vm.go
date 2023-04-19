@@ -124,7 +124,11 @@ func (i Instr) String() string {
 		return fmt.Sprintf("\t%s\t%v.%v", i.Op, i.I, i.J)
 
 	case OpGlobal, OpGlobalSet, OpDefine:
-		return fmt.Sprintf("\t%s\t%v", i.Op, i.Sym)
+		str := fmt.Sprintf("\t%s\t%v", i.Op, i.Sym)
+		if i.I != 0 {
+			str += fmt.Sprintf("\t%v", Flags(i.I))
+		}
+		return str
 
 	case OpIf, OpIfNot, OpJmp:
 		return fmt.Sprintf("\t%s\t%v\t; l%v", i.Op, i.I, i.J)
@@ -192,7 +196,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			accu = instr.V
 
 		case OpDefine:
-			if instr.Sym.Flags&FlagFinal != 0 {
+			if instr.Sym.Flags&FlagConst != 0 {
 				return nil, scm.Breakf("redefining final symbol '%s'",
 					instr.Sym.Name)
 			}
@@ -201,6 +205,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			}
 			instr.Sym.Global = accu
 			instr.Sym.Flags |= FlagDefined
+			instr.Sym.Flags |= Flags(instr.I)
 
 		case OpLambda:
 			tmpl, ok := instr.V.(*Lambda)
@@ -261,7 +266,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			}
 
 		case OpGlobalSet:
-			if instr.Sym.Flags&FlagFinal != 0 {
+			if instr.Sym.Flags&FlagConst != 0 {
 				return nil, scm.Breakf("setting final symbol '%s'",
 					instr.Sym.Name)
 			}

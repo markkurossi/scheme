@@ -335,10 +335,13 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 		length := len(list)
 
 		if isKeyword(v.Car(), KwDefine) {
-			return c.compileDefine(env, list, captures)
+			return c.compileDefine(env, list, 0, captures)
+		}
+		if isKeyword(v.Car(), KwDefineConstant) {
+			return c.compileDefine(env, list, FlagConst, captures)
 		}
 		if isKeyword(v.Car(), KwLambda) {
-			return c.compileLambda(env, false, list)
+			return c.compileLambda(env, false, 0, list)
 		}
 		if isKeyword(v.Car(), KwSet) {
 			return c.compileSet(env, list, captures)
@@ -610,7 +613,9 @@ func (c *Compiler) newLabel() *Instr {
 	}
 }
 
-func (c *Compiler) compileDefine(env *Env, list []Pair, captures bool) error {
+func (c *Compiler) compileDefine(env *Env, list []Pair, flags Flags,
+	captures bool) error {
+
 	if len(list) < 3 {
 		return list[0].Errorf("syntax error: %v", list[0])
 	}
@@ -621,14 +626,16 @@ func (c *Compiler) compileDefine(env *Env, list []Pair, captures bool) error {
 		if err != nil {
 			return err
 		}
-		return c.define(list[1], env, name)
+		return c.define(list[1], env, name, flags)
 	}
 
 	// (define (name args?) body)
-	return c.compileLambda(env, true, list)
+	return c.compileLambda(env, true, flags, list)
 }
 
-func (c *Compiler) define(loc Locator, env *Env, name *Identifier) error {
+func (c *Compiler) define(loc Locator, env *Env, name *Identifier,
+	flags Flags) error {
+
 	export, ok := c.exported[name.Name]
 	if c.exportAll || ok {
 		// XXX Defined global symbol.
@@ -641,7 +648,7 @@ func (c *Compiler) define(loc Locator, env *Env, name *Identifier) error {
 	}
 	c.exports = NewPair(name, c.exports)
 
-	instr := c.addInstr(loc, OpDefine, nil, 0)
+	instr := c.addInstr(loc, OpDefine, nil, int(flags))
 	instr.Sym = c.scm.Intern(name.Name)
 
 	return nil
@@ -662,7 +669,8 @@ func (seen seen) add(name string) error {
 	return nil
 }
 
-func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
+func (c *Compiler) compileLambda(env *Env, define bool, flags Flags,
+	list []Pair) error {
 
 	// (define (name args?) body)
 	// (lambda (args?) body)
@@ -807,7 +815,7 @@ func (c *Compiler) compileLambda(env *Env, define bool, list []Pair) error {
 		Captures: captures,
 	})
 	if define {
-		return c.define(list[0], env, name)
+		return c.define(list[0], env, name, flags)
 	}
 
 	return nil
@@ -831,13 +839,13 @@ func (c *Compiler) compileSet(env *Env, list []Pair, captures bool) error {
 	b, ok := env.Lookup(name.Name)
 	if ok {
 		if b.Frame.Type == TypeStack {
-			c.addInstr(nil, OpLocalSet, nil, b.Frame.Index+b.Index)
+			c.addInstr(list[1], OpLocalSet, nil, b.Frame.Index+b.Index)
 		} else {
-			instr := c.addInstr(nil, OpEnvSet, nil, b.Frame.Index)
+			instr := c.addInstr(list[1], OpEnvSet, nil, b.Frame.Index)
 			instr.J = b.Index
 		}
 	} else {
-		instr := c.addInstr(nil, OpGlobalSet, nil, 0)
+		instr := c.addInstr(list[1], OpGlobalSet, nil, 0)
 		instr.Sym = nameSym
 	}
 

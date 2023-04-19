@@ -86,6 +86,7 @@ const (
 	KwElse Keyword = iota
 	KwImplies
 	KwDefine
+	KwDefineConstant
 	KwUnquote
 	KwUnquoteSplicing
 	KwQuote
@@ -110,6 +111,7 @@ var keywords = map[Keyword]string{
 	KwElse:            "else",
 	KwImplies:         "=>",
 	KwDefine:          "define",
+	KwDefineConstant:  "define-constant",
 	KwUnquote:         "unquote",
 	KwUnquoteSplicing: "unquote-splicing",
 	KwQuote:           "quote",

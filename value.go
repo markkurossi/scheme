@@ -54,8 +54,19 @@ type Flags int
 // Symbol flags.
 const (
 	FlagDefined Flags = 1 << iota
-	FlagFinal
+	FlagConst
 )
+
+func (f Flags) String() string {
+	var result string
+	if f&FlagDefined != 0 {
+		result += " defined"
+	}
+	if f&FlagConst != 0 {
+		result += " const"
+	}
+	return strings.TrimSpace(result)
+}
 
 // Identifier implements identifier values.
 type Identifier struct {

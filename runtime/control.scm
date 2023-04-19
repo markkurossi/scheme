@@ -4,7 +4,7 @@
 ;;; All rights reserved.
 ;;;
 
-(define (apply proc arg . args)
+(define-constant (apply proc arg . args)
   (if (null? args)
       (scheme::apply proc arg)
       (scheme::apply proc (append (list arg) args))))

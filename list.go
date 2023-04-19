@@ -360,8 +360,8 @@ var listBuiltins = []Builtin{
 	},
 	{
 		Name:  "null?",
-		Flags: FlagFinal,
 		Args:  []string{"obj"},
+		Flags: FlagConst,
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			return Boolean(args[0] == nil), nil
 		},

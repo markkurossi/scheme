@@ -243,7 +243,7 @@ func (scm *Scheme) Global(name string) (Value, error) {
 // will became defined if it was undefined before the call.
 func (scm *Scheme) SetGlobal(name string, value Value) error {
 	id := scm.Intern(name)
-	if id.Flags&FlagFinal != 0 {
+	if id.Flags&FlagConst != 0 {
 		return fmt.Errorf("can't reset final symbol '%s'", name)
 	}
 	id.Flags |= FlagDefined

@@ -372,8 +372,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "zero?",
-		Args: []string{"z"},
+		Name:  "zero?",
+		Args:  []string{"z"},
+		Flags: FlagConst,
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			return zero(args[0])
 		},
@@ -401,8 +402,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "+",
-		Args: []string{"z1..."},
+		Name:  "+",
+		Args:  []string{"z1..."},
+		Flags: FlagConst,
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			if len(args) == 0 {
 				return Int(0), nil
@@ -466,8 +468,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "-",
-		Args: []string{"z1", "z2..."},
+		Name:  "-",
+		Args:  []string{"z1", "z2..."},
+		Flags: FlagConst,
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			var diff Value
 			var err error
