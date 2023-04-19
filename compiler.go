@@ -478,6 +478,9 @@ func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 }
 
 var inlineUnary = map[string]Operand{
+	"pair?": OpPairp,
+	"car":   OpCar,
+	"cdr":   OpCdr,
 	"null?": OpNullp,
 	"zero?": OpZerop,
 	"not":   OpNot,
@@ -509,8 +512,9 @@ func (c *Compiler) inlineUnary(env *Env, list []Pair, captures bool) (
 }
 
 var inlineBinary = map[string]Operand{
-	"+": OpAdd,
-	"-": OpSub,
+	"cons": OpCons,
+	"+":    OpAdd,
+	"-":    OpSub,
 }
 
 func (c *Compiler) inlineBinary(env *Env, list []Pair, captures bool) (

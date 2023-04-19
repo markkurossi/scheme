@@ -37,6 +37,10 @@ const (
 	OpIfNot
 	OpJmp
 	OpReturn
+	OpPairp
+	OpCons
+	OpCar
+	OpCdr
 	OpNullp
 	OpZerop
 	OpNot
@@ -68,6 +72,10 @@ var operands = map[Operand]string{
 	OpIfNot:     "ifnot",
 	OpJmp:       "jmp",
 	OpReturn:    "return",
+	OpPairp:     "pair?",
+	OpCons:      "cons",
+	OpCar:       "car",
+	OpCdr:       "cdr",
 	OpNullp:     "null?",
 	OpZerop:     "zero?",
 	OpNot:       "not",
@@ -463,6 +471,27 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			if scm.popFrame() {
 				return accu, nil
 			}
+
+		case OpPairp:
+			_, ok := accu.(Pair)
+			accu = Boolean(ok)
+
+		case OpCons:
+			accu = NewPair(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+
+		case OpCar:
+			pair, ok := accu.(Pair)
+			if !ok {
+				return nil, scm.Breakf("car: not a pair: %v", accu)
+			}
+			accu = pair.Car()
+
+		case OpCdr:
+			pair, ok := accu.(Pair)
+			if !ok {
+				return nil, scm.Breakf("cdr: not a pair: %v", accu)
+			}
+			accu = pair.Cdr()
 
 		case OpNullp:
 			accu = Boolean(accu == nil)

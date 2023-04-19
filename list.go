@@ -322,23 +322,26 @@ func Cdr(pair Value, ok bool) (Value, bool) {
 
 var listBuiltins = []Builtin{
 	{
-		Name: "pair?",
-		Args: []string{"obj"},
+		Name:  "pair?",
+		Args:  []string{"obj"},
+		Flags: FlagConst,
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			_, ok := args[0].(Pair)
 			return Boolean(ok), nil
 		},
 	},
 	{
-		Name: "cons",
-		Args: []string{"obj1", "obj2"},
+		Name:  "cons",
+		Args:  []string{"obj1", "obj2"},
+		Flags: FlagConst,
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			return NewPair(args[0], args[1]), nil
 		},
 	},
 	{
-		Name: "car",
-		Args: []string{"pair"},
+		Name:  "car",
+		Args:  []string{"pair"},
+		Flags: FlagConst,
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
@@ -348,8 +351,9 @@ var listBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "cdr",
-		Args: []string{"pair"},
+		Name:  "cdr",
+		Args:  []string{"pair"},
+		Flags: FlagConst,
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
