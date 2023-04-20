@@ -55,7 +55,7 @@ func (m *Library) MapPC(pc int) (source string, line int) {
 		for idx, pm := range m.PCMap {
 			fmt.Printf(" - %v\tPC=%v, Line=%v\n", idx, pm.PC, pm.Line)
 		}
-		m.Init.Print()
+		m.Init.Print(os.Stdout)
 	}
 
 	line = m.PCMap.MapPC(pc)
@@ -89,9 +89,9 @@ type PCLine struct {
 type Code []*Instr
 
 // Print prints the code to standard output.
-func (code Code) Print() {
+func (code Code) Print(w io.Writer) {
 	for idx, c := range code {
-		fmt.Printf("%v\t%s\n", idx, c)
+		fmt.Fprintf(w, "%v\t%s\n", idx, c)
 	}
 }
 

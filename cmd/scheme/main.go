@@ -85,13 +85,25 @@ func bytecode(scm *scheme.Scheme, file string) error {
 	}
 	defer in.Close()
 
+	var outName string
+	if strings.HasSuffix(file, ".scm") {
+		outName = file[:len(file)-4] + ".sbc"
+	} else {
+		outName = file + ".sbc"
+	}
+	out, err := os.Create(outName)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
 	c := scheme.NewCompiler(scm)
 
 	module, err := c.Compile(file, in)
 	if err != nil {
 		return err
 	}
-	module.Init.Print()
+	module.Init.Print(out)
 	return nil
 }
 

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"strings"
 )
 
@@ -253,7 +254,7 @@ func (v *Lambda) MapPC(pc int) (source string, line int) {
 		for idx, pm := range v.PCMap {
 			fmt.Printf(" - %v\tPC=%v, Line=%v\n", idx, pm.PC, pm.Line)
 		}
-		v.Code.Print()
+		v.Code.Print(os.Stdout)
 	}
 
 	line = v.PCMap.MapPC(pc)
