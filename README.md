@@ -11,7 +11,9 @@ API gives a clean and high-level abstraction, for example,
 configuration file parsing, data encoding and decoding, and other
 structured data operations.
 
-# Stack
+## Virtual Machine
+
+### Stack
 
 ```
 sp --->
@@ -27,6 +29,46 @@ fp ---> Next fp ---+
 ```
 
 # TODO
+
+## Language
+
+### Types
+
+```
+Any
+  |
+  +-- Boolean
+  |
+  +-- String
+  |
+  +-- Character
+  |
+  +-- Symbol
+  |
+  +-- Vector
+  |
+  +-- Bytevector
+  |
+  +-- Number
+  |     |
+  |     +-- Integer
+  |     |     |
+  |     |     +-- ExactInteger (big.Int)
+  |     |     |
+  |     |     +-- InxactInteger (int64)
+  |     |
+  |     +-- Float
+  |           |
+  |           +-- ExactFloat (big.Float)
+  |           |
+  |           +-- InxactFloat (float64)
+  |
+  +-- Lambda(Type...) Type
+  |
+  +-- Pair(Type, Type)
+```
+
+## Misc
 
  - [ ] Shortlist
    - [ ] Top-levels with `(import)`
