@@ -697,7 +697,9 @@ func (c *Compiler) compileLambda(env *Env, define bool, flags Flags,
 		if err != nil {
 			return list[1].Errorf("%v", err)
 		}
-		args.Rest = arg
+		args.Rest = &TypedName{
+			Name: arg.Name,
+		}
 	} else {
 		var pair Pair
 		if list[1].Car() != nil {
@@ -718,7 +720,9 @@ func (c *Compiler) compileLambda(env *Env, define bool, flags Flags,
 				if err != nil {
 					return pair.Errorf("%v", err)
 				}
-				args.Fixed = append(args.Fixed, arg)
+				args.Fixed = append(args.Fixed, &TypedName{
+					Name: arg.Name,
+				})
 			}
 
 			arg, ok = isIdentifier(pair.Cdr())
@@ -728,7 +732,9 @@ func (c *Compiler) compileLambda(env *Env, define bool, flags Flags,
 				if err != nil {
 					return fmt.Errorf("%s: %v", pair.To(), err)
 				}
-				args.Rest = arg
+				args.Rest = &TypedName{
+					Name: arg.Name,
+				}
 				break
 			}
 			if pair.Cdr() == nil {

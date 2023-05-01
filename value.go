@@ -12,6 +12,8 @@ import (
 	"math"
 	"os"
 	"strings"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 var (
@@ -115,8 +117,14 @@ type Lambda struct {
 type Args struct {
 	Min   int
 	Max   int
-	Fixed []*Identifier
-	Rest  *Identifier
+	Fixed []*TypedName
+	Rest  *TypedName
+}
+
+// TypedName defines name with type information.
+type TypedName struct {
+	Name string
+	Type *types.Type
 }
 
 func (args Args) String() string {
