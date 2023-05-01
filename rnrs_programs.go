@@ -15,7 +15,6 @@ import (
 var rnrsProgramsBuiltins = []Builtin{
 	{
 		Name: "command-line",
-		Args: []string{"[obj]"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			var head, tail Pair
 
@@ -59,7 +58,7 @@ var rnrsProgramsBuiltins = []Builtin{
 	},
 	{
 		Name: "getenv",
-		Args: []string{"name"},
+		Args: []string{"string:name"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			name, ok := args[0].(String)
 			if !ok {

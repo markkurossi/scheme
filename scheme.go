@@ -15,6 +15,8 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // runtime holds runtime functions defined in Scheme.
@@ -147,8 +149,12 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 	var rest bool
 
 	for _, arg := range builtin.Args {
+		_, name, err := types.Parse(arg)
+		if err != nil {
+			fmt.Printf("- %v %v: %v\n", builtin.Name, builtin.Args, err)
+		}
 		usage = append(usage, &Identifier{
-			Name: arg,
+			Name: name,
 		})
 		maxArgs++
 		if arg[0] != '[' && !strings.HasSuffix(arg, "...") {

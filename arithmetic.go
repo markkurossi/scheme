@@ -635,7 +635,7 @@ var numberBuiltins = []Builtin{
 	},
 	{
 		Name: "number->string",
-		Args: []string{"z", "[radix]", "[precision]"},
+		Args: []string{"z", "[k:radix]", "[k:precision]"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			var radix int = 10
 			var precision int
@@ -678,7 +678,7 @@ var numberBuiltins = []Builtin{
 	},
 	{
 		Name: "string->number",
-		Args: []string{"string", "[radix]"},
+		Args: []string{"string", "[k:radix]"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			var radix int
 

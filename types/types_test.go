@@ -13,7 +13,7 @@ import (
 func TestSuper(t *testing.T) {
 	for _, e := range []Enum{
 		EnumAny, EnumBoolean, EnumString, EnumCharacter, EnumSymbol, EnumVector,
-		EnumBytevector, EnumNumber, EnumLambda, EnumPair} {
+		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair} {
 		if e.Super() != EnumAny {
 			t.Errorf("%v.Super() != %v", e, EnumAny)
 		}
@@ -37,9 +37,9 @@ func TestSuper(t *testing.T) {
 
 func TestIsA(t *testing.T) {
 	for _, typ := range []*Type{
-		Any, Boolean, String, Character, Symbol, Vector, Bytevector,
+		Any, Boolean, String, Character, Symbol, Bytevector,
 		Number, Integer, ExactInteger, InexactInteger, Float,
-		ExactFloat, InexactFloat} {
+		ExactFloat, InexactFloat, Port} {
 		if !typ.IsA(typ) {
 			t.Errorf("!%v.IsA(%v)", typ, typ)
 		}
@@ -63,13 +63,29 @@ func TestIsA(t *testing.T) {
 	if !pair.IsA(pair) {
 		t.Errorf("!%v.IsA(%v)", pair, pair)
 	}
+
+	list := &Type{
+		Enum:    EnumList,
+		Element: Integer,
+	}
+	if !list.IsA(list) {
+		t.Errorf("!%v.IsA(%v)", list, list)
+	}
+
+	vector := &Type{
+		Enum:    EnumVector,
+		Element: Integer,
+	}
+	if !vector.IsA(vector) {
+		t.Errorf("!%v.IsA(%v)", vector, vector)
+	}
 }
 
 func TestIsKindOf(t *testing.T) {
 	for _, typ := range []*Type{
-		Any, Boolean, String, Character, Symbol, Vector, Bytevector,
+		Any, Boolean, String, Character, Symbol, Bytevector,
 		Number, Integer, ExactInteger, InexactInteger, Float,
-		ExactFloat, InexactFloat} {
+		ExactFloat, InexactFloat, Port} {
 		if !typ.IsKindOf(typ) {
 			t.Errorf("!%v.IsKindOf(%v)", typ, typ)
 		}
@@ -155,5 +171,35 @@ func TestIsKindOf(t *testing.T) {
 	}
 	if !pair.IsKindOf(pair2) {
 		t.Errorf("!%v.IsKindOf(%v)", pair, pair2)
+	}
+
+	list := &Type{
+		Enum:    EnumList,
+		Element: Integer,
+	}
+	if !list.IsKindOf(Any) {
+		t.Errorf("!%v.IsKindOf(%v)", list, Any)
+	}
+	list1 := &Type{
+		Enum:    EnumList,
+		Element: Any,
+	}
+	if !list.IsKindOf(list1) {
+		t.Errorf("!%v.IsKindOf(%v)", list, list1)
+	}
+
+	vector := &Type{
+		Enum:    EnumVector,
+		Element: Integer,
+	}
+	if !vector.IsKindOf(Any) {
+		t.Errorf("!%v.IsKindOf(%v)", vector, Any)
+	}
+	vector1 := &Type{
+		Enum:    EnumVector,
+		Element: Any,
+	}
+	if !vector.IsKindOf(vector1) {
+		t.Errorf("!%v.IsKindOf(%v)", vector, vector1)
 	}
 }

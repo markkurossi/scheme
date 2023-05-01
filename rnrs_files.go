@@ -16,7 +16,7 @@ import (
 var rnrsFilesBuiltins = []Builtin{
 	{
 		Name: "file-exists?",
-		Args: []string{"filename"},
+		Args: []string{"string:filename"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			filename, ok := args[0].(String)
 			if !ok {
@@ -27,8 +27,8 @@ var rnrsFilesBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "delete-file?",
-		Args: []string{"filename"},
+		Name: "delete-file",
+		Args: []string{"string:filename"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			filename, ok := args[0].(String)
 			if !ok {

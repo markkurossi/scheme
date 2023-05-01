@@ -71,7 +71,7 @@ var rnrsBytevectorBuiltins = []Builtin{
 	},
 	{
 		Name: "make-bytevector",
-		Args: []string{"k", "[fill]"},
+		Args: []string{"k", "[k:fill]"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			length, err := Int64(args[0])
 			if err != nil || length < 0 {
@@ -122,7 +122,7 @@ var rnrsBytevectorBuiltins = []Builtin{
 	},
 	{
 		Name: "bytevector-fill",
-		Args: []string{"bytevector", "fill"},
+		Args: []string{"bytevector", "k:fill"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			v, ok := args[0].(ByteVector)
 			if !ok {
@@ -143,7 +143,10 @@ var rnrsBytevectorBuiltins = []Builtin{
 	},
 	{
 		Name: "bytevector-copy!",
-		Args: []string{"source", "source-start", "target", "target-start", "k"},
+		Args: []string{
+			"bytevector:source", "k:source-start",
+			"bytevector:target", "k:target-start", "k",
+		},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			source, ok := args[0].(ByteVector)
 			if !ok {

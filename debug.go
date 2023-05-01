@@ -20,7 +20,7 @@ const (
 var debugBuiltins = []Builtin{
 	{
 		Name: "print-env",
-		Args: []string{"flags..."},
+		Args: []string{"sym..."},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 
 			var flags int
@@ -98,7 +98,7 @@ var debugBuiltins = []Builtin{
 	},
 	{
 		Name: "disassemble",
-		Args: []string{"value"},
+		Args: []string{"obj"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			switch arg := args[0].(type) {
 			case *Lambda:

@@ -16,7 +16,7 @@ import (
 var loadBuiltins = []Builtin{
 	{
 		Name: "scheme::load",
-		Args: []string{"caller", "filename"},
+		Args: []string{"string:caller", "string:filename"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			caller, ok := args[0].(String)
 			if !ok {
