@@ -18,28 +18,27 @@ func TestSuper(t *testing.T) {
 			t.Errorf("%v.Super() != %v", e, EnumAny)
 		}
 	}
-	for _, e := range []Enum{EnumInteger, EnumFloat} {
+	for _, e := range []Enum{EnumExactInteger, EnumExactFloat} {
 		if e.Super() != EnumNumber {
 			t.Errorf("%v.Super() != %v", e, EnumNumber)
 		}
 	}
-	for _, e := range []Enum{EnumExactInteger, EnumInexactInteger} {
-		if e.Super() != EnumInteger {
-			t.Errorf("%v.Super() != %v", e, EnumInteger)
+	for _, e := range []Enum{EnumInexactInteger} {
+		if e.Super() != EnumExactInteger {
+			t.Errorf("%v.Super() != %v", e, EnumExactInteger)
 		}
 	}
-	for _, e := range []Enum{EnumExactFloat, EnumInexactFloat} {
-		if e.Super() != EnumFloat {
-			t.Errorf("%v.Super() != %v", e, EnumFloat)
+	for _, e := range []Enum{EnumInexactFloat} {
+		if e.Super() != EnumExactFloat {
+			t.Errorf("%v.Super() != %v", e, EnumExactFloat)
 		}
 	}
 }
 
 func TestIsA(t *testing.T) {
 	for _, typ := range []*Type{
-		Any, Boolean, String, Character, Symbol, Bytevector,
-		Number, Integer, ExactInteger, InexactInteger, Float,
-		ExactFloat, InexactFloat, Port} {
+		Any, Boolean, String, Character, Symbol, Bytevector, Number,
+		ExactInteger, InexactInteger, ExactFloat, InexactFloat, Port} {
 		if !typ.IsA(typ) {
 			t.Errorf("!%v.IsA(%v)", typ, typ)
 		}
@@ -47,9 +46,9 @@ func TestIsA(t *testing.T) {
 
 	lambda := &Type{
 		Enum:   EnumLambda,
-		Args:   []*Type{Integer, Integer},
-		Rest:   Integer,
-		Return: Integer,
+		Args:   []*Type{ExactInteger, ExactInteger},
+		Rest:   ExactInteger,
+		Return: ExactInteger,
 	}
 	if !lambda.IsA(lambda) {
 		t.Errorf("!%v.IsA(%v)", lambda, lambda)
@@ -57,8 +56,8 @@ func TestIsA(t *testing.T) {
 
 	pair := &Type{
 		Enum: EnumPair,
-		Car:  Integer,
-		Cdr:  Integer,
+		Car:  ExactInteger,
+		Cdr:  ExactInteger,
 	}
 	if !pair.IsA(pair) {
 		t.Errorf("!%v.IsA(%v)", pair, pair)
@@ -66,7 +65,7 @@ func TestIsA(t *testing.T) {
 
 	list := &Type{
 		Enum:    EnumList,
-		Element: Integer,
+		Element: ExactInteger,
 	}
 	if !list.IsA(list) {
 		t.Errorf("!%v.IsA(%v)", list, list)
@@ -74,7 +73,7 @@ func TestIsA(t *testing.T) {
 
 	vector := &Type{
 		Enum:    EnumVector,
-		Element: Integer,
+		Element: ExactInteger,
 	}
 	if !vector.IsA(vector) {
 		t.Errorf("!%v.IsA(%v)", vector, vector)
@@ -83,9 +82,8 @@ func TestIsA(t *testing.T) {
 
 func TestIsKindOf(t *testing.T) {
 	for _, typ := range []*Type{
-		Any, Boolean, String, Character, Symbol, Bytevector,
-		Number, Integer, ExactInteger, InexactInteger, Float,
-		ExactFloat, InexactFloat, Port} {
+		Any, Boolean, String, Character, Symbol, Bytevector, Number,
+		ExactInteger, InexactInteger, ExactFloat, InexactFloat, Port} {
 		if !typ.IsKindOf(typ) {
 			t.Errorf("!%v.IsKindOf(%v)", typ, typ)
 		}
@@ -94,28 +92,22 @@ func TestIsKindOf(t *testing.T) {
 		}
 	}
 	for _, typ := range []*Type{
-		Integer, ExactInteger, InexactInteger, Float,
-		ExactFloat, InexactFloat} {
+		ExactInteger, InexactInteger, ExactFloat, InexactFloat} {
 		if !typ.IsKindOf(Number) {
 			t.Errorf("!%v.IsKindOf(%v)", typ, Number)
 		}
 	}
-	for _, typ := range []*Type{ExactInteger, InexactInteger} {
-		if !typ.IsKindOf(Integer) {
-			t.Errorf("!%v.IsKindOf(%v)", typ, Integer)
-		}
-	}
-	for _, typ := range []*Type{ExactFloat, InexactFloat} {
-		if !typ.IsKindOf(Float) {
-			t.Errorf("!%v.IsKindOf(%v)", typ, Float)
+	for _, typ := range []*Type{InexactFloat} {
+		if !typ.IsKindOf(ExactFloat) {
+			t.Errorf("!%v.IsKindOf(%v)", typ, ExactFloat)
 		}
 	}
 
 	lambda := &Type{
 		Enum:   EnumLambda,
-		Args:   []*Type{Integer, Integer},
-		Rest:   Integer,
-		Return: Integer,
+		Args:   []*Type{ExactInteger, ExactInteger},
+		Rest:   ExactInteger,
+		Return: ExactInteger,
 	}
 	if !lambda.IsKindOf(Any) {
 		t.Errorf("!%v.IsKindOf(%v)", lambda, Any)
@@ -123,8 +115,8 @@ func TestIsKindOf(t *testing.T) {
 	lambda1 := &Type{
 		Enum:   EnumLambda,
 		Args:   []*Type{Any, Any},
-		Rest:   Integer,
-		Return: Integer,
+		Rest:   ExactInteger,
+		Return: ExactInteger,
 	}
 	if !lambda.IsKindOf(lambda1) {
 		t.Errorf("!%v.IsKindOf(%v)", lambda, lambda1)
@@ -133,7 +125,7 @@ func TestIsKindOf(t *testing.T) {
 		Enum:   EnumLambda,
 		Args:   []*Type{Any, Any},
 		Rest:   Any,
-		Return: Integer,
+		Return: ExactInteger,
 	}
 	if !lambda.IsKindOf(lambda2) {
 		t.Errorf("!%v.IsKindOf(%v)", lambda, lambda2)
@@ -150,8 +142,8 @@ func TestIsKindOf(t *testing.T) {
 
 	pair := &Type{
 		Enum: EnumPair,
-		Car:  Integer,
-		Cdr:  Integer,
+		Car:  ExactInteger,
+		Cdr:  ExactInteger,
 	}
 	if !pair.IsKindOf(Any) {
 		t.Errorf("!%v.IsKindOf(%v)", pair, Any)
@@ -159,7 +151,7 @@ func TestIsKindOf(t *testing.T) {
 	pair1 := &Type{
 		Enum: EnumPair,
 		Car:  Any,
-		Cdr:  Integer,
+		Cdr:  ExactInteger,
 	}
 	if !pair.IsKindOf(pair1) {
 		t.Errorf("!%v.IsKindOf(%v)", pair, pair1)
@@ -175,7 +167,7 @@ func TestIsKindOf(t *testing.T) {
 
 	list := &Type{
 		Enum:    EnumList,
-		Element: Integer,
+		Element: ExactInteger,
 	}
 	if !list.IsKindOf(Any) {
 		t.Errorf("!%v.IsKindOf(%v)", list, Any)
@@ -190,7 +182,7 @@ func TestIsKindOf(t *testing.T) {
 
 	vector := &Type{
 		Enum:    EnumVector,
-		Element: Integer,
+		Element: ExactInteger,
 	}
 	if !vector.IsKindOf(Any) {
 		t.Errorf("!%v.IsKindOf(%v)", vector, Any)

@@ -51,15 +51,11 @@ Any
   |
   +-- Number
   |     |
-  |     +-- Integer
-  |     |     |
-  |     |     +-- ExactInteger (big.Int)
+  |     +-- ExactInteger (big.Int)
   |     |     |
   |     |     +-- InxactInteger (int64)
   |     |
-  |     +-- Float
-  |           |
-  |           +-- ExactFloat (big.Float)
+  |     +-- ExactFloat (big.Float)
   |           |
   |           +-- InxactFloat (float64)
   |

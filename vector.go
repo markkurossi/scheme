@@ -70,7 +70,7 @@ var vectorBuiltins = []Builtin{
 	},
 	{
 		Name: "make-vector",
-		Args: []string{"k", "[obj:fill]"},
+		Args: []string{"k", "[fill<any>]"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			length, err := Int64(args[0])
 			if err != nil || length < 0 {
@@ -181,7 +181,7 @@ var vectorBuiltins = []Builtin{
 	},
 	{
 		Name: "vector-fill!",
-		Args: []string{"vector", "obj:fill"},
+		Args: []string{"vector", "fill<any>"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			vector, ok := args[0].(Vector)
 			if !ok {

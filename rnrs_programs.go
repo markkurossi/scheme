@@ -58,7 +58,7 @@ var rnrsProgramsBuiltins = []Builtin{
 	},
 	{
 		Name: "getenv",
-		Args: []string{"string:name"},
+		Args: []string{"name<string>"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
 			name, ok := args[0].(String)
 			if !ok {

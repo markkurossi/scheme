@@ -121,12 +121,6 @@ type Args struct {
 	Rest  *TypedName
 }
 
-// TypedName defines name with type information.
-type TypedName struct {
-	Name string
-	Type *types.Type
-}
-
 func (args Args) String() string {
 	if len(args.Fixed) == 0 {
 		if args.Rest == nil {
@@ -143,11 +137,11 @@ func (args Args) String() string {
 		if idx > 0 {
 			str.WriteRune(' ')
 		}
-		str.WriteString(arg.Name)
+		str.WriteString(arg.String())
 	}
 	if args.Rest != nil {
 		str.WriteString(" . ")
-		str.WriteString(args.Rest.Name)
+		str.WriteString(args.Rest.String())
 	}
 	str.WriteRune(')')
 	return str.String()
@@ -167,6 +161,22 @@ func (args *Args) Init() {
 	} else {
 		args.Max = args.Min
 	}
+}
+
+// TypedName defines name with type information.
+type TypedName struct {
+	Name string
+	Type *types.Type
+}
+
+func (tn *TypedName) String() string {
+	if tn.Type == nil {
+		return tn.Name
+	}
+	if tn.Name[0] == '[' {
+		return fmt.Sprintf("[%s<%s>]", tn.Name[1:len(tn.Name)-2], tn.Type)
+	}
+	return fmt.Sprintf("%s<%s>", tn.Name, tn.Type)
 }
 
 // Scheme returns the value as a Scheme string.

@@ -8,6 +8,7 @@ package types
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -23,10 +24,8 @@ const (
 	EnumSymbol
 	EnumBytevector
 	EnumNumber
-	EnumInteger
 	EnumExactInteger
 	EnumInexactInteger
-	EnumFloat
 	EnumExactFloat
 	EnumInexactFloat
 	EnumPort
@@ -37,24 +36,22 @@ const (
 )
 
 var enumNames = map[Enum]string{
-	EnumAny:            "Any",
-	EnumBoolean:        "Boolean",
-	EnumString:         "String",
-	EnumCharacter:      "Character",
-	EnumSymbol:         "Symbol",
-	EnumBytevector:     "Bytevector",
-	EnumNumber:         "Number",
-	EnumInteger:        "Integer",
-	EnumExactInteger:   "ExactInteger",
-	EnumInexactInteger: "InexactInteger",
-	EnumFloat:          "Float",
-	EnumExactFloat:     "ExactFloat",
-	EnumInexactFloat:   "InexactFloat",
-	EnumPort:           "Port",
-	EnumLambda:         "Lambda",
-	EnumPair:           "Pair",
-	EnumList:           "List",
-	EnumVector:         "Vector",
+	EnumAny:            "any",
+	EnumBoolean:        "bool",
+	EnumString:         "string",
+	EnumCharacter:      "char",
+	EnumSymbol:         "symbol",
+	EnumBytevector:     "bytevector",
+	EnumNumber:         "number",
+	EnumExactInteger:   "#eint",
+	EnumInexactInteger: "int",
+	EnumExactFloat:     "#efloat",
+	EnumInexactFloat:   "float",
+	EnumPort:           "port",
+	EnumLambda:         "lambda",
+	EnumPair:           "pair",
+	EnumList:           "list",
+	EnumVector:         "vector",
 }
 
 func (e Enum) String() string {
@@ -73,75 +70,91 @@ func (e Enum) Super() Enum {
 		EnumList, EnumVector:
 		return EnumAny
 
-	case EnumInteger, EnumFloat:
+	case EnumExactInteger, EnumExactFloat:
 		return EnumNumber
 
-	case EnumExactInteger, EnumInexactInteger:
-		return EnumInteger
+	case EnumInexactInteger:
+		return EnumExactInteger
 
-	case EnumExactFloat, EnumInexactFloat:
-		return EnumFloat
+	case EnumInexactFloat:
+		return EnumExactFloat
 
 	default:
 		panic(fmt.Sprintf("unknown Enum %d", e))
 	}
 }
 
+var (
+	reArgType = regexp.MustCompilePOSIX(`^(\[?)([^<]+)(<([a-z0-9]+)>)?(\]?)$`)
+)
+
 // Parse parses the type of the function argument based on naming
 // conventions.
 func Parse(arg string) (*Type, string, error) {
-	name := arg
-	idx := strings.IndexRune(arg, ':')
-	if idx >= 0 {
-		name = arg[idx+1:]
+	m := reArgType.FindStringSubmatch(arg)
+	if m == nil {
+		panic(fmt.Sprintf("*** Parse: no match: %v", arg))
 	}
-	if arg[0] == '[' {
-		if idx >= 0 {
-			name = "[" + name
-		}
-		arg = arg[1:]
+	var opt bool
+	var name string
+	var typeName string
+
+	if len(m[1]) > 0 {
+		opt = true
+	}
+	name = m[2]
+	if len(m[4]) > 0 {
+		typeName = m[4]
+	} else {
+		typeName = m[2]
 	}
 
-	if strings.HasPrefix(arg, "bool") {
+	if opt {
+		name = "[" + name + "]"
+	}
+
+	if strings.HasPrefix(typeName, "bool") {
 		return Boolean, name, nil
-	} else if strings.HasPrefix(arg, "bytevector") {
+	} else if strings.HasPrefix(typeName, "bytevector") {
 		return Bytevector, name, nil
-	} else if strings.HasPrefix(arg, "char") {
+	} else if strings.HasPrefix(typeName, "char") {
 		return Character, name, nil
-	} else if strings.HasPrefix(arg, "k") {
-		return Integer, name, nil
-	} else if strings.HasPrefix(arg, "list") {
+	} else if strings.HasPrefix(typeName, "k") || typeName == "int" {
+		return InexactInteger, name, nil
+	} else if strings.HasPrefix(typeName, "list") {
 		return &Type{
 			Enum:    EnumList,
 			Element: Any,
 		}, name, nil
-	} else if strings.HasPrefix(arg, "obj") || strings.HasPrefix(arg, "who") ||
-		strings.HasPrefix(arg, "irritant") {
+	} else if strings.HasPrefix(typeName, "obj") ||
+		strings.HasPrefix(typeName, "who") ||
+		strings.HasPrefix(typeName, "irritant") || typeName == "any" {
 		return Any, name, nil
-	} else if strings.HasPrefix(arg, "pair") {
+	} else if strings.HasPrefix(typeName, "pair") {
 		return &Type{
 			Enum: EnumPair,
 			Car:  Any,
 			Cdr:  Any,
 		}, name, nil
-	} else if strings.HasPrefix(arg, "port") {
+	} else if strings.HasPrefix(typeName, "port") {
 		return Port, name, nil
-	} else if strings.HasPrefix(arg, "string") ||
-		strings.HasPrefix(arg, "message") {
+	} else if strings.HasPrefix(typeName, "string") ||
+		strings.HasPrefix(typeName, "message") {
 		return String, name, nil
-	} else if strings.HasPrefix(arg, "sym") {
+	} else if strings.HasPrefix(typeName, "sym") {
 		return Symbol, name, nil
-	} else if strings.HasPrefix(arg, "vector") {
+	} else if strings.HasPrefix(typeName, "vector") {
 		return &Type{
 			Enum:    EnumVector,
 			Element: Any,
 		}, name, nil
-	} else if strings.HasPrefix(arg, "x") {
+	} else if strings.HasPrefix(typeName, "x") {
 		return Number, name, nil
-	} else if strings.HasPrefix(arg, "z") {
+	} else if strings.HasPrefix(typeName, "z") {
 		return Number, name, nil
-	} else if strings.HasPrefix(arg, "start") || strings.HasPrefix(arg, "end") {
-		return Integer, name, nil
+	} else if strings.HasPrefix(typeName, "start") ||
+		strings.HasPrefix(typeName, "end") {
+		return InexactInteger, name, nil
 	} else {
 		return nil, name, fmt.Errorf("unsupported argument: %v", arg)
 	}
@@ -210,17 +223,11 @@ var (
 	Number = &Type{
 		Enum: EnumNumber,
 	}
-	Integer = &Type{
-		Enum: EnumInteger,
-	}
 	ExactInteger = &Type{
 		Enum: EnumExactInteger,
 	}
 	InexactInteger = &Type{
 		Enum: EnumInexactInteger,
-	}
-	Float = &Type{
-		Enum: EnumFloat,
 	}
 	ExactFloat = &Type{
 		Enum: EnumExactFloat,
