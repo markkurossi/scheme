@@ -149,19 +149,20 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 	var rest bool
 
 	for _, arg := range builtin.Args {
-		typ, name, err := types.Parse(arg)
+		typ, name, kind, err := types.Parse(arg)
 		if err != nil {
 			fmt.Printf("- %v %v: %v\n", builtin.Name, builtin.Args, err)
 		}
 		usage = append(usage, &TypedName{
 			Name: name,
 			Type: typ,
+			Kind: kind,
 		})
 		maxArgs++
-		if arg[0] != '[' && !strings.HasSuffix(arg, "...") {
+		if kind == types.Fixed {
 			minArgs++
 		}
-		if strings.HasSuffix(arg, "...") {
+		if kind == types.Rest {
 			rest = true
 		}
 	}

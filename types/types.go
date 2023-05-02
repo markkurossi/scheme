@@ -100,78 +100,82 @@ func (e Enum) Unify(o Enum) Enum {
 }
 
 var (
-	reArgType = regexp.MustCompilePOSIX(`^(\[?)([^<]+)(<([a-z0-9]+)>)?(\]?)$`)
+	reArgType = regexp.MustCompilePOSIX(
+		`^(\[?)([^<\]]+)(<([a-z0-9]+)>)?(\.\.\.)?(\]?)$`)
 )
 
 // Parse parses the type of the function argument based on naming
 // conventions.
-func Parse(arg string) (*Type, string, error) {
+func Parse(arg string) (*Type, string, Kind, error) {
 	m := reArgType.FindStringSubmatch(arg)
 	if m == nil {
-		panic(fmt.Sprintf("*** Parse: no match: %v", arg))
+		panic(fmt.Sprintf("types.Parse: no match: %v", arg))
 	}
-	var opt bool
 	var name string
+	var kind Kind
 	var typeName string
 
 	if len(m[1]) > 0 {
-		opt = true
+		kind = Optional
+	}
+	if len(m[5]) > 0 {
+		kind = Rest
 	}
 	name = m[2]
+	if strings.HasSuffix(name, "...") {
+		kind = Rest
+		name = name[:len(name)-3]
+	}
+
 	if len(m[4]) > 0 {
 		typeName = m[4]
 	} else {
-		typeName = m[2]
-	}
-
-	if opt {
-		name = "[" + name + "]"
+		typeName = name
 	}
 
 	if strings.HasPrefix(typeName, "bool") {
-		return Boolean, name, nil
+		return Boolean, name, kind, nil
 	} else if strings.HasPrefix(typeName, "bytevector") {
-		return Bytevector, name, nil
+		return Bytevector, name, kind, nil
 	} else if strings.HasPrefix(typeName, "char") {
-		return Character, name, nil
+		return Character, name, kind, nil
 	} else if strings.HasPrefix(typeName, "k") || typeName == "int" {
-		return InexactInteger, name, nil
+		return InexactInteger, name, kind, nil
 	} else if strings.HasPrefix(typeName, "list") {
 		return &Type{
 			Enum:    EnumList,
 			Element: Any,
-		}, name, nil
+		}, name, kind, nil
 	} else if strings.HasPrefix(typeName, "obj") ||
 		strings.HasPrefix(typeName, "who") ||
 		strings.HasPrefix(typeName, "irritant") || typeName == "any" {
-		return Any, name, nil
+		return Any, name, kind, nil
 	} else if strings.HasPrefix(typeName, "pair") {
 		return &Type{
 			Enum: EnumPair,
 			Car:  Any,
 			Cdr:  Any,
-		}, name, nil
+		}, name, kind, nil
 	} else if strings.HasPrefix(typeName, "port") {
-		return Port, name, nil
+		return Port, name, kind, nil
 	} else if strings.HasPrefix(typeName, "string") ||
 		strings.HasPrefix(typeName, "message") {
-		return String, name, nil
+		return String, name, kind, nil
 	} else if strings.HasPrefix(typeName, "sym") {
-		return Symbol, name, nil
+		return Symbol, name, kind, nil
 	} else if strings.HasPrefix(typeName, "vector") {
 		return &Type{
 			Enum:    EnumVector,
 			Element: Any,
-		}, name, nil
-	} else if strings.HasPrefix(typeName, "x") {
-		return Number, name, nil
-	} else if strings.HasPrefix(typeName, "z") {
-		return Number, name, nil
+		}, name, kind, nil
+	} else if strings.HasPrefix(typeName, "x") ||
+		strings.HasPrefix(typeName, "z") {
+		return Number, name, kind, nil
 	} else if strings.HasPrefix(typeName, "start") ||
 		strings.HasPrefix(typeName, "end") {
-		return InexactInteger, name, nil
+		return InexactInteger, name, kind, nil
 	} else {
-		return nil, name, fmt.Errorf("unsupported argument: %v", arg)
+		return nil, name, kind, fmt.Errorf("unsupported argument: %v", arg)
 	}
 }
 
@@ -337,4 +341,28 @@ func (t *Type) IsKindOf(o *Type) bool {
 	default:
 		return true
 	}
+}
+
+// Kind specifies argument type (fixed, optional, rest).
+type Kind int
+
+// Argument types.
+const (
+	Fixed Kind = iota
+	Optional
+	Rest
+)
+
+var kinds = map[Kind]string{
+	Fixed:    "fixed",
+	Optional: "optional",
+	Rest:     "rest",
+}
+
+func (k Kind) String() string {
+	name, ok := kinds[k]
+	if ok {
+		return name
+	}
+	return fmt.Sprintf("{Kind %d}", k)
 }

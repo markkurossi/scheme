@@ -167,16 +167,25 @@ func (args *Args) Init() {
 type TypedName struct {
 	Name string
 	Type *types.Type
+	Kind types.Kind
 }
 
 func (tn *TypedName) String() string {
-	if tn.Type == nil {
-		return tn.Name
+	var result = tn.Name
+
+	if tn.Type != nil {
+		result += fmt.Sprintf("<%s>", tn.Type)
 	}
-	if tn.Name[0] == '[' {
-		return fmt.Sprintf("[%s<%s>]", tn.Name[1:len(tn.Name)-2], tn.Type)
+	switch tn.Kind {
+	case types.Optional:
+		return "[" + result + "]"
+
+	case types.Rest:
+		return result + "..."
+
+	default:
+		return result
 	}
-	return fmt.Sprintf("%s<%s>", tn.Name, tn.Type)
 }
 
 // Scheme returns the value as a Scheme string.
