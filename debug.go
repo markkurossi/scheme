@@ -62,8 +62,10 @@ var debugBuiltins = []Builtin{
 					case *Lambda:
 						if flags&fLambda != 0 {
 							if (flags&(fNative|fScheme)) == 0 ||
-								((val.Native != nil) && (flags&fNative != 0)) ||
-								((val.Native == nil) && (flags&fScheme != 0)) {
+								((val.Impl.Native != nil) &&
+									(flags&fNative != 0)) ||
+								((val.Impl.Native == nil) &&
+									(flags&fScheme != 0)) {
 								names = append(names, k)
 							}
 						}
@@ -103,8 +105,8 @@ var debugBuiltins = []Builtin{
 			switch arg := args[0].(type) {
 			case *Lambda:
 				scm.Stdout.Printf("lambda: %v\n", arg)
-				if arg.Native == nil {
-					for _, c := range arg.Code {
+				if arg.Impl.Native == nil {
+					for _, c := range arg.Impl.Code {
 						scm.Stdout.Printf("%s\n", c)
 					}
 				}

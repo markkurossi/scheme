@@ -216,22 +216,14 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			instr.Sym.Flags |= Flags(instr.I)
 
 		case OpLambda:
-			tmpl, ok := instr.V.(*Lambda)
+			tmpl, ok := instr.V.(*LambdaImpl)
 			if !ok {
 				return nil, scm.Breakf("lambda: invalid argument: %v", instr.V)
 			}
-			lambda := &Lambda{
-				Args:     tmpl.Args,
-				Captures: tmpl.Captures,
-				Capture:  env,
-				Native:   tmpl.Native,
-				Source:   tmpl.Source,
-				Code:     tmpl.Code,
-				MaxStack: tmpl.MaxStack,
-				PCMap:    tmpl.PCMap,
-				Body:     tmpl.Body,
+			accu = &Lambda{
+				Capture: env,
+				Impl:    tmpl,
 			}
-			accu = lambda
 
 		case OpLabel:
 
@@ -287,8 +279,8 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			// i.I != 0 for toplevel frames.
 			lambda, ok := accu.(*Lambda)
 			if !ok {
-				return nil, scm.Breakf("%s: invalid function: %v",
-					instr.Op, accu)
+				return nil, scm.Breakf("%s: invalid function: %v(%T)",
+					instr.Op, accu, accu)
 			}
 
 			var frame *Frame
@@ -358,20 +350,20 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			}
 			lambda := callFrame.Lambda
 
-			if numArgs < lambda.Args.Min {
+			if numArgs < lambda.Impl.Args.Min {
 				return nil, scm.Breakf("too few arguments: got %v, need %v",
-					numArgs, lambda.Args.Min)
+					numArgs, lambda.Impl.Args.Min)
 			}
-			if numArgs > lambda.Args.Max {
+			if numArgs > lambda.Impl.Args.Max {
 				return nil, scm.Breakf("too many arguments: got %v, max %v",
-					numArgs, lambda.Args.Max)
+					numArgs, lambda.Impl.Args.Max)
 			}
 
 			// Set fp for the call.
 			scm.fp = scm.sp - numArgs - 1
 
-			if lambda.Native != nil {
-				accu, err = callFrame.Lambda.Native(scm, lambda, args)
+			if lambda.Impl.Native != nil {
+				accu, err = callFrame.Lambda.Impl.Native(scm, lambda, args)
 				if err != nil {
 					return nil, scm.Breakf("%v", err)
 				}
@@ -390,21 +382,21 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			callFrame.Env = env
 
 			// Handle rest arguments.
-			if lambda.Args.Rest != nil {
+			if lambda.Impl.Args.Rest != nil {
 				var rest Pair
-				for i := numArgs - 1; i >= lambda.Args.Min; i-- {
+				for i := numArgs - 1; i >= lambda.Impl.Args.Min; i-- {
 					scm.sp--
 					rest = NewPair(scm.stack[scm.sp], rest)
 				}
 				scm.stack[scm.sp] = rest
 				scm.sp++
-				numArgs = lambda.Args.Min + 1
+				numArgs = lambda.Impl.Args.Min + 1
 				args = scm.stack[scm.sp-numArgs : scm.sp]
 			}
 
 			env = lambda.Capture
 
-			if lambda.Captures {
+			if lambda.Impl.Captures {
 				var index int
 				if env != nil {
 					index = env.Index + 1
@@ -436,13 +428,13 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				scm.sp = next + 1 + count
 				scm.fp = next
 			}
-			if scm.sp+lambda.MaxStack > len(scm.stack) {
+			if scm.sp+lambda.Impl.MaxStack > len(scm.stack) {
 				return nil, scm.Breakf("out of stack: need %d, got %d",
-					lambda.MaxStack, len(scm.stack)-scm.sp)
+					lambda.Impl.MaxStack, len(scm.stack)-scm.sp)
 			}
 
 			// Jump to lambda code.
-			code = lambda.Code
+			code = lambda.Impl.Code
 			scm.pc = 0
 
 		case OpIf:
@@ -632,7 +624,7 @@ func (scm *Scheme) PrintStack() {
 			fmt.Print("\u251c\u2574")
 		}
 		if frame.Lambda != nil {
-			fmt.Printf("\u03BB=%v", frame.Lambda.Signature(false))
+			fmt.Printf("\u03BB=%v", frame.Lambda.Impl.Signature(false))
 		} else {
 			fmt.Printf("???")
 		}

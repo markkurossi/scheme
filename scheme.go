@@ -178,9 +178,11 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 
 	sym := scm.Intern(builtin.Name)
 	sym.Global = &Lambda{
-		Name:   builtin.Name,
-		Args:   args,
-		Native: builtin.Native,
+		Impl: &LambdaImpl{
+			Name:   builtin.Name,
+			Args:   args,
+			Native: builtin.Native,
+		},
 	}
 	sym.Flags |= FlagDefined
 	sym.Flags |= builtin.Flags
@@ -188,9 +190,11 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 	for _, alias := range builtin.Aliases {
 		sym = scm.Intern(alias)
 		sym.Global = &Lambda{
-			Name:   alias,
-			Args:   args,
-			Native: builtin.Native,
+			Impl: &LambdaImpl{
+				Name:   alias,
+				Args:   args,
+				Native: builtin.Native,
+			},
 		}
 		sym.Flags |= FlagDefined
 	}
