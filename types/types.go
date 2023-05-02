@@ -84,6 +84,21 @@ func (e Enum) Super() Enum {
 	}
 }
 
+// Unify resolves the closest supertype of this and the argument
+// enum.
+func (e Enum) Unify(o Enum) Enum {
+	for eIter := e; ; eIter = eIter.Super() {
+		for oIter := o; ; oIter = oIter.Super() {
+			if eIter == oIter {
+				return eIter
+			}
+			if oIter == EnumAny {
+				break
+			}
+		}
+	}
+}
+
 var (
 	reArgType = regexp.MustCompilePOSIX(`^(\[?)([^<]+)(<([a-z0-9]+)>)?(\]?)$`)
 )

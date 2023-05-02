@@ -35,6 +35,37 @@ func TestSuper(t *testing.T) {
 	}
 }
 
+func TestEnumUnify(t *testing.T) {
+	directs := []Enum{
+		EnumAny, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
+		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair,
+		EnumList, EnumVector,
+	}
+	for _, a := range directs {
+		for _, b := range directs {
+			if a == b {
+				testEnumUnify(t, a, b, a)
+			} else {
+				testEnumUnify(t, a, b, EnumAny)
+			}
+		}
+	}
+	testEnumUnify(t, EnumNumber, EnumExactInteger, EnumNumber)
+	testEnumUnify(t, EnumNumber, EnumInexactInteger, EnumNumber)
+	testEnumUnify(t, EnumNumber, EnumExactFloat, EnumNumber)
+	testEnumUnify(t, EnumNumber, EnumInexactFloat, EnumNumber)
+
+	testEnumUnify(t, EnumExactInteger, EnumInexactInteger, EnumExactInteger)
+	testEnumUnify(t, EnumExactFloat, EnumInexactFloat, EnumExactFloat)
+}
+
+func testEnumUnify(t *testing.T, a, b, e Enum) {
+	u := a.Unify(b)
+	if u != e {
+		t.Errorf("%v.Unify(%v) = %v, expected %v", a, b, u, e)
+	}
+}
+
 func TestIsA(t *testing.T) {
 	for _, typ := range []*Type{
 		Any, Boolean, String, Character, Symbol, Bytevector, Number,
