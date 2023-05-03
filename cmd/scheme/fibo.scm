@@ -5,6 +5,6 @@
 	 (fib (- n 2)))))
 
 ;;(display (fib 47))
-(display (fib 33))
+(display (fib 40))
 (newline)
 ;;(exit)
