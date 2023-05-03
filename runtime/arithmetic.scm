@@ -27,10 +27,10 @@
   (scheme::compare (lambda (x y) (not (scheme::< x y))) x1 x2 rest))
 
 (define (positive? x)
-  (scheme::> x 0))
+  (> x 0))
 
 (define (negative? x)
-  (scheme::< x 0))
+  (< x 0))
 
 (define (max x . args)
   (letrec ((iter
@@ -39,7 +39,7 @@
                   best
                   (let ((next (car args))
                         (rest (cdr args)))
-                  (if (scheme::> next best)
+                  (if (> next best)
                       (iter next rest)
                       (iter best rest)))))))
     (iter x args)))
@@ -51,7 +51,7 @@
                   best
                   (let ((next (car args))
                         (rest (cdr args)))
-                  (if (scheme::< next best)
+                  (if (< next best)
                       (iter next rest)
                       (iter best rest)))))))
     (iter x args)))
