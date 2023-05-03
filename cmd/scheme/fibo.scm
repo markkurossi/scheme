@@ -4,7 +4,5 @@
       (+ (fib (- n 1))
 	 (fib (- n 2)))))
 
-;;(display (fib 47))
 (display (fib 40))
 (newline)
-;;(exit)
