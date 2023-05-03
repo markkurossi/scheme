@@ -128,7 +128,7 @@ func Int64(v Value) (int64, error) {
 	}
 }
 
-func add(z1, z2 Value) (Value, error) {
+func numAdd(z1, z2 Value) (Value, error) {
 	switch v1 := z1.(type) {
 	case Int:
 		switch v2 := z2.(type) {
@@ -162,7 +162,7 @@ func add(z1, z2 Value) (Value, error) {
 
 }
 
-func sub(z1, z2 Value) (Value, error) {
+func numSub(z1, z2 Value) (Value, error) {
 	switch v1 := z1.(type) {
 	case Int:
 		switch v2 := z2.(type) {
@@ -192,6 +192,82 @@ func sub(z1, z2 Value) (Value, error) {
 
 	default:
 		return Int(0), fmt.Errorf("invalid number: %v", z1)
+	}
+}
+
+func numEq(z1, z2 Value) (Value, error) {
+	switch v1 := z1.(type) {
+	case Int, *BigInt:
+		switch v2 := z2.(type) {
+		case Int, *BigInt:
+			return Boolean(v1.Equal(v2)), nil
+		default:
+			return nil, fmt.Errorf("invalid argument: %v", z2)
+		}
+	default:
+		return nil, fmt.Errorf("invalid argument: %v", z1)
+	}
+}
+
+func numLt(z1, z2 Value) (Value, error) {
+	switch v1 := z1.(type) {
+	case Int:
+		switch v2 := z2.(type) {
+		case Int:
+			return Boolean(v1 < v2), nil
+
+		case *BigInt:
+			return Boolean(big.NewInt(int64(v1)).Cmp(v2.I) == -1), nil
+
+		default:
+			return Boolean(false), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case *BigInt:
+		switch v2 := z2.(type) {
+		case Int:
+			return Boolean(v1.I.Cmp(big.NewInt(int64(v2))) == -1), nil
+
+		case *BigInt:
+			return Boolean(v1.I.Cmp(v2.I) == -1), nil
+
+		default:
+			return Boolean(false), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	default:
+		return Boolean(false), fmt.Errorf("invalid number: %v", z1)
+	}
+}
+
+func numGt(z1, z2 Value) (Value, error) {
+	switch v1 := z1.(type) {
+	case Int:
+		switch v2 := z2.(type) {
+		case Int:
+			return Boolean(v1 > v2), nil
+
+		case *BigInt:
+			return Boolean(big.NewInt(int64(v1)).Cmp(v2.I) == 1), nil
+
+		default:
+			return Boolean(false), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case *BigInt:
+		switch v2 := z2.(type) {
+		case Int:
+			return Boolean(v1.I.Cmp(big.NewInt(int64(v2))) == 1), nil
+
+		case *BigInt:
+			return Boolean(v1.I.Cmp(v2.I) == 1), nil
+
+		default:
+			return Boolean(false), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	default:
+		return Boolean(false), fmt.Errorf("invalid number: %v", z1)
 	}
 }
 
@@ -286,89 +362,33 @@ var numberBuiltins = []Builtin{
 		Name: "scheme::=",
 		Args: []string{"z1", "z2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			switch v1 := args[0].(type) {
-			case Int, *BigInt:
-				switch v2 := args[1].(type) {
-				case Int, *BigInt:
-					return Boolean(v1.Equal(v2)), nil
-				default:
-					return nil, l.Errorf("invalid argument: %v", args[1])
-				}
-			default:
-				return nil, l.Errorf("invalid argument: %v", args[0])
+			v, err := numEq(args[0], args[1])
+			if err != nil {
+				return nil, l.Errorf("%v", err.Error())
 			}
+			return v, nil
 		},
 	},
 	{
 		Name: "scheme::<",
 		Args: []string{"x1", "x2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			switch v1 := args[0].(type) {
-			case Int:
-				switch v2 := args[1].(type) {
-				case Int:
-					return Boolean(v1 < v2), nil
-
-				case *BigInt:
-					return Boolean(big.NewInt(int64(v1)).Cmp(v2.I) == -1), nil
-
-				default:
-					return Boolean(false), l.Errorf("invalid number: %v",
-						args[1])
-				}
-
-			case *BigInt:
-				switch v2 := args[1].(type) {
-				case Int:
-					return Boolean(v1.I.Cmp(big.NewInt(int64(v2))) == -1), nil
-
-				case *BigInt:
-					return Boolean(v1.I.Cmp(v2.I) == -1), nil
-
-				default:
-					return Boolean(false), l.Errorf("invalid number: %v",
-						args[1])
-				}
-
-			default:
-				return Boolean(false), l.Errorf("invalid number: %v", args[0])
+			v, err := numLt(args[0], args[1])
+			if err != nil {
+				return nil, l.Errorf("%v", err.Error())
 			}
+			return v, nil
 		},
 	},
 	{
 		Name: "scheme::>",
 		Args: []string{"x1", "x2"},
 		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
-			switch v1 := args[0].(type) {
-			case Int:
-				switch v2 := args[1].(type) {
-				case Int:
-					return Boolean(v1 > v2), nil
-
-				case *BigInt:
-					return Boolean(big.NewInt(int64(v1)).Cmp(v2.I) == 1), nil
-
-				default:
-					return Boolean(false), l.Errorf("invalid number: %v",
-						args[1])
-				}
-
-			case *BigInt:
-				switch v2 := args[1].(type) {
-				case Int:
-					return Boolean(v1.I.Cmp(big.NewInt(int64(v2))) == 1), nil
-
-				case *BigInt:
-					return Boolean(v1.I.Cmp(v2.I) == 1), nil
-
-				default:
-					return Boolean(false), l.Errorf("invalid number: %v",
-						args[1])
-				}
-
-			default:
-				return Boolean(false), l.Errorf("invalid number: %v", args[0])
+			v, err := numGt(args[0], args[1])
+			if err != nil {
+				return nil, l.Errorf("%v", err.Error())
 			}
+			return v, nil
 		},
 	},
 	{
@@ -423,7 +443,7 @@ var numberBuiltins = []Builtin{
 				return Int(0), l.Errorf("invalid number: %v", v)
 			}
 			for i := 1; i < len(args); i++ {
-				sum, err = add(sum, args[i])
+				sum, err = numAdd(sum, args[i])
 				if err != nil {
 					return sum, l.Errorf("%v", err.Error())
 				}
@@ -484,7 +504,7 @@ var numberBuiltins = []Builtin{
 
 			case *BigInt:
 				if len(args) == 1 {
-					return sub(&BigInt{
+					return numSub(&BigInt{
 						I: big.NewInt(0),
 					}, v)
 				}
@@ -495,7 +515,7 @@ var numberBuiltins = []Builtin{
 			}
 
 			for i := 1; i < len(args); i++ {
-				diff, err = sub(diff, args[i])
+				diff, err = numSub(diff, args[i])
 				if err != nil {
 					return diff, l.Errorf("%v", err.Error())
 				}

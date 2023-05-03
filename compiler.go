@@ -515,6 +515,11 @@ var inlineBinary = map[string]Operand{
 	"cons": OpCons,
 	"+":    OpAdd,
 	"-":    OpSub,
+	"=":    OpEq,
+	"<":    OpLt,
+	">":    OpGt,
+	"<=":   OpLe,
+	">=":   OpGe,
 }
 
 func (c *Compiler) inlineBinary(env *Env, list []Pair, captures bool) (

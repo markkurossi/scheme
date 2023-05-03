@@ -48,6 +48,11 @@ const (
 	OpAddI64
 	OpSub
 	OpSubI64
+	OpEq
+	OpLt
+	OpGt
+	OpLe
+	OpGe
 )
 
 var operands = map[Operand]string{
@@ -83,6 +88,11 @@ var operands = map[Operand]string{
 	OpAddI64:    "addi64",
 	OpSub:       "sub",
 	OpSubI64:    "subi64",
+	OpEq:        "=",
+	OpLt:        "<",
+	OpGt:        ">",
+	OpLe:        "<=",
+	OpGe:        ">=",
 }
 
 func (op Operand) String() string {
@@ -498,7 +508,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			accu = Boolean(!IsTrue(accu))
 
 		case OpAdd:
-			accu, err = add(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+			accu, err = numAdd(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
 				return nil, scm.Breakf("%v", err.Error())
 			}
@@ -507,13 +517,45 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			accu = scm.stack[scm.sp-2].(Int) + scm.stack[scm.sp-1].(Int)
 
 		case OpSub:
-			accu, err = sub(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+			accu, err = numSub(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
 				return nil, scm.Breakf("%v", err.Error())
 			}
 
 		case OpSubI64:
 			accu = scm.stack[scm.sp-2].(Int) - scm.stack[scm.sp-1].(Int)
+
+		case OpEq:
+			accu, err = numEq(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+			if err != nil {
+				return nil, scm.Breakf("%v", err.Error())
+			}
+
+		case OpLt:
+			accu, err = numLt(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+			if err != nil {
+				return nil, scm.Breakf("%v", err.Error())
+			}
+
+		case OpGt:
+			accu, err = numGt(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+			if err != nil {
+				return nil, scm.Breakf("%v", err.Error())
+			}
+
+		case OpLe:
+			accu, err = numGt(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+			if err != nil {
+				return nil, scm.Breakf("%v", err.Error())
+			}
+			accu = Boolean(!IsTrue(accu))
+
+		case OpGe:
+			accu, err = numLt(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+			if err != nil {
+				return nil, scm.Breakf("%v", err.Error())
+			}
+			accu = Boolean(!IsTrue(accu))
 
 		default:
 			return nil, scm.Breakf("%s: not implemented", instr.Op)
