@@ -373,8 +373,11 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			scm.fp = scm.sp - numArgs - 1
 
 			if lambda.Impl.Native != nil {
-				accu, err = callFrame.Lambda.Impl.Native(scm, lambda, args)
+				accu, err = callFrame.Lambda.Impl.Native(scm, args)
 				if err != nil {
+					if len(lambda.Impl.Name) != 0 {
+						return nil, scm.Breakf("%s: %v", lambda.Impl.Name, err)
+					}
 					return nil, scm.Breakf("%v", err)
 				}
 				scm.sp = scm.fp
@@ -843,10 +846,10 @@ var vmBuiltins = []Builtin{
 	{
 		Name: "error",
 		Args: []string{"who", "message", "irritant..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			message, ok := args[1].(String)
 			if !ok {
-				return nil, l.Errorf("invalid message: %v", args[1])
+				return nil, fmt.Errorf("invalid message: %v", args[1])
 			}
 			return nil, fmt.Errorf("%v: %v", args[0], message)
 		},
@@ -854,7 +857,7 @@ var vmBuiltins = []Builtin{
 	{
 		Name: "scheme::->scheme",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return String(ToScheme(args[0])), nil
 		},
 	},

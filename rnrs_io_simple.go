@@ -77,7 +77,7 @@ var rnrsIOSimpleBuiltins = []Builtin{
 	{
 		Name: "input-port?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			port, ok := args[0].(*Port)
 			if !ok {
 				return Boolean(false), nil
@@ -89,7 +89,7 @@ var rnrsIOSimpleBuiltins = []Builtin{
 	{
 		Name: "output-port?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			port, ok := args[0].(*Port)
 			if !ok {
 				return Boolean(false), nil
@@ -100,27 +100,27 @@ var rnrsIOSimpleBuiltins = []Builtin{
 	},
 	{
 		Name: "current-output-port",
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return scm.Stdout, nil
 		},
 	},
 	{
 		Name: "current-error-port",
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return scm.Stderr, nil
 		},
 	},
 	{
 		Name: "newline",
 		Args: []string{"[port]"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var ok bool
 			port := scm.Stdout
 
 			if len(args) == 1 {
 				port, ok = args[0].(*Port)
 				if !ok {
-					return nil, l.Errorf("invalid output port: %v", args[0])
+					return nil, fmt.Errorf("invalid output port: %v", args[0])
 				}
 			}
 			_, err := port.Println()
@@ -133,19 +133,19 @@ var rnrsIOSimpleBuiltins = []Builtin{
 	{
 		Name: "display",
 		Args: []string{"obj", "[port]"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var ok bool
 			port := scm.Stdout
 
 			if len(args) == 2 {
 				port, ok = args[1].(*Port)
 				if !ok {
-					return nil, l.Errorf("invalid output port: %v", args[1])
+					return nil, fmt.Errorf("invalid output port: %v", args[1])
 				}
 			}
 			_, err := port.Printf("%v", ToString(args[0]))
 			if err != nil {
-				return nil, l.Errorf("%v", err)
+				return nil, fmt.Errorf("%v", err)
 			}
 			return nil, nil
 		},
@@ -153,19 +153,19 @@ var rnrsIOSimpleBuiltins = []Builtin{
 	{
 		Name: "write",
 		Args: []string{"obj", "[port]"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var ok bool
 			port := scm.Stdout
 
 			if len(args) == 2 {
 				port, ok = args[1].(*Port)
 				if !ok {
-					return nil, l.Errorf("invalid output port: %v", args[1])
+					return nil, fmt.Errorf("invalid output port: %v", args[1])
 				}
 			}
 			_, err := port.Printf("%v", ToScheme(args[0]))
 			if err != nil {
-				return nil, l.Errorf("%v", err)
+				return nil, fmt.Errorf("%v", err)
 			}
 			return nil, nil
 		},

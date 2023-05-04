@@ -21,7 +21,7 @@ var debugBuiltins = []Builtin{
 	{
 		Name: "print-env",
 		Args: []string{"sym..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 
 			var flags int
 
@@ -38,7 +38,7 @@ var debugBuiltins = []Builtin{
 							flags |= fScheme
 
 						default:
-							return nil, l.Errorf("unknown flag: %v", arg)
+							return nil, fmt.Errorf("unknown flag: %v", arg)
 						}
 
 					case Keyword:
@@ -47,11 +47,11 @@ var debugBuiltins = []Builtin{
 							flags |= fLambda
 
 						default:
-							return nil, l.Errorf("unknown flag: %v", arg)
+							return nil, fmt.Errorf("unknown flag: %v", arg)
 						}
 
 					default:
-						return nil, l.Errorf("invalid flag: %v(%T)", arg, arg)
+						return nil, fmt.Errorf("invalid flag: %v(%T)", arg, arg)
 					}
 				}
 			}
@@ -101,7 +101,7 @@ var debugBuiltins = []Builtin{
 	{
 		Name: "disassemble",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch arg := args[0].(type) {
 			case *Lambda:
 				scm.Stdout.Printf("lambda: %v\n", arg)

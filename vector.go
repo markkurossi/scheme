@@ -63,7 +63,7 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "vector?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(Vector)
 			return Boolean(ok), nil
 		},
@@ -71,10 +71,10 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "make-vector",
 		Args: []string{"k", "[fill<any>]"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			length, err := Int64(args[0])
 			if err != nil || length < 0 {
-				return nil, l.Errorf("invalid length: %v", args[0])
+				return nil, fmt.Errorf("invalid length: %v", args[0])
 			}
 
 			var fill Value
@@ -92,7 +92,7 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "vector",
 		Args: []string{"obj..."},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v := make([]Value, len(args))
 			copy(v, args)
 			return Vector(v), nil
@@ -101,10 +101,10 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "vector-length",
 		Args: []string{"vector"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, ok := args[0].(Vector)
 			if !ok {
-				return nil, l.Errorf("not a vector: %v", args[0])
+				return nil, fmt.Errorf("not a vector: %v", args[0])
 			}
 			return NewNumber(0, len(v)), nil
 		},
@@ -112,17 +112,17 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "vector-ref",
 		Args: []string{"vector", "k"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			vector, ok := args[0].(Vector)
 			if !ok {
-				return nil, l.Errorf("invalid vector: %v", args[0])
+				return nil, fmt.Errorf("invalid vector: %v", args[0])
 			}
 			k, err := Int64(args[1])
 			if err != nil {
-				return nil, l.Errorf("invalid index: %v", args[1])
+				return nil, fmt.Errorf("invalid index: %v", args[1])
 			}
 			if k < 0 || k >= int64(len(vector)) {
-				return nil, l.Errorf("index %v out of range for vector %v",
+				return nil, fmt.Errorf("index %v out of range for vector %v",
 					k, args[0])
 			}
 			return vector[k], nil
@@ -131,17 +131,17 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "vector-set!",
 		Args: []string{"vector", "k", "obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			vector, ok := args[0].(Vector)
 			if !ok {
-				return nil, l.Errorf("invalid vector: %v", args[0])
+				return nil, fmt.Errorf("invalid vector: %v", args[0])
 			}
 			k, error := Int64(args[1])
 			if error != nil {
-				return nil, l.Errorf("invalid index: %v", args[1])
+				return nil, fmt.Errorf("invalid index: %v", args[1])
 			}
 			if k < 0 || k >= int64(len(vector)) {
-				return nil, l.Errorf("index %v out of range for vector %v",
+				return nil, fmt.Errorf("index %v out of range for vector %v",
 					k, args[0])
 			}
 			vector[k] = args[2]
@@ -151,10 +151,10 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "vector->list",
 		Args: []string{"vector"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			vector, ok := args[0].(Vector)
 			if !ok {
-				return nil, l.Errorf("invalid vector: %v", args[0])
+				return nil, fmt.Errorf("invalid vector: %v", args[0])
 			}
 			var pair Pair
 
@@ -167,7 +167,7 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "list->vector",
 		Args: []string{"list"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var elements []Value
 			err := Map(func(idx int, v Value) error {
 				elements = append(elements, v)
@@ -182,10 +182,10 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "vector-fill!",
 		Args: []string{"vector", "fill<any>"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			vector, ok := args[0].(Vector)
 			if !ok {
-				return nil, l.Errorf("invalid vector: %v", args[0])
+				return nil, fmt.Errorf("invalid vector: %v", args[0])
 			}
 			for i := 0; i < len(vector); i++ {
 				vector[i] = args[1]

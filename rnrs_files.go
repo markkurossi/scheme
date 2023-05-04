@@ -10,6 +10,7 @@ package scheme
 
 import (
 	"errors"
+	"fmt"
 	"os"
 )
 
@@ -17,10 +18,10 @@ var rnrsFilesBuiltins = []Builtin{
 	{
 		Name: "file-exists?",
 		Args: []string{"filename<string>"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			filename, ok := args[0].(String)
 			if !ok {
-				return nil, l.Errorf("invalid filename: %v", args[0])
+				return nil, fmt.Errorf("invalid filename: %v", args[0])
 			}
 			_, err := os.Stat(string(filename))
 			return Boolean(!errors.Is(err, os.ErrNotExist)), nil
@@ -29,10 +30,10 @@ var rnrsFilesBuiltins = []Builtin{
 	{
 		Name: "delete-file",
 		Args: []string{"filename<string>"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			filename, ok := args[0].(String)
 			if !ok {
-				return nil, l.Errorf("invalid filename: %v", args[0])
+				return nil, fmt.Errorf("invalid filename: %v", args[0])
 			}
 			err := os.Remove(string(filename))
 			if err != nil {

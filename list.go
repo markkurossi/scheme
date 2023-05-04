@@ -325,7 +325,7 @@ var listBuiltins = []Builtin{
 		Name:  "pair?",
 		Args:  []string{"obj"},
 		Flags: FlagConst,
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(Pair)
 			return Boolean(ok), nil
 		},
@@ -334,7 +334,7 @@ var listBuiltins = []Builtin{
 		Name:  "cons",
 		Args:  []string{"obj1", "obj2"},
 		Flags: FlagConst,
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return NewPair(args[0], args[1]), nil
 		},
 	},
@@ -342,10 +342,10 @@ var listBuiltins = []Builtin{
 		Name:  "car",
 		Args:  []string{"pair"},
 		Flags: FlagConst,
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
-				return nil, l.Errorf("not a pair: %v", args[0])
+				return nil, fmt.Errorf("not a pair: %v", args[0])
 			}
 			return pair.Car(), nil
 		},
@@ -354,10 +354,10 @@ var listBuiltins = []Builtin{
 		Name:  "cdr",
 		Args:  []string{"pair"},
 		Flags: FlagConst,
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
-				return nil, l.Errorf("not a pair: %v", args[0])
+				return nil, fmt.Errorf("not a pair: %v", args[0])
 			}
 			return pair.Cdr(), nil
 		},
@@ -366,7 +366,7 @@ var listBuiltins = []Builtin{
 		Name:  "null?",
 		Args:  []string{"obj"},
 		Flags: FlagConst,
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return Boolean(args[0] == nil), nil
 		},
 	},

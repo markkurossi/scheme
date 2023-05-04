@@ -7,7 +7,6 @@
 package scheme
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -43,15 +42,6 @@ func (v *Lambda) Equal(o Value) bool {
 
 func (v *Lambda) String() string {
 	return v.Impl.Signature(false)
-}
-
-// Errorf returns an error with information about the lambda function.
-func (v *Lambda) Errorf(format string, a ...interface{}) error {
-	msg := fmt.Sprintf(format, a...)
-	if len(v.Impl.Name) != 0 {
-		return fmt.Errorf("%s: %s", v.Impl.Name, msg)
-	}
-	return errors.New(msg)
 }
 
 // MapPC maps the program counter value to the source location.
@@ -232,7 +222,7 @@ func (tn *TypedName) String() string {
 }
 
 // Native implements native functions.
-type Native func(scm *Scheme, l *Lambda, args []Value) (Value, error)
+type Native func(scm *Scheme, args []Value) (Value, error)
 
 // Builtin defines a built-in native function.
 type Builtin struct {

@@ -17,14 +17,14 @@ var loadBuiltins = []Builtin{
 	{
 		Name: "scheme::load",
 		Args: []string{"caller<string>", "filename<string>"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			caller, ok := args[0].(String)
 			if !ok {
-				return nil, l.Errorf("invalid caller: %v", args[0])
+				return nil, fmt.Errorf("invalid caller: %v", args[0])
 			}
 			f, ok := args[1].(String)
 			if !ok {
-				return nil, l.Errorf("invalid filename: %v", args[1])
+				return nil, fmt.Errorf("invalid filename: %v", args[1])
 			}
 			file := string(f)
 			if !path.IsAbs(file) {
@@ -38,7 +38,7 @@ var loadBuiltins = []Builtin{
 	},
 	{
 		Name: "scheme::stack-trace",
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			stack := scm.StackTrace()
 
 			var result, tail Pair

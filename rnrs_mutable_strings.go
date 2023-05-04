@@ -8,22 +8,26 @@
 
 package scheme
 
+import (
+	"fmt"
+)
+
 var rnrsMutableStringsBuiltins = []Builtin{
 	{
 		Name: "string-set!",
 		Args: []string{"string", "k", "char"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			str, ok := args[0].(String)
 			if !ok {
-				return nil, l.Errorf("invalid string: %v", args[0])
+				return nil, fmt.Errorf("invalid string: %v", args[0])
 			}
 			k, err := Int64(args[1])
 			if err != nil {
-				return nil, l.Errorf("invalid index: %v", args[1])
+				return nil, fmt.Errorf("invalid index: %v", args[1])
 			}
 			_ = str
 			_ = k
-			return nil, l.Errorf("not implemented yet")
+			return nil, fmt.Errorf("not implemented yet")
 		},
 	},
 	// XXX string-fill!

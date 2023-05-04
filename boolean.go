@@ -97,14 +97,14 @@ var booleanBuiltins = []Builtin{
 		Name:  "not",
 		Args:  []string{"obj"},
 		Flags: FlagConst,
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return Boolean(!IsTrue(args[0])), nil
 		},
 	},
 	{
 		Name: "boolean?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(Boolean)
 			return Boolean(ok), nil
 		},
@@ -112,14 +112,14 @@ var booleanBuiltins = []Builtin{
 	{
 		Name: "scheme::boolean=?",
 		Args: []string{"bool1", "bool2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			bool1, ok := args[0].(Boolean)
 			if !ok {
-				return nil, l.Errorf("invalid boolean: %v", args[0])
+				return nil, fmt.Errorf("invalid boolean: %v", args[0])
 			}
 			bool2, ok := args[1].(Boolean)
 			if !ok {
-				return nil, l.Errorf("invalid boolean: %v", args[1])
+				return nil, fmt.Errorf("invalid boolean: %v", args[1])
 			}
 			return Boolean(bool1 == bool2), nil
 		},
@@ -127,21 +127,21 @@ var booleanBuiltins = []Builtin{
 	{
 		Name: "eqv?",
 		Args: []string{"obj1", "obj2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return Boolean(Eq(args[0], args[1])), nil
 		},
 	},
 	{
 		Name: "eq?",
 		Args: []string{"obj1", "obj2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return Boolean(Eq(args[0], args[1])), nil
 		},
 	},
 	{
 		Name: "equal?",
 		Args: []string{"obj1", "obj2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return Boolean(Equal(args[0], args[1])), nil
 		},
 	},

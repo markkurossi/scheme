@@ -10,7 +10,7 @@ var procedureBuiltins = []Builtin{
 	{
 		Name: "procedure?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch args[0].(type) {
 			case *Lambda:
 				return Boolean(true), nil

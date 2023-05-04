@@ -8,14 +8,18 @@
 
 package scheme
 
+import (
+	"fmt"
+)
+
 var rnrsMutablePairsBuiltins = []Builtin{
 	{
 		Name: "set-car!",
 		Args: []string{"pair", "obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
-				return nil, l.Errorf("not a pair: %v", args[0])
+				return nil, fmt.Errorf("not a pair: %v", args[0])
 			}
 			err := pair.SetCar(args[1])
 			if err != nil {
@@ -27,10 +31,10 @@ var rnrsMutablePairsBuiltins = []Builtin{
 	{
 		Name: "set-cdr!",
 		Args: []string{"pair", "obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
-				return nil, l.Errorf("not a pair: %v", args[0])
+				return nil, fmt.Errorf("not a pair: %v", args[0])
 			}
 			err := pair.SetCdr(args[1])
 			if err != nil {

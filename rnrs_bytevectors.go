@@ -64,7 +64,7 @@ var rnrsBytevectorBuiltins = []Builtin{
 	{
 		Name: "bytevector?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(ByteVector)
 			return Boolean(ok), nil
 		},
@@ -72,17 +72,17 @@ var rnrsBytevectorBuiltins = []Builtin{
 	{
 		Name: "make-bytevector",
 		Args: []string{"k", "[fill<int>]"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			length, err := Int64(args[0])
 			if err != nil || length < 0 {
-				return nil, l.Errorf("negative length: %v", args[0])
+				return nil, fmt.Errorf("negative length: %v", args[0])
 			}
 
 			var fill byte
 			if len(args) == 2 {
 				f, err := Int64(args[1])
 				if err != nil || f < -128 || f > 255 {
-					return nil, l.Errorf("invalid fill: %v", args[1])
+					return nil, fmt.Errorf("invalid fill: %v", args[1])
 				}
 				fill = byte(f)
 			}
@@ -97,10 +97,10 @@ var rnrsBytevectorBuiltins = []Builtin{
 	{
 		Name: "bytevector-length",
 		Args: []string{"bytevector"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, ok := args[0].(ByteVector)
 			if !ok {
-				return nil, l.Errorf("not a bytevector: %v", args[0])
+				return nil, fmt.Errorf("not a bytevector: %v", args[0])
 			}
 			return NewNumber(0, len(v)), nil
 		},
@@ -108,14 +108,14 @@ var rnrsBytevectorBuiltins = []Builtin{
 	{
 		Name: "bytevector=?",
 		Args: []string{"bytevector1", "bytevector2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v1, ok := args[0].(ByteVector)
 			if !ok {
-				return nil, l.Errorf("not a bytevector: %v", args[0])
+				return nil, fmt.Errorf("not a bytevector: %v", args[0])
 			}
 			v2, ok := args[1].(ByteVector)
 			if !ok {
-				return nil, l.Errorf("not a bytevector: %v", args[1])
+				return nil, fmt.Errorf("not a bytevector: %v", args[1])
 			}
 			return Boolean(bytes.Equal(v1, v2)), nil
 		},
@@ -123,14 +123,14 @@ var rnrsBytevectorBuiltins = []Builtin{
 	{
 		Name: "bytevector-fill",
 		Args: []string{"bytevector", "fill<int>"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, ok := args[0].(ByteVector)
 			if !ok {
-				return nil, l.Errorf("invalid bytevector: %v", args[0])
+				return nil, fmt.Errorf("invalid bytevector: %v", args[0])
 			}
 			f, err := Int64(args[1])
 			if err != nil || f < -128 || f > 255 {
-				return nil, l.Errorf("invalid fill: %v", args[1])
+				return nil, fmt.Errorf("invalid fill: %v", args[1])
 			}
 			fill := byte(f)
 
@@ -147,36 +147,36 @@ var rnrsBytevectorBuiltins = []Builtin{
 			"source<bytevector>", "source-start<int>",
 			"target<bytevector>", "target-start<int>", "k",
 		},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			source, ok := args[0].(ByteVector)
 			if !ok {
-				return nil, l.Errorf("invalid source: %v", args[0])
+				return nil, fmt.Errorf("invalid source: %v", args[0])
 			}
 			target, ok := args[2].(ByteVector)
 			if !ok {
-				return nil, l.Errorf("invalid target: %v", args[2])
+				return nil, fmt.Errorf("invalid target: %v", args[2])
 			}
 			sourceStart, err := Int64(args[1])
 			if err != nil || sourceStart < 0 {
-				return nil, l.Errorf("invalid source-start: %v", args[1])
+				return nil, fmt.Errorf("invalid source-start: %v", args[1])
 			}
 
 			targetStart, err := Int64(args[3])
 			if err != nil || targetStart < 0 {
-				return nil, l.Errorf("invalid target-start: %v", args[3])
+				return nil, fmt.Errorf("invalid target-start: %v", args[3])
 			}
 
 			k, err := Int64(args[4])
 			if err != nil || k < 0 {
-				return nil, l.Errorf("invalid k: %v", args[4])
+				return nil, fmt.Errorf("invalid k: %v", args[4])
 			}
 
 			if sourceStart+k > int64(len(source)) {
-				return nil, l.Errorf("invalid source range: %v+%v>%v",
+				return nil, fmt.Errorf("invalid source range: %v+%v>%v",
 					sourceStart, k, len(source))
 			}
 			if targetStart+k > int64(len(target)) {
-				return nil, l.Errorf("invalid target range: %v+%v>%v",
+				return nil, fmt.Errorf("invalid target range: %v+%v>%v",
 					targetStart, k, len(target))
 			}
 
@@ -189,10 +189,10 @@ var rnrsBytevectorBuiltins = []Builtin{
 	{
 		Name: "bytevector-copy",
 		Args: []string{"bytevector"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, ok := args[0].(ByteVector)
 			if !ok {
-				return nil, l.Errorf("not a bytevector: %v", args[0])
+				return nil, fmt.Errorf("not a bytevector: %v", args[0])
 			}
 			arr := make([]byte, len(v))
 			copy(arr, v)
@@ -203,17 +203,17 @@ var rnrsBytevectorBuiltins = []Builtin{
 	{
 		Name: "bytevector-u8-ref",
 		Args: []string{"bytevector", "k"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, ok := args[0].(ByteVector)
 			if !ok {
-				return nil, l.Errorf("not a bytevector: %v", args[0])
+				return nil, fmt.Errorf("not a bytevector: %v", args[0])
 			}
 			k, err := Int64(args[1])
 			if err != nil {
-				return nil, l.Errorf("invalid index: %v", args[1])
+				return nil, fmt.Errorf("invalid index: %v", args[1])
 			}
 			if k < 0 || k >= int64(len(v)) {
-				return nil, l.Errorf("invalid index: 0 <= %v < %v", k, len(v))
+				return nil, fmt.Errorf("invalid index: 0 <= %v < %v", k, len(v))
 			}
 
 			return NewNumber(0, int(uint8(v[k]))), nil
@@ -222,17 +222,17 @@ var rnrsBytevectorBuiltins = []Builtin{
 	{
 		Name: "bytevector-s8-ref",
 		Args: []string{"bytevector", "k"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, ok := args[0].(ByteVector)
 			if !ok {
-				return nil, l.Errorf("not a bytevector: %v", args[0])
+				return nil, fmt.Errorf("not a bytevector: %v", args[0])
 			}
 			k, err := Int64(args[1])
 			if err != nil {
-				return nil, l.Errorf("invalid index: %v", args[1])
+				return nil, fmt.Errorf("invalid index: %v", args[1])
 			}
 			if k < 0 || k >= int64(len(v)) {
-				return nil, l.Errorf("invalid index: 0 <= %v < %v", k, len(v))
+				return nil, fmt.Errorf("invalid index: 0 <= %v < %v", k, len(v))
 			}
 
 			return NewNumber(0, int(int8(v[k]))), nil

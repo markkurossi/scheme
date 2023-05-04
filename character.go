@@ -138,7 +138,7 @@ var characterBuiltins = []Builtin{
 	{
 		Name: "char?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(Character)
 			return Boolean(ok), nil
 		},
@@ -146,10 +146,10 @@ var characterBuiltins = []Builtin{
 	{
 		Name: "char->integer",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+				return nil, fmt.Errorf("invalid character %v", args[0])
 			}
 			return NewNumber(0, int64(ch)), nil
 		},
@@ -157,10 +157,10 @@ var characterBuiltins = []Builtin{
 	{
 		Name: "integer->char",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			n, err := Int64(args[0])
 			if err != nil {
-				return nil, l.Errorf("invalid number %v", args[0])
+				return nil, fmt.Errorf("invalid number %v", args[0])
 			}
 			return Character(rune(n)), nil
 		},
@@ -168,14 +168,14 @@ var characterBuiltins = []Builtin{
 	{
 		Name: "scheme::char=?",
 		Args: []string{"char1", "char2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			char1, ok := args[0].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+				return nil, fmt.Errorf("invalid character %v", args[0])
 			}
 			char2, ok := args[1].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[1])
+				return nil, fmt.Errorf("invalid character %v", args[1])
 			}
 			return Boolean(char1 == char2), nil
 		},
@@ -183,14 +183,14 @@ var characterBuiltins = []Builtin{
 	{
 		Name: "scheme::char<?",
 		Args: []string{"char1", "char2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			char1, ok := args[0].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+				return nil, fmt.Errorf("invalid character %v", args[0])
 			}
 			char2, ok := args[1].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[1])
+				return nil, fmt.Errorf("invalid character %v", args[1])
 			}
 			return Boolean(char1 < char2), nil
 		},
@@ -198,14 +198,14 @@ var characterBuiltins = []Builtin{
 	{
 		Name: "scheme::char>?",
 		Args: []string{"char1", "char2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			char1, ok := args[0].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[0])
+				return nil, fmt.Errorf("invalid character %v", args[0])
 			}
 			char2, ok := args[1].(Character)
 			if !ok {
-				return nil, l.Errorf("invalid character %v", args[1])
+				return nil, fmt.Errorf("invalid character %v", args[1])
 			}
 			return Boolean(char1 > char2), nil
 		},

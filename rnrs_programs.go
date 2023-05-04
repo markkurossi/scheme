@@ -9,13 +9,14 @@
 package scheme
 
 import (
+	"fmt"
 	"os"
 )
 
 var rnrsProgramsBuiltins = []Builtin{
 	{
 		Name: "command-line",
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var head, tail Pair
 
 			for _, arg := range os.Args {
@@ -33,7 +34,7 @@ var rnrsProgramsBuiltins = []Builtin{
 	{
 		Name: "exit",
 		Args: []string{"[obj]"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			code := 0
 			if len(args) == 1 {
 				switch v := args[0].(type) {
@@ -59,10 +60,10 @@ var rnrsProgramsBuiltins = []Builtin{
 	{
 		Name: "getenv",
 		Args: []string{"name<string>"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			name, ok := args[0].(String)
 			if !ok {
-				return nil, l.Errorf("invalid variable name: %v", args[0])
+				return nil, fmt.Errorf("invalid variable name: %v", args[0])
 			}
 			val, found := os.LookupEnv(string(name))
 			if !found {

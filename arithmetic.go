@@ -301,7 +301,7 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "number?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch args[0].(type) {
 			case Int, *BigInt:
 				return Boolean(true), nil
@@ -317,7 +317,7 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "integer?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch args[0].(type) {
 			case Int, *BigInt:
 				return Boolean(true), nil
@@ -333,7 +333,7 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "exact?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch args[0].(type) {
 			case *BigInt:
 				return Boolean(true), nil
@@ -346,7 +346,7 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "inexact?",
 		Args: []string{"obj"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch args[0].(type) {
 			case Int:
 				return Boolean(true), nil
@@ -361,10 +361,10 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "scheme::=",
 		Args: []string{"z1", "z2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, err := numEq(args[0], args[1])
 			if err != nil {
-				return nil, l.Errorf("%v", err.Error())
+				return nil, fmt.Errorf("%v", err.Error())
 			}
 			return v, nil
 		},
@@ -372,10 +372,10 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "scheme::<",
 		Args: []string{"x1", "x2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, err := numLt(args[0], args[1])
 			if err != nil {
-				return nil, l.Errorf("%v", err.Error())
+				return nil, fmt.Errorf("%v", err.Error())
 			}
 			return v, nil
 		},
@@ -383,10 +383,10 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "scheme::>",
 		Args: []string{"x1", "x2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, err := numGt(args[0], args[1])
 			if err != nil {
-				return nil, l.Errorf("%v", err.Error())
+				return nil, fmt.Errorf("%v", err.Error())
 			}
 			return v, nil
 		},
@@ -395,17 +395,17 @@ var numberBuiltins = []Builtin{
 		Name:  "zero?",
 		Args:  []string{"z"},
 		Flags: FlagConst,
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return zero(args[0])
 		},
 	},
 	{
 		Name: "odd?",
 		Args: []string{"z"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			bit, err := bit(args[0], 0)
 			if err != nil {
-				return nil, l.Errorf("invalid argument: %v", args[0])
+				return nil, fmt.Errorf("invalid argument: %v", args[0])
 			}
 			return Boolean(bit == 1), nil
 		},
@@ -413,10 +413,10 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "even?",
 		Args: []string{"z"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			bit, err := bit(args[0], 0)
 			if err != nil {
-				return nil, l.Errorf("invalid argument: %v", args[0])
+				return nil, fmt.Errorf("invalid argument: %v", args[0])
 			}
 			return Boolean(bit == 0), nil
 		},
@@ -425,7 +425,7 @@ var numberBuiltins = []Builtin{
 		Name:  "+",
 		Args:  []string{"z1..."},
 		Flags: FlagConst,
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			if len(args) == 0 {
 				return Int(0), nil
 			}
@@ -440,12 +440,12 @@ var numberBuiltins = []Builtin{
 				sum = v
 
 			default:
-				return Int(0), l.Errorf("invalid number: %v", v)
+				return Int(0), fmt.Errorf("invalid number: %v", v)
 			}
 			for i := 1; i < len(args); i++ {
 				sum, err = numAdd(sum, args[i])
 				if err != nil {
-					return sum, l.Errorf("%v", err.Error())
+					return sum, fmt.Errorf("%v", err.Error())
 				}
 			}
 			return sum, nil
@@ -454,7 +454,7 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "scheme::*",
 		Args: []string{"z1", "z2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v1 := args[0].(type) {
 			case Int:
 				switch v2 := args[1].(type) {
@@ -465,7 +465,7 @@ var numberBuiltins = []Builtin{
 					return Int(int64(v1) * v2.I.Int64()), nil
 
 				default:
-					return Int(0), l.Errorf("invalid number: %v", args[1])
+					return Int(0), fmt.Errorf("invalid number: %v", args[1])
 				}
 
 			case *BigInt:
@@ -479,11 +479,11 @@ var numberBuiltins = []Builtin{
 					}, nil
 
 				default:
-					return Int(0), l.Errorf("invalid number: %v", args[1])
+					return Int(0), fmt.Errorf("invalid number: %v", args[1])
 				}
 
 			default:
-				return Int(0), l.Errorf("invalid number: %v", args[0])
+				return Int(0), fmt.Errorf("invalid number: %v", args[0])
 			}
 		},
 	},
@@ -491,7 +491,7 @@ var numberBuiltins = []Builtin{
 		Name:  "-",
 		Args:  []string{"z1", "z2..."},
 		Flags: FlagConst,
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var diff Value
 			var err error
 
@@ -511,13 +511,13 @@ var numberBuiltins = []Builtin{
 				diff = v
 
 			default:
-				return Int(0), l.Errorf("invalid number: %v", v)
+				return Int(0), fmt.Errorf("invalid number: %v", v)
 			}
 
 			for i := 1; i < len(args); i++ {
 				diff, err = numSub(diff, args[i])
 				if err != nil {
-					return diff, l.Errorf("%v", err.Error())
+					return diff, fmt.Errorf("%v", err.Error())
 				}
 			}
 
@@ -527,7 +527,7 @@ var numberBuiltins = []Builtin{
 	{
 		Name: "scheme::/",
 		Args: []string{"z1", "z2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v1 := args[0].(type) {
 			case Int:
 				switch v2 := args[1].(type) {
@@ -538,7 +538,7 @@ var numberBuiltins = []Builtin{
 					return Int(int64(v1) / v2.I.Int64()), nil
 
 				default:
-					return Int(0), l.Errorf("invalid number: %v", args[1])
+					return Int(0), fmt.Errorf("invalid number: %v", args[1])
 				}
 
 			case *BigInt:
@@ -552,11 +552,11 @@ var numberBuiltins = []Builtin{
 					}, nil
 
 				default:
-					return Int(0), l.Errorf("invalid number: %v", args[1])
+					return Int(0), fmt.Errorf("invalid number: %v", args[1])
 				}
 
 			default:
-				return Int(0), l.Errorf("invalid number: %v", args[0])
+				return Int(0), fmt.Errorf("invalid number: %v", args[0])
 			}
 		},
 	},
@@ -564,7 +564,7 @@ var numberBuiltins = []Builtin{
 		Name:    "mod",
 		Aliases: []string{"modulo"},
 		Args:    []string{"z1", "z2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v1 := args[0].(type) {
 			case Int:
 				switch v2 := args[1].(type) {
@@ -575,7 +575,7 @@ var numberBuiltins = []Builtin{
 					return Int(int64(v1) % v2.I.Int64()), nil
 
 				default:
-					return Int(0), l.Errorf("invalid number: %v", args[1])
+					return Int(0), fmt.Errorf("invalid number: %v", args[1])
 				}
 
 			case *BigInt:
@@ -589,18 +589,18 @@ var numberBuiltins = []Builtin{
 					}, nil
 
 				default:
-					return Int(0), l.Errorf("invalid number: %v", args[1])
+					return Int(0), fmt.Errorf("invalid number: %v", args[1])
 				}
 
 			default:
-				return Int(0), l.Errorf("invalid number: %v", args[0])
+				return Int(0), fmt.Errorf("invalid number: %v", args[0])
 			}
 		},
 	},
 	{
 		Name: "sqrt",
 		Args: []string{"z"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v := args[0].(type) {
 			case Int:
 				return Int(math.Sqrt(float64(v))), nil
@@ -611,14 +611,14 @@ var numberBuiltins = []Builtin{
 				}, nil
 
 			default:
-				return Int(0), l.Errorf("invalid number: %v", args[0])
+				return Int(0), fmt.Errorf("invalid number: %v", args[0])
 			}
 		},
 	},
 	{
 		Name: "expt",
 		Args: []string{"z1", "z2"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v1 := args[0].(type) {
 			case Int:
 				switch v2 := args[1].(type) {
@@ -630,7 +630,7 @@ var numberBuiltins = []Builtin{
 						float64(v2.I.Int64()))), nil
 
 				default:
-					return Int(0), l.Errorf("invalid number: %v", args[1])
+					return Int(0), fmt.Errorf("invalid number: %v", args[1])
 				}
 
 			case *BigInt:
@@ -645,25 +645,25 @@ var numberBuiltins = []Builtin{
 					}, nil
 
 				default:
-					return Int(0), l.Errorf("invalid number: %v", args[1])
+					return Int(0), fmt.Errorf("invalid number: %v", args[1])
 				}
 
 			default:
-				return Int(0), l.Errorf("expt: invalid number: %v", args[0])
+				return Int(0), fmt.Errorf("expt: invalid number: %v", args[0])
 			}
 		},
 	},
 	{
 		Name: "number->string",
 		Args: []string{"z", "[radix<int>]", "[precision<int>]"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var radix int = 10
 			var precision int
 
 			if len(args) > 1 {
 				v, err := Int64(args[1])
 				if err != nil {
-					return nil, l.Errorf("invalid radix: %v", args[1])
+					return nil, fmt.Errorf("invalid radix: %v", args[1])
 				}
 				radix = int(v)
 			}
@@ -678,7 +678,7 @@ var numberBuiltins = []Builtin{
 			if len(args) > 2 {
 				v, err := Int64(args[2])
 				if err != nil {
-					return nil, l.Errorf("invalid precision: %v", args[2])
+					return nil, fmt.Errorf("invalid precision: %v", args[2])
 				}
 				precision = int(v)
 			}
@@ -692,25 +692,25 @@ var numberBuiltins = []Builtin{
 				return String(v.I.Text(radix)), nil
 
 			default:
-				return nil, l.Errorf("invalid number: %v", args[0])
+				return nil, fmt.Errorf("invalid number: %v", args[0])
 			}
 		},
 	},
 	{
 		Name: "string->number",
 		Args: []string{"string", "[radix<int>]"},
-		Native: func(scm *Scheme, l *Lambda, args []Value) (Value, error) {
+		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var radix int
 
 			str, ok := args[0].(String)
 			if !ok {
-				return nil, l.Errorf("invalid string: %v", args[0])
+				return nil, fmt.Errorf("invalid string: %v", args[0])
 			}
 
 			if len(args) > 1 {
 				v, err := Int64(args[1])
 				if err != nil {
-					return nil, l.Errorf("invalid radix: %v", args[1])
+					return nil, fmt.Errorf("invalid radix: %v", args[1])
 				}
 				radix = int(v)
 
