@@ -93,13 +93,14 @@ func (v *LambdaImpl) Scheme() string {
 func (v *LambdaImpl) Signature(body bool) string {
 	var str strings.Builder
 
-	if v.Native != nil {
-		str.WriteRune('(')
+	str.WriteRune('(')
+	if len(v.Name) != 0 {
 		str.WriteString(v.Name)
-		str.WriteString(" ")
 	} else {
-		str.WriteString("(lambda ")
+		str.WriteString("lambda")
 	}
+	str.WriteString(" ")
+
 	str.WriteString(v.Args.String())
 
 	if v.Native != nil {

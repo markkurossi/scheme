@@ -243,9 +243,16 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 		case OpLambda:
 			pcmap := pcmaps[instr.I]
 			def := c.lambdas[instr.I]
+
+			var name string
+			if def.Name != nil {
+				name = def.Name.Name
+			}
+
 			instr.I = def.Start
 			instr.J = def.End
 			instr.V = &LambdaImpl{
+				Name:     name,
 				Args:     def.Args,
 				Captures: def.Captures,
 				Source:   c.source,
@@ -824,6 +831,7 @@ func (c *Compiler) compileLambda(env *Env, define bool, flags Flags,
 
 	c.addInstr(list[0], OpLambda, nil, len(c.lambdas))
 	c.lambdas = append(c.lambdas, &lambdaCompilation{
+		Name:     name,
 		Args:     args,
 		Body:     list[2:],
 		Env:      capture,
@@ -1349,6 +1357,7 @@ func isNamedIdentifier(value Value, name string) bool {
 type lambdaCompilation struct {
 	Start    int
 	End      int
+	Name     *Identifier
 	Args     Args
 	Body     []Pair
 	Env      *Env
