@@ -84,10 +84,10 @@ var operands = map[Operand]string{
 	OpNullp:     "null?",
 	OpZerop:     "zero?",
 	OpNot:       "not",
-	OpAdd:       "add",
-	OpAddI64:    "addi64",
-	OpSub:       "sub",
-	OpSubI64:    "subi64",
+	OpAdd:       "+",
+	OpAddI64:    "+<int64>",
+	OpSub:       "-",
+	OpSubI64:    "-<int64>",
 	OpEq:        "=",
 	OpLt:        "<",
 	OpGt:        ">",
@@ -487,14 +487,14 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		case OpCar:
 			pair, ok := accu.(Pair)
 			if !ok {
-				return nil, scm.Breakf("car: not a pair: %v", accu)
+				return nil, scm.Breakf("%s: not a pair: %v", instr.Op, accu)
 			}
 			accu = pair.Car()
 
 		case OpCdr:
 			pair, ok := accu.(Pair)
 			if !ok {
-				return nil, scm.Breakf("cdr: not a pair: %v", accu)
+				return nil, scm.Breakf("%s: not a pair: %v", instr.Op, accu)
 			}
 			accu = pair.Cdr()
 
@@ -504,7 +504,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		case OpZerop:
 			accu, err = zero(accu)
 			if err != nil {
-				return nil, scm.Breakf("%v", err.Error())
+				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
 			}
 
 		case OpNot:
@@ -513,7 +513,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		case OpAdd:
 			accu, err = numAdd(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%v", err.Error())
+				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
 			}
 
 		case OpAddI64:
@@ -522,7 +522,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		case OpSub:
 			accu, err = numSub(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%v", err.Error())
+				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
 			}
 
 		case OpSubI64:
@@ -531,32 +531,32 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		case OpEq:
 			accu, err = numEq(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%v", err.Error())
+				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
 			}
 
 		case OpLt:
 			accu, err = numLt(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%v", err.Error())
+				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
 			}
 
 		case OpGt:
 			accu, err = numGt(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%v", err.Error())
+				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
 			}
 
 		case OpLe:
 			accu, err = numGt(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%v", err.Error())
+				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
 			}
 			accu = Boolean(!IsTrue(accu))
 
 		case OpGe:
 			accu, err = numLt(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%v", err.Error())
+				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
 			}
 			accu = Boolean(!IsTrue(accu))
 

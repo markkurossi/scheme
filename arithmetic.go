@@ -280,7 +280,7 @@ func zero(z Value) (Value, error) {
 		return Boolean(v.I.BitLen() == 0), nil
 
 	default:
-		return Boolean(false), fmt.Errorf("zero?: invalid number: %v", z)
+		return Boolean(false), fmt.Errorf("invalid number: %v", z)
 	}
 }
 
