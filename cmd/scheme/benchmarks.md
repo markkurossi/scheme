@@ -1,6 +1,6 @@
 # VM Speed
 
-Benchmarks are run on MacBook Pro 1,4 GHz Quad-Core Intel Core i5. The
+Benchmarks are run on MacBook Pro 1.4 GHz Quad-Core Intel Core i5. The
 Python benchmarks are run with Python 3.7.
 
 | Optimization     | fib 30 | fib 40 | fib30.py | Py/Scm | fib40.py | Py/Scm |
