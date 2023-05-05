@@ -95,17 +95,15 @@ func (v *LambdaImpl) Signature(body bool) string {
 
 	if v.Native != nil {
 		str.WriteString(" {native}")
-	} else if len(v.Body) > 0 {
-		if body {
-			for _, pair := range v.Body {
-				str.WriteRune(' ')
-				str.WriteString(fmt.Sprintf("%v", pair.Car()))
-			}
-		} else {
-			str.WriteString(" ...")
+	} else if body && len(v.Body) > 0 {
+		for _, pair := range v.Body {
+			str.WriteRune(' ')
+			str.WriteString(fmt.Sprintf("%v", pair.Car()))
 		}
 	} else if v.Code != nil {
 		str.WriteString(" {compiled}")
+	} else {
+		str.WriteString(" ...")
 	}
 	str.WriteRune(')')
 
