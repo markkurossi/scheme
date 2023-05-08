@@ -662,14 +662,14 @@ func (scm *Scheme) PrintStack() {
 			panic("corrupted stack")
 		}
 
-		fmt.Print("      ")
+		fmt.Print("  ")
 		if frame.Toplevel {
 			fmt.Print("\u2514\u2574")
 		} else {
 			fmt.Print("\u251c\u2574")
 		}
 		if frame.Lambda != nil {
-			fmt.Printf("\u03BB=%v", frame.Lambda.Impl.Signature(false))
+			fmt.Printf("%v", frame.Lambda.Impl.Signature(false))
 		} else {
 			fmt.Printf("???")
 		}

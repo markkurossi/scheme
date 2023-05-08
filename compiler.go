@@ -858,7 +858,6 @@ func (c *Compiler) compileSet(env *Env, list []Pair, captures bool) error {
 		return err
 	}
 
-	nameSym := c.scm.Intern(name.Name)
 	b, ok := env.Lookup(name.Name)
 	if ok {
 		if b.Frame.Type == TypeStack {
@@ -869,7 +868,7 @@ func (c *Compiler) compileSet(env *Env, list []Pair, captures bool) error {
 		}
 	} else {
 		instr := c.addInstr(list[1], OpGlobalSet, nil, 0)
-		instr.Sym = nameSym
+		instr.Sym = c.scm.Intern(name.Name)
 	}
 
 	return nil
