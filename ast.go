@@ -21,6 +21,7 @@ var (
 	_ AST = &ASTIf{}
 	_ AST = &ASTApply{}
 	_ AST = &ASTCall{}
+	_ AST = &ASTCallUnary{}
 	_ AST = &ASTLambda{}
 	_ AST = &ASTConstant{}
 	_ AST = &ASTIdentifier{}
@@ -367,6 +368,8 @@ func (ast *ASTApply) Bytecode(c *Compiler) error {
 // ASTCall implements function call syntax.
 type ASTCall struct {
 	From     Locator
+	Inline   bool
+	InlineOp Operand
 	Func     AST
 	ArgFrame *EnvFrame
 	Args     []AST
@@ -401,27 +404,65 @@ func (ast *ASTCall) Equal(o AST) bool {
 
 // Bytecode implements AST.Bytecode.
 func (ast *ASTCall) Bytecode(c *Compiler) error {
-	err := ast.Func.Bytecode(c)
-	if err != nil {
-		return nil
+	if !ast.Inline {
+		err := ast.Func.Bytecode(c)
+		if err != nil {
+			return nil
+		}
+		// Create call frame.
+		c.addInstr(ast.From, OpPushF, nil, 0)
 	}
-
-	// Create call frame.
-	c.addInstr(ast.From, OpPushF, nil, 0)
 
 	// Push argument scope.
 	c.addInstr(ast.From, OpPushS, nil, len(ast.Args))
 
 	// Evaluate arguments.
 	for idx, arg := range ast.Args {
-		err = arg.Bytecode(c)
+		err := arg.Bytecode(c)
 		if err != nil {
 			return err
 		}
 		c.addInstr(ast.ArgLocs[idx], OpLocalSet, nil, ast.ArgFrame.Index+idx)
 	}
 
-	c.addCall(nil, len(ast.Args), ast.Tail)
+	if ast.Inline {
+		c.addInstr(ast.From, ast.InlineOp, nil, 0)
+		c.addInstr(ast.From, OpPopS, nil, len(ast.Args))
+	} else {
+		c.addCall(nil, len(ast.Args), ast.Tail)
+	}
+
+	return nil
+}
+
+// ASTCallUnary implements inlined unary function calls.
+type ASTCallUnary struct {
+	From Locator
+	Op   Operand
+	Arg  AST
+}
+
+// Locator implements AST.Locator.
+func (ast *ASTCallUnary) Locator() Locator {
+	return ast.From
+}
+
+// Equal implements AST.Equal.
+func (ast *ASTCallUnary) Equal(o AST) bool {
+	oast, ok := o.(*ASTCallUnary)
+	if !ok {
+		return false
+	}
+	return ast.Op == oast.Op && ast.Arg.Equal(oast.Arg)
+}
+
+// Bytecode implements AST.Bytecode.
+func (ast *ASTCallUnary) Bytecode(c *Compiler) error {
+	err := ast.Arg.Bytecode(c)
+	if err != nil {
+		return err
+	}
+	c.addInstr(ast.From, ast.Op, nil, 0)
 
 	return nil
 }

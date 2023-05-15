@@ -426,31 +426,55 @@ func (c *Compiler) astValue(env *Env, loc Locator, value Value,
 
 		// Function call.
 
+		// Unary inline functions.
+		ok, inlineOp := c.inlineUnary(env, list)
+		if ok {
+			ast := &ASTCallUnary{
+				From: list[0],
+				Op:   inlineOp,
+			}
+			arg, err := c.astValue(env, list[1], list[1].Car(), false, captures)
+			if err != nil {
+				return nil, err
+			}
+			ast.Arg = arg
+			return ast, nil
+		}
+
+		// Other function calls.
+
 		ast := &ASTCall{
 			From: list[0],
 			Tail: tail,
 		}
-
-		// Compile function.
-		a, err := c.astValue(env, list[0], list[0].Car(), false, captures)
-		if err != nil {
-			return nil, err
+		ok, inlineOp = c.inlineBinary(env, list)
+		if ok {
+			ast.Inline = true
+			ast.InlineOp = inlineOp
 		}
-		ast.Func = a
 
 		// Environment for the lambda body when its arguments are
 		// evaluated.
 		lambdaEnv := env.Copy()
 
-		// Create call frame.
-		lambdaEnv.PushFrame(TypeStack, FUFrame, 1)
+		if !ast.Inline {
+			// Compile function.
+			a, err := c.astValue(env, list[0], list[0].Car(), false, captures)
+			if err != nil {
+				return nil, err
+			}
+			ast.Func = a
+
+			// Create call frame.
+			lambdaEnv.PushFrame(TypeStack, FUFrame, 1)
+		}
 
 		// Push argument scope.
 		ast.ArgFrame = lambdaEnv.PushFrame(TypeStack, FUArgs, length-1)
 
 		// Evaluate arguments.
 		for i := 1; i < len(list); i++ {
-			a, err = c.astValue(lambdaEnv, list[i], list[i].Car(), false,
+			a, err := c.astValue(lambdaEnv, list[i], list[i].Car(), false,
 				captures)
 			if err != nil {
 				return nil, err
@@ -496,29 +520,21 @@ var inlineUnary = map[string]Operand{
 	"not":   OpNot,
 }
 
-func (c *Compiler) inlineUnary(env *Env, list []Pair, captures bool) (
-	bool, error) {
+func (c *Compiler) inlineUnary(env *Env, list []Pair) (bool, Operand) {
 
 	if len(list) != 2 {
-		return false, nil
+		return false, 0
 	}
 	id, ok := list[0].Car().(*Identifier)
 	if !ok {
-		return false, nil
+		return false, 0
 	}
 	op, ok := inlineUnary[id.Name]
 	if !ok {
-		return false, nil
+		return false, 0
 	}
 
-	// Compile argument.
-	err := c.compileValue(env, list[1], list[1].Car(), false, captures)
-	if err != nil {
-		return false, err
-	}
-	c.addInstr(list[0], op, nil, 0)
-
-	return true, nil
+	return true, op
 }
 
 var inlineBinary = map[string]Operand{
@@ -532,39 +548,21 @@ var inlineBinary = map[string]Operand{
 	">=":   OpGe,
 }
 
-func (c *Compiler) inlineBinary(env *Env, list []Pair, captures bool) (
-	bool, error) {
+func (c *Compiler) inlineBinary(env *Env, list []Pair) (bool, Operand) {
 
 	if len(list) != 3 {
-		return false, nil
+		return false, 0
 	}
 	id, ok := list[0].Car().(*Identifier)
 	if !ok {
-		return false, nil
+		return false, 0
 	}
 	op, ok := inlineBinary[id.Name]
 	if !ok {
-		return false, nil
+		return false, 0
 	}
 
-	// Push argument scope.
-	argFrame := env.PushFrame(TypeStack, FUArgs, 2)
-	c.addInstr(list[0], OpPushS, nil, 2)
-
-	// Evaluate arguments.
-	for i := 1; i < len(list); i++ {
-		err := c.compileValue(env, list[i], list[i].Car(), false, captures)
-		if err != nil {
-			return false, err
-		}
-		c.addInstr(list[i], OpLocalSet, nil, argFrame.Index+i-1)
-	}
-	c.addInstr(list[0], op, nil, 0)
-
-	env.PopFrame()
-	c.addInstr(list[0], OpPopS, nil, 2)
-
-	return true, nil
+	return true, op
 }
 
 func (c *Compiler) addCall(from Locator, numArgs int, tail bool) {
