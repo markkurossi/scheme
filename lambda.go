@@ -71,7 +71,7 @@ type LambdaImpl struct {
 	Code     Code
 	MaxStack int
 	PCMap    PCMap
-	Body     []Pair
+	Body     []AST
 }
 
 // Scheme implements the Value.Scheme().
@@ -96,9 +96,9 @@ func (v *LambdaImpl) Signature(body bool) string {
 	if v.Native != nil {
 		str.WriteString(" {native}")
 	} else if body && len(v.Body) > 0 {
-		for _, pair := range v.Body {
+		for _, ast := range v.Body {
 			str.WriteRune(' ')
-			str.WriteString(fmt.Sprintf("%v", pair.Car()))
+			str.WriteString(fmt.Sprintf("%v", ast))
 		}
 	} else if v.Code != nil {
 		str.WriteString(" {compiled}")
@@ -152,6 +152,29 @@ type Args struct {
 	Rest  *TypedName
 }
 
+// Equal tests if the arguments are equal.
+func (args Args) Equal(o Args) bool {
+	if args.Min != o.Min || args.Max != o.Max ||
+		len(args.Fixed) != len(o.Fixed) {
+		return false
+	}
+	for idx, n := range args.Fixed {
+		if n.Name != o.Fixed[idx].Name {
+			return false
+		}
+	}
+	if args.Rest == nil {
+		if o.Rest != nil {
+			return false
+		}
+	} else if o.Rest == nil {
+		return false
+	} else if args.Rest.Name != o.Rest.Name {
+		return false
+	}
+	return true
+}
+
 func (args Args) String() string {
 	if len(args.Fixed) == 0 {
 		if args.Rest == nil {
@@ -176,11 +199,6 @@ func (args Args) String() string {
 	}
 	str.WriteRune(')')
 	return str.String()
-}
-
-// Equal tests if the arguments are equal.
-func (args Args) Equal(o Args) bool {
-	return args.Min == o.Min && args.Max == o.Max
 }
 
 // Init initializes argument limits and checks that all argument names

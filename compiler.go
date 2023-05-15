@@ -210,10 +210,8 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 		lambda.Start = ofs + 1
 
 		c.addInstr(nil, OpLabel, nil, lambda.Start)
-		for idx := 0; idx < len(lambda.Body); idx++ {
-			err := c.compileValue(lambda.Env, lambda.Body[idx],
-				lambda.Body[idx].Car(), idx+1 >= len(lambda.Body),
-				lambda.Captures)
+		for _, ast := range lambda.Body {
+			err := ast.Bytecode(c)
 			if err != nil {
 				return nil, err
 			}
@@ -333,155 +331,160 @@ func (c *Compiler) parseLibraryHeader(list []Pair) error {
 func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
 	tail, captures bool) error {
 
+	ast, err := c.astValue(env, loc, value, tail, captures)
+	if err != nil {
+		return err
+	}
+
+	return ast.Bytecode(c)
+}
+
+func (c *Compiler) astValue(env *Env, loc Locator, value Value,
+	tail, captures bool) (AST, error) {
+
 	switch v := value.(type) {
 	case Pair:
 		list, ok := ListPairs(v)
 		if !ok {
-			return v.Errorf("unexpected value: %v", v)
+			return nil, v.Errorf("unexpected value: %v", v)
 		}
 		length := len(list)
 
 		if isKeyword(v.Car(), KwDefine) {
-			return c.compileDefine(env, list, 0, captures)
+			return c.astDefine(env, list, 0, captures)
 		}
 		if isKeyword(v.Car(), KwDefineConstant) {
-			return c.compileDefine(env, list, FlagConst, captures)
+			return c.astDefine(env, list, FlagConst, captures)
 		}
 		if isKeyword(v.Car(), KwLambda) {
-			return c.compileLambda(env, false, 0, list)
+			return c.astLambda(env, false, 0, list)
 		}
 		if isKeyword(v.Car(), KwSet) {
-			return c.compileSet(env, list, captures)
+			return c.astSet(env, list, captures)
 		}
 		if isKeyword(v.Car(), KwLet) {
-			return c.compileLet(KwLet, env, list, tail, captures)
+			return c.astLet(KwLet, env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwLetStar) {
-			return c.compileLet(KwLetStar, env, list, tail, captures)
+			return c.astLet(KwLetStar, env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwLetrec) {
-			return c.compileLet(KwLetrec, env, list, tail, captures)
+			return c.astLet(KwLetrec, env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwBegin) {
+			seq := &ASTSequence{
+				From: loc,
+			}
 			err := MapPairs(func(idx int, p Pair) error {
-				err := c.compileValue(env, p, p.Car(),
+				ast, err := c.astValue(env, p, p.Car(),
 					tail && idx+1 >= length-1, captures)
-				return err
+				if err != nil {
+					return err
+				}
+				seq.Items = append(seq.Items, ast)
+				return nil
 			}, v.Cdr())
-			return err
+			if err != nil {
+				return nil, err
+			}
+			return seq, nil
 		}
 		if isKeyword(v.Car(), KwIf) {
-			return c.compileIf(env, list, tail, captures)
+			return c.astIf(env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwQuote) {
 			if length != 2 {
-				return v.Errorf("invalid quote: %v", v)
+				return nil, v.Errorf("invalid quote: %v", v)
 			}
 			quoted, ok := Car(v.Cdr(), true)
 			if !ok {
-				return v.Errorf("invalid quote: %v", v)
+				return nil, v.Errorf("invalid quote: %v", v)
 			}
-			c.addInstr(v, OpConst, quoted, 0)
-			return nil
+			return &ASTConstant{
+				From:  loc,
+				Value: quoted,
+			}, nil
 		}
 		if isKeyword(v.Car(), KwSchemeApply) {
 			if length != 3 {
-				return v.Errorf("invalid scheme::apply: %v", v)
+				return nil, v.Errorf("invalid scheme::apply: %v", v)
 			}
-			return c.compileApply(env, v, tail, captures)
+			return c.astApply(env, v, tail, captures)
 		}
 		if isKeyword(v.Car(), KwCond) {
-			return c.compileCond(env, list, tail, captures)
+			return c.astCond(env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwCase) {
-			return c.compileCase(env, list, tail, captures)
+			return c.astCase(env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwAnd) {
-			return c.compileAnd(env, list, tail, captures)
+			return c.astAnd(env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwOr) {
-			return c.compileOr(env, list, tail, captures)
+			return c.astOr(env, list, tail, captures)
 		}
 
 		// Function call.
 
-		// Inlined unary functions.
-		ok, err := c.inlineUnary(env, list, captures)
-		if err != nil {
-			return err
-		}
-		if ok {
-			return nil
-		}
-		// Inlined binary functions.
-		ok, err = c.inlineBinary(env, list, captures)
-		if err != nil {
-			return err
-		}
-		if ok {
-			return nil
+		ast := &ASTCall{
+			From: list[0],
+			Tail: tail,
 		}
 
 		// Compile function.
-		err = c.compileValue(env, list[0], list[0].Car(), false, captures)
+		a, err := c.astValue(env, list[0], list[0].Car(), false, captures)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		ast.Func = a
 
 		// Environment for the lambda body when its arguments are
 		// evaluated.
 		lambdaEnv := env.Copy()
 
 		// Create call frame.
-		c.addInstr(list[0], OpPushF, nil, 0)
 		lambdaEnv.PushFrame(TypeStack, FUFrame, 1)
 
 		// Push argument scope.
-		argFrame := lambdaEnv.PushFrame(TypeStack, FUArgs, length-1)
-		c.addInstr(v, OpPushS, nil, length-1)
+		ast.ArgFrame = lambdaEnv.PushFrame(TypeStack, FUArgs, length-1)
 
 		// Evaluate arguments.
 		for i := 1; i < len(list); i++ {
-			err = c.compileValue(lambdaEnv, list[i], list[i].Car(), false,
+			a, err = c.astValue(lambdaEnv, list[i], list[i].Car(), false,
 				captures)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			c.addInstr(list[i], OpLocalSet, nil, argFrame.Index+i-1)
+			ast.Args = append(ast.Args, a)
+			ast.ArgLocs = append(ast.ArgLocs, list[i])
 		}
 
-		c.addCall(nil, length-1, tail)
-
-		return nil
+		return ast, nil
 
 	case *Identifier:
-		b, ok := env.Lookup(v.Name)
-		if ok {
-			if b.Frame.Type == TypeStack {
-				c.addInstr(v.Point, OpLocal, nil, b.Frame.Index+b.Index)
-			} else {
-				instr := c.addInstr(v.Point, OpEnv, nil, b.Frame.Index)
-				instr.J = b.Index
-			}
-		} else {
-			instr := c.addInstr(v.Point, OpGlobal, nil, 0)
-			instr.Sym = c.scm.Intern(v.Name)
-		}
+		binding, _ := env.Lookup(v.Name)
+		return &ASTIdentifier{
+			From:    loc,
+			Name:    v.Name,
+			Binding: binding,
+		}, nil
 
 	case Keyword:
-		return loc.Errorf("unexpected keyword: %s", v)
+		return nil, loc.Errorf("unexpected keyword: %s", v)
 
 	case Vector:
 		// Vector literals must be quoted like list constants.
-		return loc.Errorf("invalid syntax: %v", v)
+		return nil, loc.Errorf("invalid syntax: %v", v)
 
 	case ByteVector, Boolean, String, Character, Int, *BigInt:
-		c.addInstr(nil, OpConst, v, 0)
+		return &ASTConstant{
+			From:  loc,
+			Value: v,
+		}, nil
 
 	default:
-		return fmt.Errorf("compileValue: unsupported value: %v(%T)", v, v)
+		return nil, fmt.Errorf("astValue: unsupported value: %v(%T)", v, v)
 	}
-	return nil
 }
 
 var inlineUnary = map[string]Operand{
@@ -629,24 +632,29 @@ func (c *Compiler) newLabel() *Instr {
 	}
 }
 
-func (c *Compiler) compileDefine(env *Env, list []Pair, flags Flags,
-	captures bool) error {
+func (c *Compiler) astDefine(env *Env, list []Pair, flags Flags,
+	captures bool) (AST, error) {
 
 	if len(list) < 3 {
-		return list[0].Errorf("syntax error: %v", list[0])
+		return nil, list[0].Errorf("syntax error: %v", list[0])
 	}
 	// (define name value)
 	name, ok := isIdentifier(list[1].Car())
 	if ok {
-		err := c.compileValue(env, list[2], list[2].Car(), false, captures)
+		ast, err := c.astValue(env, list[2], list[2].Car(), false, captures)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		return c.define(list[1], env, name, flags)
+		return &ASTDefine{
+			From:  list[1],
+			Name:  name,
+			Flags: flags,
+			Value: ast,
+		}, nil
 	}
 
 	// (define (name args?) body)
-	return c.compileLambda(env, true, flags, list)
+	return c.astLambda(env, true, flags, list)
 }
 
 func (c *Compiler) define(loc Locator, env *Env, name *Identifier,
@@ -685,14 +693,14 @@ func (seen seen) add(name string) error {
 	return nil
 }
 
-func (c *Compiler) compileLambda(env *Env, define bool, flags Flags,
-	list []Pair) error {
+func (c *Compiler) astLambda(env *Env, define bool, flags Flags,
+	list []Pair) (AST, error) {
 
 	// (define (name args?) body)
 	// (lambda (args?) body)
 	// (lambda args body)
 	if len(list) < 3 {
-		return list[0].Errorf("missing lambda body: %v", list[0])
+		return nil, list[0].Errorf("missing lambda body: %v", list[0])
 	}
 
 	var name *Identifier
@@ -703,11 +711,11 @@ func (c *Compiler) compileLambda(env *Env, define bool, flags Flags,
 	arg, ok := isIdentifier(list[1].Car())
 	if ok {
 		if define {
-			return list[1].Errorf("invalid define: %v", list[0])
+			return nil, list[1].Errorf("invalid define: %v", list[0])
 		}
 		err := seen.add(arg.Name)
 		if err != nil {
-			return list[1].Errorf("%v", err)
+			return nil, list[1].Errorf("%v", err)
 		}
 		args.Rest = &TypedName{
 			Name: arg.Name,
@@ -717,20 +725,21 @@ func (c *Compiler) compileLambda(env *Env, define bool, flags Flags,
 		if list[1].Car() != nil {
 			pair, ok = list[1].Car().(Pair)
 			if !ok {
-				return list[0].Errorf("invalid arguments: %v", list[1].Car())
+				return nil, list[0].Errorf("invalid arguments: %v",
+					list[1].Car())
 			}
 		}
 		for pair != nil {
 			arg, ok = isIdentifier(pair.Car())
 			if !ok {
-				return pair.Errorf("invalid argument: %v", pair.Car())
+				return nil, pair.Errorf("invalid argument: %v", pair.Car())
 			}
 			if define && name == nil {
 				name = arg
 			} else {
 				err := seen.add(arg.Name)
 				if err != nil {
-					return pair.Errorf("%v", err)
+					return nil, pair.Errorf("%v", err)
 				}
 				args.Fixed = append(args.Fixed, &TypedName{
 					Name: arg.Name,
@@ -742,7 +751,7 @@ func (c *Compiler) compileLambda(env *Env, define bool, flags Flags,
 				// Rest arguments.
 				err := seen.add(arg.Name)
 				if err != nil {
-					return fmt.Errorf("%s: %v", pair.To(), err)
+					return nil, fmt.Errorf("%s: %v", pair.To(), err)
 				}
 				args.Rest = &TypedName{
 					Name: arg.Name,
@@ -754,7 +763,7 @@ func (c *Compiler) compileLambda(env *Env, define bool, flags Flags,
 			} else {
 				next, ok := pair.Cdr().(Pair)
 				if !ok {
-					return pair.Errorf("invalid argument: %v", pair)
+					return nil, pair.Errorf("invalid argument: %v", pair)
 				}
 				pair = next
 			}
@@ -763,7 +772,7 @@ func (c *Compiler) compileLambda(env *Env, define bool, flags Flags,
 	args.Init()
 
 	if define && name == nil {
-		return list[0].Errorf("define: name not defined: %v", list[0])
+		return nil, list[0].Errorf("define: name not defined: %v", list[0])
 	}
 
 	// Check if the lambda captures the environment.
@@ -819,70 +828,73 @@ func (c *Compiler) compileLambda(env *Env, define bool, flags Flags,
 	for _, arg := range args.Fixed {
 		_, err := capture.Define(arg.Name)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if args.Rest != nil {
 		_, err := capture.Define(args.Rest.Name)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	c.addInstr(list[0], OpLambda, nil, len(c.lambdas))
-	c.lambdas = append(c.lambdas, &lambdaCompilation{
+	ast := &ASTLambda{
+		From:     list[0],
 		Name:     name,
 		Args:     args,
-		Body:     list[2:],
 		Env:      capture,
 		Captures: captures,
-	})
-	if define {
-		return c.define(list[0], env, name, flags)
+		Define:   define,
+		Flags:    flags,
 	}
 
-	return nil
+	for i := 2; i < len(list); i++ {
+		a, err := c.astValue(capture, list[i], list[i].Car(), i+1 >= len(list),
+			captures)
+		if err != nil {
+			return nil, err
+		}
+		ast.Body = append(ast.Body, a)
+	}
+
+	return ast, nil
 }
 
-func (c *Compiler) compileSet(env *Env, list []Pair, captures bool) error {
+func (c *Compiler) astSet(env *Env, list []Pair, captures bool) (AST, error) {
 	// (set! name value)
 	if len(list) != 3 {
-		return list[0].Errorf("syntax error: %v", list[0])
+		return nil, list[0].Errorf("syntax error: %v", list[0])
 	}
 	name, ok := isIdentifier(list[1].Car())
 	if !ok {
-		return list[1].Errorf("set!: expected variable name: %v", list[1].Car())
+		return nil, list[1].Errorf("set!: expected variable name: %v",
+			list[1].Car())
 	}
-	err := c.compileValue(env, list[2], list[2].Car(), false, captures)
+	ast, err := c.astValue(env, list[2], list[2].Car(), false, captures)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	b, ok := env.Lookup(name.Name)
-	if ok {
-		if b.Frame.Type == TypeStack {
-			c.addInstr(list[1], OpLocalSet, nil, b.Frame.Index+b.Index)
-		} else {
-			instr := c.addInstr(list[1], OpEnvSet, nil, b.Frame.Index)
-			instr.J = b.Index
-		}
-	} else {
-		instr := c.addInstr(list[1], OpGlobalSet, nil, 0)
-		instr.Sym = c.scm.Intern(name.Name)
-	}
+	binding, _ := env.Lookup(name.Name)
 
-	return nil
+	return &ASTSet{
+		From:    list[1],
+		Name:    name.Name,
+		Binding: binding,
+		Value:   ast,
+	}, nil
 }
 
-func (c *Compiler) compileLet(kind Keyword, env *Env, list []Pair,
-	tail, captures bool) error {
+func (c *Compiler) astLet(kind Keyword, env *Env, list []Pair,
+	tail, captures bool) (AST, error) {
 
 	if len(list) < 3 {
-		return list[0].Errorf("%s: missing bindings or body", kind)
+		return nil, list[0].Errorf("%s: missing bindings or body", kind)
 	}
 	bindings, ok := ListPairs(list[1].Car())
 	if !ok {
-		return list[1].Errorf("%s: invalid bindings: %v", kind, list[1].Car())
+		return nil, list[1].Errorf("%s: invalid bindings: %v",
+			kind, list[1].Car())
 	}
 
 	// XXX check if the let inits or body captures and use that as the
@@ -891,22 +903,20 @@ func (c *Compiler) compileLet(kind Keyword, env *Env, list []Pair,
 	letEnv := env.Copy()
 	letEnv.PushCaptureFrame(captures, FULet, len(bindings))
 
-	c.addPushS(list[0], len(bindings), captures)
-
 	var letBindings []*EnvBinding
 
 	for _, binding := range bindings {
 		def, ok := ListPairs(binding.Car())
 		if !ok || len(def) != 2 {
-			return list[1].Errorf("%s: invalid init: %v", kind, binding)
+			return nil, list[1].Errorf("%s: invalid init: %v", kind, binding)
 		}
 		name, ok := def[0].Car().(*Identifier)
 		if !ok {
-			return def[0].Errorf("%s: invalid variable: %v", kind, binding)
+			return nil, def[0].Errorf("%s: invalid variable: %v", kind, binding)
 		}
 		b, err := letEnv.Define(name.Name)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if kind != KwLetrec {
 			b.Disabled = true
@@ -914,29 +924,33 @@ func (c *Compiler) compileLet(kind Keyword, env *Env, list []Pair,
 		letBindings = append(letBindings, b)
 	}
 
+	ast := &ASTLet{
+		From:     list[0],
+		Type:     kind,
+		Captures: captures,
+		Tail:     tail,
+	}
+
 	for idx, binding := range bindings {
 		def, ok := ListPairs(binding.Car())
 		if !ok || len(def) != 2 {
-			return list[1].Errorf("%s: invalid init: %v", kind, binding)
+			return nil, list[1].Errorf("%s: invalid init: %v", kind, binding)
 		}
 
-		// Compile init value.
-		err := c.compileValue(letEnv, def[1], def[1].Car(), false, captures)
+		initAst, err := c.astValue(letEnv, def[1], def[1].Car(), false,
+			captures)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		b := letBindings[idx]
-
-		if b.Frame.Type == TypeStack {
-			c.addInstr(def[1], OpLocalSet, nil, b.Frame.Index+b.Index)
-		} else {
-			instr := c.addInstr(def[1], OpEnvSet, nil, b.Frame.Index)
-			instr.J = b.Index
-		}
+		ast.Bindings = append(ast.Bindings, &ASTLetBinding{
+			From:    def[1],
+			Binding: letBindings[idx],
+			Init:    initAst,
+		})
 
 		if kind == KwLetStar {
-			b.Disabled = false
+			letBindings[idx].Disabled = false
 		}
 	}
 
@@ -946,393 +960,292 @@ func (c *Compiler) compileLet(kind Keyword, env *Env, list []Pair,
 		}
 	}
 
-	// fmt.Printf("compileLet: body env:\n")
-	// letEnv.Print()
-
 	// Compile body.
 	for i := 2; i < len(list); i++ {
-		err := c.compileValue(letEnv, list[i], list[i].Car(),
+		bodyAst, err := c.astValue(letEnv, list[i], list[i].Car(),
 			tail && i+1 >= len(list), captures)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		ast.Body = append(ast.Body, bodyAst)
 	}
 
-	if !tail {
-		c.addPopS(nil, len(bindings), captures)
-	}
-
-	return nil
+	return ast, nil
 }
 
-func (c *Compiler) compileIf(env *Env, list []Pair, tail, captures bool) error {
+func (c *Compiler) astIf(env *Env, list []Pair,
+	tail, captures bool) (AST, error) {
+
 	if len(list) < 3 || len(list) > 4 {
-		return list[0].Errorf("if: syntax error")
+		return nil, list[0].Errorf("if: syntax error")
 	}
 
-	labelFalse := c.newLabel()
-	labelEnd := c.newLabel()
-
-	err := c.compileValue(env, list[1], list[1].Car(), false, captures)
+	ast := &ASTIf{
+		From: list[0],
+	}
+	a, err := c.astValue(env, list[1], list[1].Car(), false, captures)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if len(list) == 3 {
-		// (if cond t)
-		instr := c.addInstr(list[0], OpIfNot, nil, 0)
-		instr.J = labelEnd.I
+	ast.Cond = a
 
-		err = c.compileValue(env, list[2], list[2].Car(), tail, captures)
-		if err != nil {
-			return err
-		}
-	} else {
-		// (if cond t f)
-		instr := c.addInstr(list[0], OpIfNot, nil, 0)
-		instr.J = labelFalse.I
+	a, err = c.astValue(env, list[2], list[2].Car(), tail, captures)
+	if err != nil {
+		return nil, err
+	}
+	ast.True = a
 
-		err = c.compileValue(env, list[2], list[2].Car(), tail, captures)
+	if len(list) == 4 {
+		a, err = c.astValue(env, list[3], list[3].Car(), tail, captures)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		instr = c.addInstr(nil, OpJmp, nil, 0)
-		instr.J = labelEnd.I
-
-		c.addLabel(labelFalse)
-		err = c.compileValue(env, list[3], list[3].Car(), tail, captures)
-		if err != nil {
-			return err
-		}
+		ast.False = a
 	}
 
-	c.addLabel(labelEnd)
-
-	return nil
+	return ast, nil
 }
 
-func (c *Compiler) compileApply(env *Env, pair Pair,
-	tail, captures bool) error {
+func (c *Compiler) astApply(env *Env, pair Pair,
+	tail, captures bool) (AST, error) {
 
 	f, ok := Car(pair.Cdr(), true)
 	if !ok {
-		return pair.Errorf("scheme::apply: invalid list: %v", pair)
+		return nil, pair.Errorf("scheme::apply: invalid list: %v", pair)
 	}
 	args, ok := Car(Cdr(pair.Cdr(), true))
 	if !ok {
-		return pair.Errorf("scheme::apply: invalid list: %v", pair)
+		return nil, pair.Errorf("scheme::apply: invalid list: %v", pair)
 	}
 
-	// Compile function.
-	err := c.compileValue(env, pair, f, false, captures)
+	// Lambda.
+	lambdaAST, err := c.astValue(env, pair, f, false, captures)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Create a call frame.
-	c.addInstr(nil, OpPushF, nil, 0)
 	env.PushFrame(TypeStack, FUFrame, 1)
 
 	// Compile arguments.
-	err = c.compileValue(env, pair, args, false, captures)
+	argsAST, err := c.astValue(env, pair, args, false, captures)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	// Push apply scope.
-	c.addInstr(nil, OpPushA, nil, 0)
 
 	// Pop call frame.
 	env.PopFrame()
 
-	c.addCall(nil, -1, tail)
-
-	return nil
+	return &ASTApply{
+		From:   pair,
+		Lambda: lambdaAST,
+		Args:   argsAST,
+		Tail:   tail,
+	}, nil
 }
 
-func (c *Compiler) compileCond(env *Env, list []Pair,
-	tail, captures bool) error {
+func (c *Compiler) astCond(env *Env, list []Pair,
+	tail, captures bool) (AST, error) {
 
 	if len(list) < 2 {
-		return list[0].Errorf("cond: no clauses")
+		return nil, list[0].Errorf("cond: no clauses")
 	}
-	labelEnd := c.newLabel()
 
-	var labelClause *Instr
+	ast := &ASTCond{
+		From:     list[0],
+		Tail:     tail,
+		Captures: captures,
+	}
 
 	for i := 1; i < len(list); i++ {
-		if labelClause != nil {
-			c.addLabel(labelClause)
-		}
-
-		var next *Instr
-		if i+1 < len(list) {
-			next = c.newLabel()
-			labelClause = next
-		} else {
-			next = labelEnd
-		}
-
 		clause, ok := ListPairs(list[i].Car())
 		if !ok || len(clause) < 1 {
-			return list[i].Errorf("cond: invalid clause: %v", list[i])
+			return nil, list[i].Errorf("cond: invalid clause: %v", list[i])
 		}
 
 		var isElse bool
 		if isKeyword(clause[0].Car(), KwElse) {
 			if i+1 < len(list) {
-				return clause[0].Errorf("cond: else must be the last clause")
+				return nil,
+					clause[0].Errorf("cond: else must be the last clause")
 			}
 			isElse = true
 		}
 
+		choice := &ASTCondChoice{
+			From: clause[0],
+		}
+		ast.Choices = append(ast.Choices, choice)
+
 		if !isElse {
 			// Compile condition.
-			err := c.compileValue(env, clause[0], clause[0].Car(), false,
+			condAST, err := c.astValue(env, clause[0], clause[0].Car(), false,
 				captures)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			instr := c.addInstr(nil, OpIfNot, nil, 0)
-			instr.J = next.I
+			choice.Cond = condAST
 		}
 		// cond => func
 		if len(clause) > 1 && isKeyword(clause[1].Car(), KwImplies) {
 			if len(clause) != 3 {
-				return clause[0].Errorf("cond: invalid => clause")
+				return nil, clause[0].Errorf("cond: invalid => clause")
 			}
 
 			// Push value scope.
-			valueFrame := env.PushCaptureFrame(false, FUValue, 1)
-			c.addInstr(clause[2], OpPushS, nil, 1)
-
-			// Save value
-			c.addInstr(clause[2], OpLocalSet, nil, valueFrame.Index)
+			choice.FuncValueFrame = env.PushCaptureFrame(false, FUValue, 1)
 
 			// Compile function.
-			err := c.compileValue(env, clause[2], clause[2].Car(), false,
+			funcAST, err := c.astValue(env, clause[2], clause[2].Car(), false,
 				captures)
 			if err != nil {
-				return err
+				return nil, err
 			}
+			choice.Func = funcAST
 
 			// Create call frame.
-			c.addInstr(clause[2], OpPushF, nil, 0)
 			env.PushCaptureFrame(captures, FUFrame, 1)
 
 			// Push argument scope.
-			argsFrame := env.PushCaptureFrame(false, FUArgs, 1)
-			c.addInstr(clause[2], OpPushS, nil, 1)
-
-			// Set argument.
-			c.addInstr(clause[2], OpLocal, nil, valueFrame.Index)
-			c.addInstr(clause[2], OpLocalSet, nil, argsFrame.Index)
+			choice.FuncArgsFrame = env.PushCaptureFrame(false, FUArgs, 1)
 
 			env.PopFrame() // Argument
 			env.PopFrame() // Call
 			env.PopFrame() // Value
-
-			c.addCall(nil, 1, tail)
-			if !tail {
-				// Pop value scope.
-				c.addPopS(clause[2], 1, captures)
-			}
 		} else {
 			// Compile expressions.
 			for j := 1; j < len(clause); j++ {
 				last := j+1 >= len(clause)
-				err := c.compileValue(env, clause[j], clause[j].Car(),
+				expr, err := c.astValue(env, clause[j], clause[j].Car(),
 					tail && last, captures)
 				if err != nil {
-					return err
+					return nil, err
 				}
+				choice.Exprs = append(choice.Exprs, expr)
 			}
 		}
-
-		// Jump to end.
-		instr := c.addInstr(nil, OpJmp, nil, 0)
-		instr.J = labelEnd.I
 	}
-	c.addLabel(labelEnd)
 
-	return nil
+	return ast, nil
 }
 
-func (c *Compiler) compileCase(env *Env, list []Pair,
-	tail, captures bool) error {
+func (c *Compiler) astCase(env *Env, list []Pair,
+	tail, captures bool) (AST, error) {
 
 	if len(list) < 3 {
-		return list[0].Errorf("case: key or clauses")
+		return nil, list[0].Errorf("case: key or clauses")
 	}
-	labelEnd := c.newLabel()
+
+	ast := &ASTCase{
+		From:     list[0],
+		Tail:     tail,
+		Captures: captures,
+	}
 
 	// Push value scope.
-	valueFrame := env.PushCaptureFrame(false, FUValue, 1)
-	c.addInstr(list[1], OpPushS, nil, 1)
+	ast.ValueFrame = env.PushCaptureFrame(false, FUValue, 1)
 
 	// Compile key.
-	err := c.compileValue(env, list[1], list[1].Car(), false, captures)
+	expr, err := c.astValue(env, list[1], list[1].Car(), false, captures)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	// Save value.
-	c.addInstr(list[1], OpLocalSet, nil, valueFrame.Index)
+	ast.Expr = expr
 
 	// Compile clauses
-
-	var labelClause *Instr
-
 	for i := 2; i < len(list); i++ {
-		if labelClause != nil {
-			c.addLabel(labelClause)
-		}
-
-		var next *Instr
-		if i+1 < len(list) {
-			next = c.newLabel()
-			labelClause = next
-		} else {
-			next = labelEnd
-		}
 
 		clause, ok := ListPairs(list[i].Car())
 		if !ok || len(clause) < 2 {
-			return list[i].Errorf("case: invalid clause: %v", list[i])
+			return nil, list[i].Errorf("case: invalid clause: %v", list[i])
 		}
 
 		// (else expr1 expr2...)
 		var isElse bool
 		if isKeyword(clause[0].Car(), KwElse) {
 			if i+1 < len(list) {
-				return clause[0].Errorf("case: else must be the last clause")
+				return nil,
+					clause[0].Errorf("case: else must be the last clause")
 			}
 			isElse = true
 		}
 
-		var labelExprs *Instr
-		if !isElse {
-			labelExprs = c.newLabel()
+		choice := &ASTCaseChoice{
+			From: clause[0],
+		}
+		ast.Choices = append(ast.Choices, choice)
 
+		if !isElse {
 			// Compare datums: ((datum1 ...) expr1 expr2...)
 			datums, ok := ListPairs(clause[0].Car())
 			if !ok || len(clause) == 0 {
-				return clause[0].Errorf("cond: invalid clause: %v", clause[0])
+				return nil, clause[0].Errorf("cond: invalid clause: %v",
+					clause[0])
 			}
+
+			eqvEnv := env.Copy()
+			eqvEnv.PushCaptureFrame(false, FUFrame, 1)
+			ast.EqvArgFrame = eqvEnv.PushCaptureFrame(false, FUArgs, 2)
+
 			for _, datum := range datums {
 				// (eqv? value datum)
-				eqvEnv := env.Copy()
-
-				instr := c.addInstr(datum, OpGlobal, nil, 0)
-				instr.Sym = c.scm.Intern("eqv?")
-
-				c.addInstr(datum, OpPushF, nil, 0)
-				eqvEnv.PushCaptureFrame(false, FUFrame, 1)
-
-				c.addInstr(datum, OpPushS, nil, 2)
-				eqvArgFrame := eqvEnv.PushCaptureFrame(false, FUArgs, 2)
-
-				c.addInstr(datum, OpLocal, nil, valueFrame.Index)
-				c.addInstr(datum, OpLocalSet, nil, eqvArgFrame.Index)
-
-				c.addInstr(datum, OpConst, datum.Car(), 0)
-				c.addInstr(datum, OpLocalSet, nil, eqvArgFrame.Index+1)
-
-				c.addCall(datum, 2, false)
-
-				instr = c.addInstr(datum, OpIf, nil, 0)
-				instr.J = labelExprs.I
+				choice.Datums = append(choice.Datums, datum.Car())
+				choice.DatumLocs = append(choice.DatumLocs, datum)
 			}
-
-			// No datum matched.
-			instr := c.addInstr(nil, OpJmp, nil, 0)
-			instr.J = next.I
-		}
-
-		if labelExprs != nil {
-			c.addLabel(labelExprs)
 		}
 
 		// Compile expressions.
 		for j := 1; j < len(clause); j++ {
 			last := j+1 >= len(clause)
-			err := c.compileValue(env, clause[j], clause[j].Car(),
+
+			expr, err := c.astValue(env, clause[j], clause[j].Car(),
 				tail && last, captures)
 			if err != nil {
-				return err
+				return nil, err
 			}
+			choice.Exprs = append(choice.Exprs, expr)
 		}
-
-		// Jump to end.
-		instr := c.addInstr(nil, OpJmp, nil, 0)
-		instr.J = labelEnd.I
 	}
 
-	c.addLabel(labelEnd)
-
-	if !tail {
-		// Pop value scope.
-		c.addPopS(nil, 1, captures)
-	}
 	env.PopFrame()
 
-	return nil
+	return ast, nil
 }
 
-func (c *Compiler) compileAnd(env *Env, list []Pair,
-	tail, captures bool) error {
+func (c *Compiler) astAnd(env *Env, list []Pair,
+	tail, captures bool) (AST, error) {
 
-	if len(list) == 1 {
-		c.addInstr(nil, OpConst, Boolean(true), 0)
-		return nil
+	ast := &ASTAnd{
+		From: list[0],
 	}
 
-	labelEnd := c.newLabel()
-	for i := 1; i < len(list)-1; i++ {
-		err := c.compileValue(env, list[i], list[i].Car(), false, captures)
+	for i := 1; i < len(list); i++ {
+		expr, err := c.astValue(env, list[i], list[i].Car(), false, captures)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		instr := c.addInstr(nil, OpIfNot, nil, 0)
-		instr.J = labelEnd.I
+		ast.Exprs = append(ast.Exprs, expr)
 	}
 
-	// Last expression.
-	last := list[len(list)-1]
-	err := c.compileValue(env, last, last.Car(), tail, captures)
-	if err != nil {
-		return err
-	}
-
-	c.addLabel(labelEnd)
-
-	return nil
+	return ast, nil
 }
 
-func (c *Compiler) compileOr(env *Env, list []Pair, tail, captures bool) error {
-	if len(list) == 1 {
-		c.addInstr(nil, OpConst, Boolean(false), 0)
-		return nil
+func (c *Compiler) astOr(env *Env, list []Pair,
+	tail, captures bool) (AST, error) {
+
+	ast := &ASTOr{
+		From: list[0],
 	}
-	labelEnd := c.newLabel()
-	for i := 1; i < len(list)-1; i++ {
-		err := c.compileValue(env, list[i], list[i].Car(), false, captures)
+
+	for i := 1; i < len(list); i++ {
+		expr, err := c.astValue(env, list[i], list[i].Car(), false, captures)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		instr := c.addInstr(nil, OpIf, nil, 0)
-		instr.J = labelEnd.I
+		ast.Exprs = append(ast.Exprs, expr)
 	}
 
-	// Last expression.
-	last := list[len(list)-1]
-	err := c.compileValue(env, last, last.Car(), tail, captures)
-	if err != nil {
-		return err
-	}
-
-	c.addLabel(labelEnd)
-
-	return nil
+	return ast, nil
 }
 
 func isKeyword(value Value, keyword Keyword) bool {
@@ -1358,7 +1271,7 @@ type lambdaCompilation struct {
 	End      int
 	Name     *Identifier
 	Args     Args
-	Body     []Pair
+	Body     []AST
 	Env      *Env
 	MaxStack int
 	Captures bool

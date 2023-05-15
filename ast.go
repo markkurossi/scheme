@@ -9,17 +9,25 @@ package scheme
 // AST defines an abstract syntax tree entry
 type AST interface {
 	Locator() Locator
+	Equal(o AST) bool
 	Bytecode(c *Compiler) error
 }
 
 var (
 	_ AST = &ASTSequence{}
 	_ AST = &ASTDefine{}
+	_ AST = &ASTSet{}
+	_ AST = &ASTLet{}
+	_ AST = &ASTIf{}
+	_ AST = &ASTApply{}
+	_ AST = &ASTCall{}
 	_ AST = &ASTLambda{}
 	_ AST = &ASTConstant{}
 	_ AST = &ASTIdentifier{}
 	_ AST = &ASTCond{}
 	_ AST = &ASTCase{}
+	_ AST = &ASTAnd{}
+	_ AST = &ASTOr{}
 )
 
 // ASTSequence implements a (begin ...) sequence.
@@ -31,6 +39,23 @@ type ASTSequence struct {
 // Locator implements AST.Locator.
 func (ast *ASTSequence) Locator() Locator {
 	return ast.From
+}
+
+// Equal implements AST.Equal.
+func (ast *ASTSequence) Equal(o AST) bool {
+	oast, ok := o.(*ASTSequence)
+	if !ok {
+		return false
+	}
+	if len(ast.Items) != len(oast.Items) {
+		return false
+	}
+	for idx, item := range ast.Items {
+		if !item.Equal(oast.Items[idx]) {
+			return false
+		}
+	}
+	return true
 }
 
 // Bytecode implements AST.Bytecode.
@@ -57,6 +82,17 @@ func (ast *ASTDefine) Locator() Locator {
 	return ast.From
 }
 
+// Equal implements AST.Equal.
+func (ast *ASTDefine) Equal(o AST) bool {
+	oast, ok := o.(*ASTDefine)
+	if !ok {
+		return false
+	}
+	return ast.Name.Name == oast.Name.Name &&
+		ast.Flags == oast.Flags &&
+		ast.Value.Equal(oast.Value)
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTDefine) Bytecode(c *Compiler) error {
 	err := ast.Value.Bytecode(c)
@@ -80,6 +116,21 @@ type ASTSet struct {
 // Locator implements AST.Locator.
 func (ast *ASTSet) Locator() Locator {
 	return ast.From
+}
+
+// Equal implements AST.Equal.
+func (ast *ASTSet) Equal(o AST) bool {
+	oast, ok := o.(*ASTSet)
+	if !ok {
+		return false
+	}
+	if ast.Binding == nil && oast.Binding != nil {
+		return false
+	}
+	if ast.Binding != nil && oast.Binding == nil {
+		return false
+	}
+	return ast.Name == oast.Name && ast.Value.Equal(oast.Value)
 }
 
 // Bytecode implements AST.Bytecode.
@@ -110,16 +161,17 @@ func (ast *ASTSet) Bytecode(c *Compiler) error {
 type ASTLet struct {
 	From     Locator
 	Type     Keyword
-	Bindings []ASTLetBinding
+	Captures bool
+	Tail     bool
+	Bindings []*ASTLetBinding
 	Body     []AST
 }
 
 // ASTLetBinding implements a let binding.
 type ASTLetBinding struct {
 	From    Locator
-	Name    *Identifier
 	Binding *EnvBinding
-	Value   AST
+	Init    AST
 }
 
 // Locator implements AST.Locator.
@@ -127,10 +179,37 @@ func (ast *ASTLet) Locator() Locator {
 	return ast.From
 }
 
+// Equal implements AST.Equal.
+func (ast *ASTLet) Equal(o AST) bool {
+	oast, ok := o.(*ASTLet)
+	if !ok {
+		return false
+	}
+	if ast.Type != oast.Type || ast.Captures != oast.Captures ||
+		ast.Tail != oast.Tail || len(ast.Bindings) != len(oast.Bindings) ||
+		len(ast.Body) != len(oast.Body) {
+		return false
+	}
+	for idx, b := range ast.Bindings {
+		if b.Binding.Index != oast.Bindings[idx].Binding.Index ||
+			b.Binding.Frame.Index != oast.Bindings[idx].Binding.Frame.Index {
+			return false
+		}
+	}
+	for idx, item := range ast.Body {
+		if !item.Equal(oast.Body[idx]) {
+			return false
+		}
+	}
+	return true
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTLet) Bytecode(c *Compiler) error {
+	c.addPushS(ast.From, len(ast.Bindings), ast.Captures)
+
 	for _, binding := range ast.Bindings {
-		err := binding.Value.Bytecode(c)
+		err := binding.Init.Bytecode(c)
 		if err != nil {
 			return err
 		}
@@ -150,6 +229,10 @@ func (ast *ASTLet) Bytecode(c *Compiler) error {
 			return err
 		}
 	}
+	if !ast.Tail {
+		c.addPopS(nil, len(ast.Bindings), ast.Captures)
+	}
+
 	return nil
 }
 
@@ -164,6 +247,31 @@ type ASTIf struct {
 // Locator implements AST.Locator.
 func (ast *ASTIf) Locator() Locator {
 	return ast.From
+}
+
+// Equal implements AST.Equal.
+func (ast *ASTIf) Equal(o AST) bool {
+	oast, ok := o.(*ASTIf)
+	if !ok {
+		return false
+	}
+	if !ast.Cond.Equal(oast.Cond) {
+		return false
+	}
+	if !ast.True.Equal(oast.True) {
+		return false
+	}
+	if ast.False == nil {
+		if oast.False != nil {
+			return false
+		}
+	} else if oast.False == nil {
+		return false
+	} else if !ast.False.Equal(oast.False) {
+		return false
+	}
+
+	return true
 }
 
 // Bytecode implements AST.Bytecode.
@@ -221,6 +329,17 @@ func (ast *ASTApply) Locator() Locator {
 	return ast.From
 }
 
+// Equal implements AST.Equal.
+func (ast *ASTApply) Equal(o AST) bool {
+	oast, ok := o.(*ASTApply)
+	if !ok {
+		return false
+	}
+	return ast.Lambda.Equal(oast.Lambda) &&
+		ast.Args.Equal(oast.Args) &&
+		ast.Tail == oast.Tail
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTApply) Bytecode(c *Compiler) error {
 	err := ast.Lambda.Bytecode(c)
@@ -243,17 +362,80 @@ func (ast *ASTApply) Bytecode(c *Compiler) error {
 	c.addCall(nil, -1, ast.Tail)
 
 	return nil
+}
 
+// ASTCall implements function call syntax.
+type ASTCall struct {
+	From     Locator
+	Func     AST
+	ArgFrame *EnvFrame
+	Args     []AST
+	ArgLocs  []Locator
+	Tail     bool
+}
+
+// Locator implements AST.Locator.
+func (ast *ASTCall) Locator() Locator {
+	return ast.From
+}
+
+// Equal implements AST.Equal.
+func (ast *ASTCall) Equal(o AST) bool {
+	oast, ok := o.(*ASTCall)
+	if !ok {
+		return false
+	}
+	if !ast.Func.Equal(oast.Func) {
+		return false
+	}
+	if len(ast.Args) != len(oast.Args) {
+		return false
+	}
+	for idx, arg := range ast.Args {
+		if !arg.Equal(oast.Args[idx]) {
+			return false
+		}
+	}
+	return ast.Tail == oast.Tail
+}
+
+// Bytecode implements AST.Bytecode.
+func (ast *ASTCall) Bytecode(c *Compiler) error {
+	err := ast.Func.Bytecode(c)
+	if err != nil {
+		return nil
+	}
+
+	// Create call frame.
+	c.addInstr(ast.From, OpPushF, nil, 0)
+
+	// Push argument scope.
+	c.addInstr(ast.From, OpPushS, nil, len(ast.Args))
+
+	// Evaluate arguments.
+	for idx, arg := range ast.Args {
+		err = arg.Bytecode(c)
+		if err != nil {
+			return err
+		}
+		c.addInstr(ast.ArgLocs[idx], OpLocalSet, nil, ast.ArgFrame.Index+idx)
+	}
+
+	c.addCall(nil, len(ast.Args), ast.Tail)
+
+	return nil
 }
 
 // ASTLambda implements lambda syntax.
 type ASTLambda struct {
 	From     Locator
-	Name     string
+	Name     *Identifier
 	Args     Args
 	Body     []AST
-	Capture  *Env
+	Env      *Env
 	Captures bool
+	Define   bool
+	Flags    Flags
 }
 
 // Locator implements AST.Locator.
@@ -261,9 +443,43 @@ func (ast *ASTLambda) Locator() Locator {
 	return ast.From
 }
 
+// Equal implements AST.Equal.
+func (ast *ASTLambda) Equal(o AST) bool {
+	oast, ok := o.(*ASTLambda)
+	if !ok {
+		return false
+	}
+	if !ast.Args.Equal(oast.Args) {
+		return false
+	}
+	if len(ast.Body) != len(oast.Body) {
+		return false
+	}
+	for idx, body := range ast.Body {
+		if !body.Equal(oast.Body[idx]) {
+			return false
+		}
+	}
+	return ast.Captures == oast.Captures && ast.Flags == oast.Flags
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTLambda) Bytecode(c *Compiler) error {
 	c.addInstr(ast.From, OpLambda, nil, len(c.lambdas))
+	c.lambdas = append(c.lambdas, &lambdaCompilation{
+		Name:     ast.Name,
+		Args:     ast.Args,
+		Body:     ast.Body,
+		Env:      ast.Env,
+		Captures: ast.Captures,
+	})
+	if ast.Define {
+		err := c.define(ast.From, ast.Env, ast.Name, ast.Flags)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -276,6 +492,15 @@ type ASTConstant struct {
 // Locator implements AST.Locator.
 func (ast *ASTConstant) Locator() Locator {
 	return ast.From
+}
+
+// Equal implements AST.Equal.
+func (ast *ASTConstant) Equal(o AST) bool {
+	oast, ok := o.(*ASTConstant)
+	if !ok {
+		return false
+	}
+	return ast.Value.Equal(oast.Value)
 }
 
 // Bytecode implements AST.Bytecode.
@@ -294,6 +519,24 @@ type ASTIdentifier struct {
 // Locator implements AST.Locator.
 func (ast *ASTIdentifier) Locator() Locator {
 	return ast.From
+}
+
+// Equal implements AST.Equal.
+func (ast *ASTIdentifier) Equal(o AST) bool {
+	oast, ok := o.(*ASTIdentifier)
+	if !ok {
+		return false
+	}
+	if ast.Name != oast.Name {
+		return false
+	}
+	if ast.Binding == nil && oast.Binding != nil {
+		return false
+	}
+	if ast.Binding != nil && oast.Binding == nil {
+		return false
+	}
+	return true
 }
 
 // Bytecode implements AST.Bytecode.
@@ -317,24 +560,55 @@ func (ast *ASTIdentifier) Bytecode(c *Compiler) error {
 // ASTCond implements cond syntax.
 type ASTCond struct {
 	From     Locator
-	Choices  []ASTCondChoice
+	Choices  []*ASTCondChoice
 	Tail     bool
 	Captures bool
 }
 
 // ASTCondChoice implements a cond choice.
 type ASTCondChoice struct {
-	From      Locator
-	Cond      AST
-	Func      AST
-	FuncValue *EnvFrame
-	FuncArgs  *EnvFrame
-	Exprs     []AST
+	From           Locator
+	Cond           AST
+	Func           AST
+	FuncValueFrame *EnvFrame
+	FuncArgsFrame  *EnvFrame
+	Exprs          []AST
+}
+
+// Equal test if this choice is equal to the argument choice.
+func (c *ASTCondChoice) Equal(o *ASTCondChoice) bool {
+	if len(c.Exprs) != len(o.Exprs) {
+		return false
+	}
+	for idx, expr := range c.Exprs {
+		if !expr.Equal(o.Exprs[idx]) {
+			return false
+		}
+	}
+
+	return c.Cond.Equal(o.Cond) && c.Func.Equal(o.Func)
 }
 
 // Locator implements AST.Locator.
 func (ast *ASTCond) Locator() Locator {
 	return ast.From
+}
+
+// Equal implements AST.Equal.
+func (ast *ASTCond) Equal(o AST) bool {
+	oast, ok := o.(*ASTCond)
+	if !ok {
+		return false
+	}
+	if len(ast.Choices) != len(oast.Choices) {
+		return false
+	}
+	for idx, choice := range ast.Choices {
+		if !choice.Equal(oast.Choices[idx]) {
+			return false
+		}
+	}
+	return ast.Tail == oast.Tail && ast.Captures == oast.Captures
 }
 
 // Bytecode implements AST.Bytecode.
@@ -372,7 +646,8 @@ func (ast *ASTCond) Bytecode(c *Compiler) error {
 			c.addInstr(choice.From, OpPushS, nil, 1)
 
 			// Save value
-			c.addInstr(choice.From, OpLocalSet, nil, choice.FuncValue.Index)
+			c.addInstr(choice.From, OpLocalSet, nil,
+				choice.FuncValueFrame.Index)
 
 			// Compile function.
 			err := choice.Func.Bytecode(c)
@@ -387,8 +662,8 @@ func (ast *ASTCond) Bytecode(c *Compiler) error {
 			c.addInstr(choice.From, OpPushS, nil, 1)
 
 			// Set argument.
-			c.addInstr(choice.From, OpLocal, nil, choice.FuncValue.Index)
-			c.addInstr(choice.From, OpLocalSet, nil, choice.FuncArgs.Index)
+			c.addInstr(choice.From, OpLocal, nil, choice.FuncValueFrame.Index)
+			c.addInstr(choice.From, OpLocalSet, nil, choice.FuncArgsFrame.Index)
 
 			c.addCall(nil, 1, ast.Tail)
 			if !ast.Tail {
@@ -417,7 +692,7 @@ func (ast *ASTCond) Bytecode(c *Compiler) error {
 // ASTCase implements case syntax.
 type ASTCase struct {
 	From        Locator
-	Choices     []ASTCaseChoice
+	Choices     []*ASTCaseChoice
 	ValueFrame  *EnvFrame
 	EqvArgFrame *EnvFrame
 	Expr        AST
@@ -427,15 +702,54 @@ type ASTCase struct {
 
 // ASTCaseChoice implements a case choice.
 type ASTCaseChoice struct {
-	From           Locator
-	Datums         []Value
-	DatumLocations []Locator
-	Exprs          []AST
+	From      Locator
+	Datums    []Value
+	DatumLocs []Locator
+	Exprs     []AST
+}
+
+// Equal test if this choice is equal to the argument choice.
+func (c *ASTCaseChoice) Equal(o *ASTCaseChoice) bool {
+	if len(c.Datums) != len(o.Datums) {
+		return false
+	}
+	for idx, datum := range c.Datums {
+		if !datum.Equal(c.Datums[idx]) {
+			return false
+		}
+	}
+	if len(c.Exprs) != len(o.Exprs) {
+		return false
+	}
+	for idx, expr := range c.Exprs {
+		if !expr.Equal(o.Exprs[idx]) {
+			return false
+		}
+	}
+	return true
 }
 
 // Locator implements AST.Locator.
 func (ast *ASTCase) Locator() Locator {
 	return ast.From
+}
+
+// Equal implements AST.Equal.
+func (ast *ASTCase) Equal(o AST) bool {
+	oast, ok := o.(*ASTCase)
+	if !ok {
+		return false
+	}
+	if len(ast.Choices) != len(oast.Choices) {
+		return false
+	}
+	for idx, choice := range ast.Choices {
+		if !choice.Equal(oast.Choices[idx]) {
+			return false
+		}
+	}
+	return ast.Expr.Equal(oast.Expr) && ast.Tail == oast.Tail &&
+		ast.Captures == oast.Captures
 }
 
 // Bytecode implements AST.Bytecode.
@@ -480,7 +794,7 @@ func (ast *ASTCase) Bytecode(c *Compiler) error {
 			// Compare datums: ((datum1 ...) expr1 expr2...)
 			for idx, datum := range choice.Datums {
 				// (eqv? value datum)
-				from := choice.DatumLocations[idx]
+				from := choice.DatumLocs[idx]
 
 				instr := c.addInstr(from, OpGlobal, nil, 0)
 				instr.Sym = c.scm.Intern("eqv?")
@@ -544,6 +858,20 @@ func (ast *ASTAnd) Locator() Locator {
 	return ast.From
 }
 
+// Equal implements AST.Equal.
+func (ast *ASTAnd) Equal(o AST) bool {
+	oast, ok := o.(*ASTAnd)
+	if !ok {
+		return false
+	}
+	for idx, expr := range ast.Exprs {
+		if !expr.Equal(oast.Exprs[idx]) {
+			return false
+		}
+	}
+	return true
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTAnd) Bytecode(c *Compiler) error {
 	if len(ast.Exprs) == 0 {
@@ -581,6 +909,20 @@ type ASTOr struct {
 // Locator implements AST.Locator.
 func (ast *ASTOr) Locator() Locator {
 	return ast.From
+}
+
+// Equal implements AST.Equal.
+func (ast *ASTOr) Equal(o AST) bool {
+	oast, ok := o.(*ASTOr)
+	if !ok {
+		return false
+	}
+	for idx, expr := range ast.Exprs {
+		if !expr.Equal(oast.Exprs[idx]) {
+			return false
+		}
+	}
+	return true
 }
 
 // Bytecode implements AST.Bytecode.
