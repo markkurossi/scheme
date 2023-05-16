@@ -7,6 +7,8 @@
 package scheme
 
 import (
+	"fmt"
+
 	"github.com/markkurossi/scheme/types"
 )
 
@@ -448,8 +450,30 @@ func (ast *ASTCall) Equal(o AST) bool {
 	return ast.Tail == oast.Tail
 }
 
+var inlineCallTypes = map[Operand]*types.Type{
+	OpCons: &types.Type{
+		Enum: types.EnumPair,
+		Car:  types.Any,
+		Cdr:  types.Any,
+	},
+	OpAdd: types.Number,
+	OpSub: types.Number,
+	OpEq:  types.Boolean,
+	OpLt:  types.Boolean,
+	OpGt:  types.Boolean,
+	OpLe:  types.Boolean,
+	OpGe:  types.Boolean,
+}
+
 // Type implements AST.Type.
 func (ast *ASTCall) Type() *types.Type {
+	if ast.Inline {
+		t, ok := inlineCallTypes[ast.InlineOp]
+		if !ok {
+			panic(fmt.Sprintf("unknown inline operand: %v", ast.InlineOp))
+		}
+		return t
+	}
 	t := ast.Func.Type()
 	if t == nil {
 		return nil
@@ -511,10 +535,22 @@ func (ast *ASTCallUnary) Equal(o AST) bool {
 	return ast.Op == oast.Op && ast.Arg.Equal(oast.Arg)
 }
 
+var inlineUnaryTypes = map[Operand]*types.Type{
+	OpPairp: types.Boolean,
+	OpCar:   types.Any,
+	OpCdr:   types.Any,
+	OpNullp: types.Boolean,
+	OpZerop: types.Boolean,
+	OpNot:   types.Boolean,
+}
+
 // Type implements AST.Type.
 func (ast *ASTCallUnary) Type() *types.Type {
-	// XXX
-	return nil
+	t, ok := inlineUnaryTypes[ast.Op]
+	if !ok {
+		panic(fmt.Sprintf("unknown inline unary operand: %v", ast.Op))
+	}
+	return t
 }
 
 // Bytecode implements AST.Bytecode.
@@ -741,8 +777,21 @@ func (ast *ASTCond) Equal(o AST) bool {
 
 // Type implements AST.Type.
 func (ast *ASTCond) Type() *types.Type {
-	// XXX
-	return nil
+	var t *types.Type
+	var hadDefault bool
+
+	for _, choice := range ast.Choices {
+		if choice.Cond == nil {
+			hadDefault = true
+		}
+		t = types.Unify(t, choice.Exprs[len(choice.Exprs)-1].Type())
+	}
+	if !hadDefault {
+		// No default so value of the last cond (false) is one valid
+		// return value.
+		t = types.Unify(t, types.Boolean)
+	}
+	return t
 }
 
 // Bytecode implements AST.Bytecode.
@@ -888,8 +937,22 @@ func (ast *ASTCase) Equal(o AST) bool {
 
 // Type implements AST.Type.
 func (ast *ASTCase) Type() *types.Type {
-	// XXX
-	return nil
+	var t *types.Type
+	var hadDefault bool
+
+	for _, choice := range ast.Choices {
+		// Else branch has empty list of datums.
+		if len(choice.Datums) == 0 {
+			hadDefault = true
+		}
+		t = types.Unify(t, choice.Exprs[len(choice.Exprs)-1].Type())
+	}
+	if !hadDefault {
+		// No default so value of the last eqv? (false) is one valid
+		// return value.
+		t = types.Unify(t, types.Boolean)
+	}
+	return t
 }
 
 // Bytecode implements AST.Bytecode.
