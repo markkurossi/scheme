@@ -851,8 +851,9 @@ func (scm *Scheme) printStackLimit(limit int) {
 
 var vmBuiltins = []Builtin{
 	{
-		Name: "error",
-		Args: []string{"who", "message", "irritant..."},
+		Name:   "error",
+		Args:   []string{"who", "message", "irritant..."},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			message, ok := args[1].(String)
 			if !ok {
@@ -862,8 +863,9 @@ var vmBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::->scheme",
-		Args: []string{"obj"},
+		Name:   "scheme::->scheme",
+		Args:   []string{"obj"},
+		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return String(ToScheme(args[0])), nil
 		},

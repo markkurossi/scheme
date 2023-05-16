@@ -11,12 +11,15 @@ import (
 	"io"
 	"os"
 	"path"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 var loadBuiltins = []Builtin{
 	{
-		Name: "scheme::load",
-		Args: []string{"caller<string>", "filename<string>"},
+		Name:   "scheme::load",
+		Args:   []string{"caller<string>", "filename<string>"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			caller, ok := args[0].(String)
 			if !ok {
@@ -38,6 +41,14 @@ var loadBuiltins = []Builtin{
 	},
 	{
 		Name: "scheme::stack-trace",
+		Return: &types.Type{
+			Enum: types.EnumList,
+			Element: &types.Type{
+				Enum: types.EnumPair,
+				Car:  types.String,
+				Cdr:  types.InexactInteger,
+			},
+		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			stack := scm.StackTrace()
 
@@ -93,6 +104,7 @@ func (scm *Scheme) Load(source string, in io.Reader) (Value, error) {
 					NewPair(
 						&Lambda{
 							Impl: &LambdaImpl{
+								Return:   types.Any,
 								Source:   library.Source,
 								Code:     library.Init,
 								PCMap:    library.PCMap,

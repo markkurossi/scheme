@@ -69,16 +69,18 @@ func (v Bytevector) String() string {
 
 var rnrsBytevectorBuiltins = []Builtin{
 	{
-		Name: "bytevector?",
-		Args: []string{"obj"},
+		Name:   "bytevector?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(Bytevector)
 			return Boolean(ok), nil
 		},
 	},
 	{
-		Name: "make-bytevector",
-		Args: []string{"k", "[fill<int>]"},
+		Name:   "make-bytevector",
+		Args:   []string{"k", "[fill<int>]"},
+		Return: types.Bytevector,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			length, err := Int64(args[0])
 			if err != nil || length < 0 {
@@ -102,8 +104,9 @@ var rnrsBytevectorBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "bytevector-length",
-		Args: []string{"bytevector"},
+		Name:   "bytevector-length",
+		Args:   []string{"bytevector"},
+		Return: types.InexactInteger,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, ok := args[0].(Bytevector)
 			if !ok {
@@ -113,8 +116,9 @@ var rnrsBytevectorBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "bytevector=?",
-		Args: []string{"bytevector1", "bytevector2"},
+		Name:   "bytevector=?",
+		Args:   []string{"bytevector1", "bytevector2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v1, ok := args[0].(Bytevector)
 			if !ok {
@@ -128,8 +132,9 @@ var rnrsBytevectorBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "bytevector-fill",
-		Args: []string{"bytevector", "fill<int>"},
+		Name:   "bytevector-fill",
+		Args:   []string{"bytevector", "fill<int>"},
+		Return: types.Bytevector,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, ok := args[0].(Bytevector)
 			if !ok {
@@ -154,6 +159,7 @@ var rnrsBytevectorBuiltins = []Builtin{
 			"source<bytevector>", "source-start<int>",
 			"target<bytevector>", "target-start<int>", "k",
 		},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			source, ok := args[0].(Bytevector)
 			if !ok {
@@ -194,8 +200,9 @@ var rnrsBytevectorBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "bytevector-copy",
-		Args: []string{"bytevector"},
+		Name:   "bytevector-copy",
+		Args:   []string{"bytevector"},
+		Return: types.Bytevector,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, ok := args[0].(Bytevector)
 			if !ok {
@@ -208,8 +215,9 @@ var rnrsBytevectorBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "bytevector-u8-ref",
-		Args: []string{"bytevector", "k"},
+		Name:   "bytevector-u8-ref",
+		Args:   []string{"bytevector", "k"},
+		Return: types.InexactInteger,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, ok := args[0].(Bytevector)
 			if !ok {
@@ -227,8 +235,9 @@ var rnrsBytevectorBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "bytevector-s8-ref",
-		Args: []string{"bytevector", "k"},
+		Name:   "bytevector-s8-ref",
+		Args:   []string{"bytevector", "k"},
+		Return: types.InexactInteger,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, ok := args[0].(Bytevector)
 			if !ok {

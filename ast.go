@@ -451,7 +451,7 @@ func (ast *ASTCall) Equal(o AST) bool {
 }
 
 var inlineCallTypes = map[Operand]*types.Type{
-	OpCons: &types.Type{
+	OpCons: {
 		Enum: types.EnumPair,
 		Car:  types.Any,
 		Cdr:  types.Any,
@@ -475,8 +475,8 @@ func (ast *ASTCall) Type() *types.Type {
 		return t
 	}
 	t := ast.Func.Type()
-	if t == nil {
-		return nil
+	if t.Enum != types.EnumLambda {
+		return types.Unspecified
 	}
 	return t.Return
 }
@@ -658,6 +658,10 @@ func (ast *ASTConstant) Equal(o AST) bool {
 
 // Type implements AST.Type.
 func (ast *ASTConstant) Type() *types.Type {
+	if ast.Value == nil {
+		// XXX nil type needed...
+		return types.Any
+	}
 	return ast.Value.Type()
 }
 
@@ -700,7 +704,7 @@ func (ast *ASTIdentifier) Equal(o AST) bool {
 // Type implements AST.Type.
 func (ast *ASTIdentifier) Type() *types.Type {
 	// XXX
-	return nil
+	return types.Unspecified
 }
 
 // Bytecode implements AST.Bytecode.
@@ -710,8 +714,7 @@ func (ast *ASTIdentifier) Bytecode(c *Compiler) error {
 			c.addInstr(ast.From, OpLocal, nil,
 				ast.Binding.Frame.Index+ast.Binding.Index)
 		} else {
-			instr := c.addInstr(ast.From, OpEnv, nil,
-				ast.Binding.Frame.Index)
+			instr := c.addInstr(ast.From, OpEnv, nil, ast.Binding.Frame.Index)
 			instr.J = ast.Binding.Index
 		}
 	} else {

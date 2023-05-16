@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strings"
 	"unicode"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // rnrs unicode (6)
@@ -17,8 +19,9 @@ import (
 var rnrsUnicodeBuiltins = []Builtin{
 	// 1.1. Characters
 	{
-		Name: "char-upcase",
-		Args: []string{"char"},
+		Name:   "char-upcase",
+		Args:   []string{"char"},
+		Return: types.Character,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
@@ -28,8 +31,9 @@ var rnrsUnicodeBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "char-downcase",
-		Args: []string{"char"},
+		Name:   "char-downcase",
+		Args:   []string{"char"},
+		Return: types.Character,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
@@ -39,8 +43,9 @@ var rnrsUnicodeBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "char-titlecase",
-		Args: []string{"char"},
+		Name:   "char-titlecase",
+		Args:   []string{"char"},
+		Return: types.Character,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
@@ -51,8 +56,9 @@ var rnrsUnicodeBuiltins = []Builtin{
 	},
 	// XXX char-foldcase
 	{
-		Name: "char-alphabetic?",
-		Args: []string{"char"},
+		Name:   "char-alphabetic?",
+		Args:   []string{"char"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
@@ -62,8 +68,9 @@ var rnrsUnicodeBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "char-numeric?",
-		Args: []string{"char"},
+		Name:   "char-numeric?",
+		Args:   []string{"char"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
@@ -73,8 +80,9 @@ var rnrsUnicodeBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "char-whitespace?",
-		Args: []string{"char"},
+		Name:   "char-whitespace?",
+		Args:   []string{"char"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
@@ -84,8 +92,9 @@ var rnrsUnicodeBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "char-upper-case?",
-		Args: []string{"char"},
+		Name:   "char-upper-case?",
+		Args:   []string{"char"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
@@ -95,8 +104,9 @@ var rnrsUnicodeBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "char-lower-case?",
-		Args: []string{"char"},
+		Name:   "char-lower-case?",
+		Args:   []string{"char"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
@@ -106,8 +116,9 @@ var rnrsUnicodeBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "char-title-case?",
-		Args: []string{"char"},
+		Name:   "char-title-case?",
+		Args:   []string{"char"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
@@ -120,8 +131,9 @@ var rnrsUnicodeBuiltins = []Builtin{
 
 	// 1.2. Strings
 	{
-		Name: "string-upcase",
-		Args: []string{"string"},
+		Name:   "string-upcase",
+		Args:   []string{"string"},
+		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			str, ok := args[0].(String)
 			if !ok {
@@ -131,8 +143,9 @@ var rnrsUnicodeBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "string-downcase",
-		Args: []string{"string"},
+		Name:   "string-downcase",
+		Args:   []string{"string"},
+		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			str, ok := args[0].(String)
 			if !ok {
@@ -142,8 +155,9 @@ var rnrsUnicodeBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "string-titlecase",
-		Args: []string{"string"},
+		Name:   "string-titlecase",
+		Args:   []string{"string"},
+		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			str, ok := args[0].(String)
 			if !ok {

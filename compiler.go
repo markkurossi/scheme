@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // Compiler implements the byte-code compiler.
@@ -252,6 +254,7 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 			instr.V = &LambdaImpl{
 				Name:     name,
 				Args:     def.Args,
+				Return:   def.Body[len(def.Body)-1].Type(),
 				Captures: def.Captures,
 				Source:   c.source,
 				Code:     c.code[def.Start:def.End],
@@ -717,6 +720,7 @@ func (c *Compiler) astLambda(env *Env, define bool, flags Flags,
 		}
 		args.Rest = &TypedName{
 			Name: arg.Name,
+			Type: types.Unspecified,
 		}
 	} else {
 		var pair Pair
@@ -741,6 +745,7 @@ func (c *Compiler) astLambda(env *Env, define bool, flags Flags,
 				}
 				args.Fixed = append(args.Fixed, &TypedName{
 					Name: arg.Name,
+					Type: types.Unspecified,
 				})
 			}
 
@@ -753,6 +758,7 @@ func (c *Compiler) astLambda(env *Env, define bool, flags Flags,
 				}
 				args.Rest = &TypedName{
 					Name: arg.Name,
+					Type: types.Unspecified,
 				}
 				break
 			}

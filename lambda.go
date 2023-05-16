@@ -42,12 +42,10 @@ func (v *Lambda) Equal(o Value) bool {
 
 // Type implements the Value.Type().
 func (v *Lambda) Type() *types.Type {
+	fmt.Printf("*** Lambda.Type: v.Impl.Return=%v\n", v.Impl.Return)
 	t := &types.Type{
 		Enum:   types.EnumLambda,
-		Return: v.Impl.Body[len(v.Impl.Body)-1].Type(),
-	}
-	if t.Return == nil {
-		t.Return = types.Any
+		Return: v.Impl.Return,
 	}
 	for _, arg := range v.Impl.Args.Fixed {
 		if arg.Type == nil {
@@ -90,6 +88,7 @@ func (v *Lambda) MapPC(pc int) (source string, line int) {
 type LambdaImpl struct {
 	Name     string
 	Args     Args
+	Return   *types.Type
 	Captures bool
 	Capture  *VMEnvFrame
 	Native   Native
@@ -132,6 +131,7 @@ func (v *LambdaImpl) Signature(body bool) string {
 		str.WriteString(" ...")
 	}
 	str.WriteRune(')')
+	str.WriteString(v.Return.String())
 
 	return str.String()
 }
@@ -276,8 +276,7 @@ type Builtin struct {
 	Name    string
 	Aliases []string
 	Args    []string
+	Return  *types.Type
 	Flags   Flags
-	MinArgs int
-	MaxArgs int
 	Native  Native
 }

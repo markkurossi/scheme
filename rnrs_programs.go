@@ -11,11 +11,17 @@ package scheme
 import (
 	"fmt"
 	"os"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 var rnrsProgramsBuiltins = []Builtin{
 	{
 		Name: "command-line",
+		Return: &types.Type{
+			Enum:    types.EnumList,
+			Element: types.String,
+		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var head, tail Pair
 
@@ -32,8 +38,9 @@ var rnrsProgramsBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "exit",
-		Args: []string{"[obj]"},
+		Name:   "exit",
+		Args:   []string{"[obj]"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			code := 0
 			if len(args) == 1 {
@@ -58,8 +65,9 @@ var rnrsProgramsBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "getenv",
-		Args: []string{"name<string>"},
+		Name:   "getenv",
+		Args:   []string{"name<string>"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			name, ok := args[0].(String)
 			if !ok {

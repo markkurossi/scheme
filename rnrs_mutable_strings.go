@@ -10,12 +10,15 @@ package scheme
 
 import (
 	"fmt"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 var rnrsMutableStringsBuiltins = []Builtin{
 	{
-		Name: "string-set!",
-		Args: []string{"string", "k", "char"},
+		Name:   "string-set!",
+		Args:   []string{"string", "k", "char"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			str, ok := args[0].(String)
 			if !ok {

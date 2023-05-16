@@ -21,10 +21,10 @@ const (
 
 var debugBuiltins = []Builtin{
 	{
-		Name: "print-env",
-		Args: []string{"sym..."},
+		Name:   "print-env",
+		Args:   []string{"sym..."},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-
 			var flags int
 
 			if len(args) == 0 {
@@ -101,8 +101,9 @@ var debugBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "disassemble",
-		Args: []string{"obj"},
+		Name:   "disassemble",
+		Args:   []string{"obj"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch arg := args[0].(type) {
 			case *Lambda:
@@ -120,8 +121,9 @@ var debugBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "type",
-		Args: []string{"obj"},
+		Name:   "type",
+		Args:   []string{"obj"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			if args[0] == nil {
 				scm.Stdout.Println("nil")

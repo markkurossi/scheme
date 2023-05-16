@@ -143,16 +143,18 @@ func CharacterToScheme(r rune) string {
 var characterBuiltins = []Builtin{
 	// rnrs
 	{
-		Name: "char?",
-		Args: []string{"obj"},
+		Name:   "char?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(Character)
 			return Boolean(ok), nil
 		},
 	},
 	{
-		Name: "char->integer",
-		Args: []string{"obj"},
+		Name:   "char->integer",
+		Args:   []string{"obj"},
+		Return: types.InexactInteger,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
@@ -162,8 +164,9 @@ var characterBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "integer->char",
-		Args: []string{"obj"},
+		Name:   "integer->char",
+		Args:   []string{"obj"},
+		Return: types.Character,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			n, err := Int64(args[0])
 			if err != nil {
@@ -173,8 +176,9 @@ var characterBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::char=?",
-		Args: []string{"char1", "char2"},
+		Name:   "scheme::char=?",
+		Args:   []string{"char1", "char2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			char1, ok := args[0].(Character)
 			if !ok {
@@ -188,8 +192,9 @@ var characterBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::char<?",
-		Args: []string{"char1", "char2"},
+		Name:   "scheme::char<?",
+		Args:   []string{"char1", "char2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			char1, ok := args[0].(Character)
 			if !ok {
@@ -203,8 +208,9 @@ var characterBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::char>?",
-		Args: []string{"char1", "char2"},
+		Name:   "scheme::char>?",
+		Args:   []string{"char1", "char2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			char1, ok := args[0].(Character)
 			if !ok {

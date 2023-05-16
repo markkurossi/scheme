@@ -304,8 +304,9 @@ func bit(z Value, i int) (uint, error) {
 
 var numberBuiltins = []Builtin{
 	{
-		Name: "number?",
-		Args: []string{"obj"},
+		Name:   "number?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch args[0].(type) {
 			case Int, *BigInt:
@@ -320,8 +321,9 @@ var numberBuiltins = []Builtin{
 	// XXX real?
 	// XXX rational?
 	{
-		Name: "integer?",
-		Args: []string{"obj"},
+		Name:   "integer?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch args[0].(type) {
 			case Int, *BigInt:
@@ -336,8 +338,9 @@ var numberBuiltins = []Builtin{
 	// XXX rational-valued?
 	// XXX integer-valued?
 	{
-		Name: "exact?",
-		Args: []string{"obj"},
+		Name:   "exact?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch args[0].(type) {
 			case *BigInt:
@@ -349,8 +352,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "inexact?",
-		Args: []string{"obj"},
+		Name:   "inexact?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch args[0].(type) {
 			case Int:
@@ -364,8 +368,9 @@ var numberBuiltins = []Builtin{
 	// XXX inexact
 	// XXX exact
 	{
-		Name: "scheme::=",
-		Args: []string{"z1", "z2"},
+		Name:   "scheme::=",
+		Args:   []string{"z1", "z2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, err := numEq(args[0], args[1])
 			if err != nil {
@@ -375,8 +380,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::<",
-		Args: []string{"x1", "x2"},
+		Name:   "scheme::<",
+		Args:   []string{"x1", "x2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, err := numLt(args[0], args[1])
 			if err != nil {
@@ -386,8 +392,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::>",
-		Args: []string{"x1", "x2"},
+		Name:   "scheme::>",
+		Args:   []string{"x1", "x2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, err := numGt(args[0], args[1])
 			if err != nil {
@@ -397,16 +404,18 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name:  "zero?",
-		Args:  []string{"z"},
-		Flags: FlagConst,
+		Name:   "zero?",
+		Args:   []string{"z"},
+		Return: types.Boolean,
+		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return zero(args[0])
 		},
 	},
 	{
-		Name: "odd?",
-		Args: []string{"z"},
+		Name:   "odd?",
+		Args:   []string{"z"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			bit, err := bit(args[0], 0)
 			if err != nil {
@@ -416,8 +425,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "even?",
-		Args: []string{"z"},
+		Name:   "even?",
+		Args:   []string{"z"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			bit, err := bit(args[0], 0)
 			if err != nil {
@@ -427,9 +437,10 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name:  "+",
-		Args:  []string{"z1..."},
-		Flags: FlagConst,
+		Name:   "+",
+		Args:   []string{"z1..."},
+		Return: types.Number,
+		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			if len(args) == 0 {
 				return Int(0), nil
@@ -457,8 +468,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::*",
-		Args: []string{"z1", "z2"},
+		Name:   "scheme::*",
+		Args:   []string{"z1", "z2"},
+		Return: types.Number,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v1 := args[0].(type) {
 			case Int:
@@ -493,9 +505,10 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name:  "-",
-		Args:  []string{"z1", "z2..."},
-		Flags: FlagConst,
+		Name:   "-",
+		Args:   []string{"z1", "z2..."},
+		Return: types.Number,
+		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var diff Value
 			var err error
@@ -530,8 +543,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::/",
-		Args: []string{"z1", "z2"},
+		Name:   "scheme::/",
+		Args:   []string{"z1", "z2"},
+		Return: types.Number,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v1 := args[0].(type) {
 			case Int:
@@ -569,6 +583,7 @@ var numberBuiltins = []Builtin{
 		Name:    "mod",
 		Aliases: []string{"modulo"},
 		Args:    []string{"z1", "z2"},
+		Return:  types.Number,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v1 := args[0].(type) {
 			case Int:
@@ -603,8 +618,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "sqrt",
-		Args: []string{"z"},
+		Name:   "sqrt",
+		Args:   []string{"z"},
+		Return: types.Number,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v := args[0].(type) {
 			case Int:
@@ -621,8 +637,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "expt",
-		Args: []string{"z1", "z2"},
+		Name:   "expt",
+		Args:   []string{"z1", "z2"},
+		Return: types.Number,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v1 := args[0].(type) {
 			case Int:
@@ -659,8 +676,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "number->string",
-		Args: []string{"z", "[radix<int>]", "[precision<int>]"},
+		Name:   "number->string",
+		Args:   []string{"z", "[radix<int>]", "[precision<int>]"},
+		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var radix int = 10
 			var precision int
@@ -702,8 +720,9 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "string->number",
-		Args: []string{"string", "[radix<int>]"},
+		Name:   "string->number",
+		Args:   []string{"string", "[radix<int>]"},
+		Return: types.Number,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var radix int
 

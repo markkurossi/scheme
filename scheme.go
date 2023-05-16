@@ -144,6 +144,10 @@ func (scm *Scheme) DefineBuiltins(builtins []Builtin) {
 // DefineBuiltin defines a built-in native function.
 func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 
+	if builtin.Return == nil {
+		panic(fmt.Sprintf("builtin %v: no return type defined", builtin.Name))
+	}
+
 	var minArgs, maxArgs int
 	var usage []*TypedName
 	var rest bool
@@ -181,6 +185,7 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 		Impl: &LambdaImpl{
 			Name:   builtin.Name,
 			Args:   args,
+			Return: builtin.Return,
 			Native: builtin.Native,
 		},
 	}
@@ -193,6 +198,7 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 			Impl: &LambdaImpl{
 				Name:   alias,
 				Args:   args,
+				Return: builtin.Return,
 				Native: builtin.Native,
 			},
 		}

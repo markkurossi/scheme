@@ -12,12 +12,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 var rnrsFilesBuiltins = []Builtin{
 	{
-		Name: "file-exists?",
-		Args: []string{"filename<string>"},
+		Name:   "file-exists?",
+		Args:   []string{"filename<string>"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			filename, ok := args[0].(String)
 			if !ok {
@@ -28,8 +31,9 @@ var rnrsFilesBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "delete-file",
-		Args: []string{"filename<string>"},
+		Name:   "delete-file",
+		Args:   []string{"filename<string>"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			filename, ok := args[0].(String)
 			if !ok {

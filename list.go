@@ -350,26 +350,33 @@ func Cdr(pair Value, ok bool) (Value, bool) {
 
 var listBuiltins = []Builtin{
 	{
-		Name:  "pair?",
-		Args:  []string{"obj"},
-		Flags: FlagConst,
+		Name:   "pair?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
+		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(Pair)
 			return Boolean(ok), nil
 		},
 	},
 	{
-		Name:  "cons",
-		Args:  []string{"obj1", "obj2"},
+		Name: "cons",
+		Args: []string{"obj1", "obj2"},
+		Return: &types.Type{
+			Enum: types.EnumPair,
+			Car:  types.Any,
+			Cdr:  types.Any,
+		},
 		Flags: FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return NewPair(args[0], args[1]), nil
 		},
 	},
 	{
-		Name:  "car",
-		Args:  []string{"pair"},
-		Flags: FlagConst,
+		Name:   "car",
+		Args:   []string{"pair"},
+		Return: types.Any,
+		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
@@ -379,9 +386,10 @@ var listBuiltins = []Builtin{
 		},
 	},
 	{
-		Name:  "cdr",
-		Args:  []string{"pair"},
-		Flags: FlagConst,
+		Name:   "cdr",
+		Args:   []string{"pair"},
+		Return: types.Any,
+		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
@@ -391,9 +399,10 @@ var listBuiltins = []Builtin{
 		},
 	},
 	{
-		Name:  "null?",
-		Args:  []string{"obj"},
-		Flags: FlagConst,
+		Name:   "null?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
+		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return Boolean(args[0] == nil), nil
 		},

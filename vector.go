@@ -76,8 +76,9 @@ func (v Vector) String() string {
 
 var vectorBuiltins = []Builtin{
 	{
-		Name: "vector?",
-		Args: []string{"obj"},
+		Name:   "vector?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(Vector)
 			return Boolean(ok), nil
@@ -86,6 +87,10 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "make-vector",
 		Args: []string{"k", "[fill<any>]"},
+		Return: &types.Type{
+			Enum:    types.EnumVector,
+			Element: types.Any,
+		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			length, err := Int64(args[0])
 			if err != nil || length < 0 {
@@ -107,6 +112,10 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "vector",
 		Args: []string{"obj..."},
+		Return: &types.Type{
+			Enum:    types.EnumVector,
+			Element: types.Any,
+		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v := make([]Value, len(args))
 			copy(v, args)
@@ -114,8 +123,9 @@ var vectorBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "vector-length",
-		Args: []string{"vector"},
+		Name:   "vector-length",
+		Args:   []string{"vector"},
+		Return: types.InexactInteger,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			v, ok := args[0].(Vector)
 			if !ok {
@@ -125,8 +135,9 @@ var vectorBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "vector-ref",
-		Args: []string{"vector", "k"},
+		Name:   "vector-ref",
+		Args:   []string{"vector", "k"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			vector, ok := args[0].(Vector)
 			if !ok {
@@ -146,6 +157,10 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "vector-set!",
 		Args: []string{"vector", "k", "obj"},
+		Return: &types.Type{
+			Enum:    types.EnumVector,
+			Element: types.Any,
+		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			vector, ok := args[0].(Vector)
 			if !ok {
@@ -166,6 +181,10 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "vector->list",
 		Args: []string{"vector"},
+		Return: &types.Type{
+			Enum:    types.EnumList,
+			Element: types.Any,
+		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			vector, ok := args[0].(Vector)
 			if !ok {
@@ -182,6 +201,10 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "list->vector",
 		Args: []string{"list"},
+		Return: &types.Type{
+			Enum:    types.EnumVector,
+			Element: types.Any,
+		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var elements []Value
 			err := Map(func(idx int, v Value) error {
@@ -197,6 +220,10 @@ var vectorBuiltins = []Builtin{
 	{
 		Name: "vector-fill!",
 		Args: []string{"vector", "fill<any>"},
+		Return: &types.Type{
+			Enum:    types.EnumVector,
+			Element: types.Any,
+		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			vector, ok := args[0].(Vector)
 			if !ok {

@@ -8,20 +8,24 @@ package scheme
 
 import (
 	"fmt"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 var symbolBuiltins = []Builtin{
 	{
-		Name: "symbol?",
-		Args: []string{"obj"},
+		Name:   "symbol?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(*Identifier)
 			return Boolean(ok), nil
 		},
 	},
 	{
-		Name: "symbol->string",
-		Args: []string{"symbol"},
+		Name:   "symbol->string",
+		Args:   []string{"symbol"},
+		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			id, ok := args[0].(*Identifier)
 			if !ok {
@@ -31,8 +35,9 @@ var symbolBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "symbol=?",
-		Args: []string{"symbol1", "symbol2", "symbol3..."},
+		Name:   "symbol=?",
+		Args:   []string{"symbol1", "symbol2", "symbol3..."},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var last *Identifier
 
@@ -50,8 +55,9 @@ var symbolBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "string->symbol",
-		Args: []string{"string"},
+		Name:   "string->symbol",
+		Args:   []string{"string"},
+		Return: types.Symbol,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			str, ok := args[0].(String)
 			if !ok {

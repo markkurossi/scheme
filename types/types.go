@@ -17,7 +17,8 @@ type Enum int
 
 // Known type values.
 const (
-	EnumAny Enum = iota
+	EnumUnspecified Enum = iota
+	EnumAny
 	EnumBoolean
 	EnumString
 	EnumCharacter
@@ -36,6 +37,7 @@ const (
 )
 
 var enumNames = map[Enum]string{
+	EnumUnspecified:    "unspecified",
 	EnumAny:            "any",
 	EnumBoolean:        "bool",
 	EnumString:         "string",
@@ -65,6 +67,9 @@ func (e Enum) String() string {
 // Super returns the type enum's supertype.
 func (e Enum) Super() Enum {
 	switch e {
+	case EnumUnspecified:
+		return EnumUnspecified
+
 	case EnumAny, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
 		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair,
 		EnumList, EnumVector:
@@ -87,6 +92,10 @@ func (e Enum) Super() Enum {
 // Unify resolves the closest supertype of this and the argument
 // enum.
 func (e Enum) Unify(o Enum) Enum {
+	if e == EnumUnspecified || o == EnumUnspecified {
+		return EnumUnspecified
+	}
+
 	for eIter := e; ; eIter = eIter.Super() {
 		for oIter := o; ; oIter = oIter.Super() {
 			if eIter == oIter {
@@ -175,7 +184,8 @@ func Parse(arg string) (*Type, string, Kind, error) {
 		strings.HasPrefix(typeName, "end") {
 		return InexactInteger, name, kind, nil
 	} else {
-		return nil, name, kind, fmt.Errorf("unsupported argument: %v", arg)
+		return Unspecified, name, kind,
+			fmt.Errorf("unsupported argument: %v", arg)
 	}
 }
 
@@ -209,22 +219,10 @@ func (t *Type) String() string {
 		return result + ")" + t.Return.String()
 
 	case EnumPair:
-		carType := t.Car
-		if carType == nil {
-			carType = Any
-		}
-		cdrType := t.Cdr
-		if cdrType == nil {
-			cdrType = Any
-		}
-		return result + "(" + carType.String() + "," + cdrType.String() + ")"
+		return result + "(" + t.Car.String() + "," + t.Cdr.String() + ")"
 
 	case EnumList, EnumVector:
-		et := t.Element
-		if et == nil {
-			et = Any
-		}
-		return result + "(" + et.String() + ")"
+		return result + "(" + t.Element.String() + ")"
 
 	default:
 		return result
@@ -233,6 +231,9 @@ func (t *Type) String() string {
 
 // Basic types.
 var (
+	Unspecified = &Type{
+		Enum: EnumUnspecified,
+	}
 	Any = &Type{
 		Enum: EnumAny,
 	}
@@ -309,6 +310,10 @@ func (t *Type) IsA(o *Type) bool {
 
 // IsKindOf tests if type is kind of the argument type.
 func (t *Type) IsKindOf(o *Type) bool {
+	if t.Enum == EnumUnspecified || o.Enum == EnumUnspecified {
+		return true
+	}
+
 	e := t.Enum
 	for {
 		if e == o.Enum {
