@@ -9,6 +9,8 @@ package scheme
 import (
 	"fmt"
 	"strings"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // Vector implements vector values.
@@ -43,6 +45,19 @@ func (v Vector) Equal(o Value) bool {
 		}
 	}
 	return true
+}
+
+// Type implements the Value.Type().
+func (v Vector) Type() *types.Type {
+	t := &types.Type{
+		Enum: types.EnumVector,
+	}
+	for _, el := range v {
+		if el != nil {
+			t.Element = types.Unify(t.Element, el.Type())
+		}
+	}
+	return t
 }
 
 func (v Vector) String() string {

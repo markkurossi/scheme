@@ -500,7 +500,7 @@ func (c *Compiler) astValue(env *Env, loc Locator, value Value,
 		// Vector literals must be quoted like list constants.
 		return nil, loc.Errorf("invalid syntax: %v", v)
 
-	case ByteVector, Boolean, String, Character, Int, *BigInt:
+	case Bytevector, Boolean, String, Character, Int, *BigInt:
 		return &ASTConstant{
 			From:  loc,
 			Value: v,
@@ -924,7 +924,7 @@ func (c *Compiler) astLet(kind Keyword, env *Env, list []Pair,
 
 	ast := &ASTLet{
 		From:     list[0],
-		Type:     kind,
+		Kind:     kind,
 		Captures: captures,
 		Tail:     tail,
 	}

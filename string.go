@@ -9,6 +9,8 @@ package scheme
 import (
 	"fmt"
 	"strings"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // String implements string values.
@@ -38,6 +40,11 @@ func (v String) Eq(o Value) bool {
 func (v String) Equal(o Value) bool {
 	ov, ok := o.(String)
 	return ok && v == ov
+}
+
+// Type implements the Value.Type().
+func (v String) Type() *types.Type {
+	return types.String
 }
 
 func (v String) String() string {

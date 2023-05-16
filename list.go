@@ -10,12 +10,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 var (
-	_ Pair  = &PlainPair{}
-	_ Pair  = &LocationPair{}
-	_ Value = &PlainPair{}
+	_ Pair = &PlainPair{}
+	_ Pair = &LocationPair{}
 )
 
 // Pair implements a Scheme pair.
@@ -28,6 +29,7 @@ type Pair interface {
 	Scheme() string
 	Eq(o Value) bool
 	Equal(o Value) bool
+	Type() *types.Type
 }
 
 // PlainPair implements a Scheme pair with car and cdr values.
@@ -100,6 +102,32 @@ func (pair *PlainPair) Eq(o Value) bool {
 func (pair *PlainPair) Equal(o Value) bool {
 	ov, ok := o.(Pair)
 	return ok && Equal(pair.car, ov.Car()) && Equal(pair.cdr, ov.Cdr())
+}
+
+// Type implements the Value.Type().
+func (pair *PlainPair) Type() *types.Type {
+	var t *types.Type
+
+	err := Map(func(idx int, v Value) error {
+		t = types.Unify(t, v.Type())
+		return nil
+	}, pair)
+	if err == nil {
+		return &types.Type{
+			Enum:    types.EnumList,
+			Element: t,
+		}
+	}
+
+	t = &types.Type{
+		Enum: types.EnumPair,
+	}
+	if pair.car != nil {
+		t.Car = pair.car.Type()
+	}
+	t.Cdr = types.Any
+
+	return t
 }
 
 func (pair *PlainPair) String() string {

@@ -175,7 +175,7 @@ func (p *Parser) Next() (Value, error) {
 			}
 			switch t.Type {
 			case ')':
-				return ByteVector(elements), nil
+				return Bytevector(elements), nil
 
 			case TNumber:
 				v, err := Int64(t.Number)

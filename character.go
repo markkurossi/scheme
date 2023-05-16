@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strconv"
 	"unicode"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // Character implements character values.
@@ -29,6 +31,11 @@ func (v Character) Eq(o Value) bool {
 func (v Character) Equal(o Value) bool {
 	ch, ok := o.(Character)
 	return ok && v == ch
+}
+
+// Type implements the Value.Type().
+func (v Character) Type() *types.Type {
+	return types.Character
 }
 
 func (v Character) String() string {

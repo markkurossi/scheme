@@ -8,6 +8,8 @@ package scheme
 
 import (
 	"fmt"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // Boolean implements boolean values.
@@ -37,6 +39,11 @@ func (v Boolean) Eq(o Value) bool {
 func (v Boolean) Equal(o Value) bool {
 	ov, ok := o.(Boolean)
 	return ok && v == ov
+}
+
+// Type implements the Value.Type().
+func (v Boolean) Type() *types.Type {
+	return types.Boolean
 }
 
 func (v Boolean) String() string {

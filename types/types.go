@@ -209,10 +209,22 @@ func (t *Type) String() string {
 		return result + ")" + t.Return.String()
 
 	case EnumPair:
-		return result + "(" + t.Car.String() + "," + t.Cdr.String() + ")"
+		carType := t.Car
+		if carType == nil {
+			carType = Any
+		}
+		cdrType := t.Cdr
+		if cdrType == nil {
+			cdrType = Any
+		}
+		return result + "(" + carType.String() + "," + cdrType.String() + ")"
 
-	case EnumList:
-		return result + "(" + t.Element.String() + ")"
+	case EnumList, EnumVector:
+		et := t.Element
+		if et == nil {
+			et = Any
+		}
+		return result + "(" + et.String() + ")"
 
 	default:
 		return result

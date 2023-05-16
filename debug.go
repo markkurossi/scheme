@@ -9,6 +9,8 @@ package scheme
 import (
 	"fmt"
 	"sort"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 const (
@@ -113,6 +115,22 @@ var debugBuiltins = []Builtin{
 
 			default:
 				scm.Stdout.Printf("value: %v\n", arg)
+			}
+			return nil, nil
+		},
+	},
+	{
+		Name: "type",
+		Args: []string{"obj"},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			if args[0] == nil {
+				scm.Stdout.Println("nil")
+			} else {
+				t := args[0].Type()
+				if t == nil {
+					t = types.Any
+				}
+				scm.Stdout.Printf("%v\n", t)
 			}
 			return nil, nil
 		},

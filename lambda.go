@@ -40,6 +40,32 @@ func (v *Lambda) Equal(o Value) bool {
 	return v.Impl.Equal(ov.Impl)
 }
 
+// Type implements the Value.Type().
+func (v *Lambda) Type() *types.Type {
+	t := &types.Type{
+		Enum:   types.EnumLambda,
+		Return: v.Impl.Body[len(v.Impl.Body)-1].Type(),
+	}
+	if t.Return == nil {
+		t.Return = types.Any
+	}
+	for _, arg := range v.Impl.Args.Fixed {
+		if arg.Type == nil {
+			t.Args = append(t.Args, types.Any)
+		} else {
+			t.Args = append(t.Args, arg.Type)
+		}
+	}
+	if v.Impl.Args.Rest != nil {
+		if v.Impl.Args.Rest.Type == nil {
+			t.Rest = types.Any
+		} else {
+			t.Rest = v.Impl.Args.Rest.Type
+		}
+	}
+	return t
+}
+
 func (v *Lambda) String() string {
 	return v.Impl.Signature(false)
 }
@@ -142,6 +168,11 @@ func (v *LambdaImpl) Equal(o Value) bool {
 		}
 	}
 	return true
+}
+
+// Type implements the Value.Type().
+func (v *LambdaImpl) Type() *types.Type {
+	return nil
 }
 
 // Args specify lambda arguments.

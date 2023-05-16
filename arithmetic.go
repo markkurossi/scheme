@@ -13,6 +13,8 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // NewNumber creates a new numeric value.
@@ -33,13 +35,6 @@ func NewNumber(base int, value interface{}) Value {
 		panic(fmt.Sprintf("unsupported number: %v(%T)", v, v))
 	}
 }
-
-var (
-	_ Value = Int(0)
-	_ Value = &BigInt{
-		I: big.NewInt(0),
-	}
-)
 
 // Int implements inexact integer numbers.
 type Int int64
@@ -74,6 +69,11 @@ func (v Int) Equal(o Value) bool {
 	default:
 		return false
 	}
+}
+
+// Type implements Value.Type.
+func (v Int) Type() *types.Type {
+	return types.InexactInteger
 }
 
 // BigInt implements exact integer numbers.
@@ -111,6 +111,11 @@ func (v *BigInt) Equal(o Value) bool {
 	default:
 		return false
 	}
+}
+
+// Type implements Value.Type.
+func (v *BigInt) Type() *types.Type {
+	return types.ExactInteger
 }
 
 // Int64 returns the number value as int64 integer number. The

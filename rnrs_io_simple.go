@@ -9,6 +9,8 @@ package scheme
 import (
 	"fmt"
 	"io"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // Port implements Scheme ports.
@@ -71,6 +73,11 @@ func (p *Port) Eq(o Value) bool {
 // Equal tests if the argument value is equal to this number.
 func (p *Port) Equal(o Value) bool {
 	return p.Eq(o)
+}
+
+// Type implements Value.Type.
+func (p *Port) Type() *types.Type {
+	return types.Port
 }
 
 var rnrsIOSimpleBuiltins = []Builtin{

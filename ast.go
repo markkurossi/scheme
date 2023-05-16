@@ -6,10 +6,15 @@
 
 package scheme
 
+import (
+	"github.com/markkurossi/scheme/types"
+)
+
 // AST defines an abstract syntax tree entry
 type AST interface {
 	Locator() Locator
 	Equal(o AST) bool
+	Type() *types.Type
 	Bytecode(c *Compiler) error
 }
 
@@ -59,6 +64,14 @@ func (ast *ASTSequence) Equal(o AST) bool {
 	return true
 }
 
+// Type implements AST.Type.
+func (ast *ASTSequence) Type() *types.Type {
+	if len(ast.Items) == 0 {
+		return nil
+	}
+	return ast.Items[len(ast.Items)-1].Type()
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTSequence) Bytecode(c *Compiler) error {
 	for _, item := range ast.Items {
@@ -92,6 +105,11 @@ func (ast *ASTDefine) Equal(o AST) bool {
 	return ast.Name.Name == oast.Name.Name &&
 		ast.Flags == oast.Flags &&
 		ast.Value.Equal(oast.Value)
+}
+
+// Type implements AST.Type.
+func (ast *ASTDefine) Type() *types.Type {
+	return ast.Value.Type()
 }
 
 // Bytecode implements AST.Bytecode.
@@ -134,6 +152,11 @@ func (ast *ASTSet) Equal(o AST) bool {
 	return ast.Name == oast.Name && ast.Value.Equal(oast.Value)
 }
 
+// Type implements AST.Type.
+func (ast *ASTSet) Type() *types.Type {
+	return ast.Value.Type()
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTSet) Bytecode(c *Compiler) error {
 	err := ast.Value.Bytecode(c)
@@ -161,7 +184,7 @@ func (ast *ASTSet) Bytecode(c *Compiler) error {
 // ASTLet implements let syntaxes.
 type ASTLet struct {
 	From     Locator
-	Type     Keyword
+	Kind     Keyword
 	Captures bool
 	Tail     bool
 	Bindings []*ASTLetBinding
@@ -186,7 +209,7 @@ func (ast *ASTLet) Equal(o AST) bool {
 	if !ok {
 		return false
 	}
-	if ast.Type != oast.Type || ast.Captures != oast.Captures ||
+	if ast.Kind != oast.Kind || ast.Captures != oast.Captures ||
 		ast.Tail != oast.Tail || len(ast.Bindings) != len(oast.Bindings) ||
 		len(ast.Body) != len(oast.Body) {
 		return false
@@ -203,6 +226,11 @@ func (ast *ASTLet) Equal(o AST) bool {
 		}
 	}
 	return true
+}
+
+// Type implements AST.Type.
+func (ast *ASTLet) Type() *types.Type {
+	return ast.Body[len(ast.Body)-1].Type()
 }
 
 // Bytecode implements AST.Bytecode.
@@ -275,6 +303,15 @@ func (ast *ASTIf) Equal(o AST) bool {
 	return true
 }
 
+// Type implements AST.Type.
+func (ast *ASTIf) Type() *types.Type {
+	if ast.False == nil {
+		return types.Unify(ast.Cond.Type(), ast.True.Type())
+	}
+	return types.Unify(ast.True.Type(), ast.False.Type())
+
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTIf) Bytecode(c *Compiler) error {
 	labelFalse := c.newLabel()
@@ -341,6 +378,15 @@ func (ast *ASTApply) Equal(o AST) bool {
 		ast.Tail == oast.Tail
 }
 
+// Type implements AST.Type.
+func (ast *ASTApply) Type() *types.Type {
+	t := ast.Lambda.Type()
+	if t == nil {
+		return nil
+	}
+	return t.Return
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTApply) Bytecode(c *Compiler) error {
 	err := ast.Lambda.Bytecode(c)
@@ -402,6 +448,15 @@ func (ast *ASTCall) Equal(o AST) bool {
 	return ast.Tail == oast.Tail
 }
 
+// Type implements AST.Type.
+func (ast *ASTCall) Type() *types.Type {
+	t := ast.Func.Type()
+	if t == nil {
+		return nil
+	}
+	return t.Return
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTCall) Bytecode(c *Compiler) error {
 	if !ast.Inline {
@@ -456,6 +511,12 @@ func (ast *ASTCallUnary) Equal(o AST) bool {
 	return ast.Op == oast.Op && ast.Arg.Equal(oast.Arg)
 }
 
+// Type implements AST.Type.
+func (ast *ASTCallUnary) Type() *types.Type {
+	// XXX
+	return nil
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTCallUnary) Bytecode(c *Compiler) error {
 	err := ast.Arg.Bytecode(c)
@@ -504,6 +565,21 @@ func (ast *ASTLambda) Equal(o AST) bool {
 	return ast.Captures == oast.Captures && ast.Flags == oast.Flags
 }
 
+// Type implements AST.Type.
+func (ast *ASTLambda) Type() *types.Type {
+	t := &types.Type{
+		Enum:   types.EnumLambda,
+		Return: ast.Body[len(ast.Body)-1].Type(),
+	}
+	for _, arg := range ast.Args.Fixed {
+		t.Args = append(t.Args, arg.Type)
+	}
+	if ast.Args.Rest != nil {
+		t.Rest = ast.Args.Rest.Type
+	}
+	return t
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTLambda) Bytecode(c *Compiler) error {
 	c.addInstr(ast.From, OpLambda, nil, len(c.lambdas))
@@ -544,6 +620,11 @@ func (ast *ASTConstant) Equal(o AST) bool {
 	return ast.Value.Equal(oast.Value)
 }
 
+// Type implements AST.Type.
+func (ast *ASTConstant) Type() *types.Type {
+	return ast.Value.Type()
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTConstant) Bytecode(c *Compiler) error {
 	c.addInstr(nil, OpConst, ast.Value, 0)
@@ -578,6 +659,12 @@ func (ast *ASTIdentifier) Equal(o AST) bool {
 		return false
 	}
 	return true
+}
+
+// Type implements AST.Type.
+func (ast *ASTIdentifier) Type() *types.Type {
+	// XXX
+	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -650,6 +737,12 @@ func (ast *ASTCond) Equal(o AST) bool {
 		}
 	}
 	return ast.Tail == oast.Tail && ast.Captures == oast.Captures
+}
+
+// Type implements AST.Type.
+func (ast *ASTCond) Type() *types.Type {
+	// XXX
+	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -793,6 +886,12 @@ func (ast *ASTCase) Equal(o AST) bool {
 		ast.Captures == oast.Captures
 }
 
+// Type implements AST.Type.
+func (ast *ASTCase) Type() *types.Type {
+	// XXX
+	return nil
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTCase) Bytecode(c *Compiler) error {
 	labelEnd := c.newLabel()
@@ -913,6 +1012,18 @@ func (ast *ASTAnd) Equal(o AST) bool {
 	return true
 }
 
+// Type implements AST.Type.
+func (ast *ASTAnd) Type() *types.Type {
+	if len(ast.Exprs) == 0 {
+		return types.Boolean
+	}
+	var t *types.Type
+	for _, expr := range ast.Exprs {
+		t = types.Unify(t, expr.Type())
+	}
+	return t
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTAnd) Bytecode(c *Compiler) error {
 	if len(ast.Exprs) == 0 {
@@ -964,6 +1075,22 @@ func (ast *ASTOr) Equal(o AST) bool {
 		}
 	}
 	return true
+}
+
+// Type implements AST.Type.
+func (ast *ASTOr) Type() *types.Type {
+	if len(ast.Exprs) == 0 {
+		return types.Boolean
+	}
+	var t *types.Type
+	for _, expr := range ast.Exprs {
+		t = types.Unify(t, expr.Type())
+		if t != nil && !t.IsA(types.Boolean) {
+			// The first non-boolean value is the value of or.
+			return t
+		}
+	}
+	return t
 }
 
 // Bytecode implements AST.Bytecode.

@@ -9,6 +9,8 @@ package scheme
 import (
 	"errors"
 	"fmt"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // Operand defines a Scheme bytecode instruction.
@@ -791,6 +793,11 @@ func (f *Frame) Equal(o Value) bool {
 		f.Lambda == ov.Lambda &&
 		f.PC == ov.PC &&
 		f.Toplevel == ov.Toplevel
+}
+
+// Type implements Value.Type.
+func (f *Frame) Type() *types.Type {
+	return nil
 }
 
 // VMEnvFrame implement a virtual machine environment frame.
