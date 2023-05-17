@@ -12,40 +12,40 @@ import (
 	"io"
 )
 
-// Parser implements S-expression parser.
-type Parser struct {
+// SexprParser implements S-expression parser.
+type SexprParser struct {
 	lexer *Lexer
 }
 
-// NewParser creates a new parser for the input file.
-func NewParser(source string, in io.Reader) *Parser {
-	return &Parser{
+// NewSexprParser creates a new parser for the input file.
+func NewSexprParser(source string, in io.Reader) *SexprParser {
+	return &SexprParser{
 		lexer: NewLexer(source, in),
 	}
 }
 
 // From returns the parser's current location.
-func (p *Parser) From() Point {
+func (p *SexprParser) From() Point {
 	return p.lexer.point
 }
 
 // To returns the parser's current location.
-func (p *Parser) To() Point {
+func (p *SexprParser) To() Point {
 	return p.lexer.point
 }
 
 // SetTo does nothing on parser.
-func (p *Parser) SetTo(point Point) {
+func (p *SexprParser) SetTo(point Point) {
 }
 
 // Errorf returns an error with the location information.
-func (p *Parser) Errorf(format string, a ...interface{}) error {
+func (p *SexprParser) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 	return fmt.Errorf("%s: %s", p.From(), msg)
 }
 
 // Next parses the next value.
-func (p *Parser) Next() (Value, error) {
+func (p *SexprParser) Next() (Value, error) {
 	t, err := p.lexer.Get()
 	if err != nil {
 		return nil, err

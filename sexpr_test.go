@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -47,7 +47,7 @@ var parserTests = []struct {
 
 func TestParser(t *testing.T) {
 	for _, test := range parserTests {
-		parser := NewParser("{data}", strings.NewReader(test.i))
+		parser := NewSexprParser("{data}", strings.NewReader(test.i))
 		for {
 			v, err := parser.Next()
 			if err != nil {

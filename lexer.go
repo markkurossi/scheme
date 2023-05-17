@@ -187,7 +187,7 @@ var (
 	_ Locator = Point{}
 	_ Locator = &PlainPair{}
 	_ Locator = &LocationPair{}
-	_ Locator = &Parser{}
+	_ Locator = &SexprParser{}
 )
 
 func (p Point) String() string {

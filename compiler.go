@@ -117,7 +117,7 @@ func (c *Compiler) CompileFile(file string) (*Library, error) {
 
 // Compile compiles the scheme source.
 func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
-	parser := NewParser(source, in)
+	sexpr := NewSexprParser(source, in)
 
 	c.source = source
 	c.code = nil
@@ -142,7 +142,7 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 	code := &ASTSequence{}
 
 	for {
-		v, err := parser.Next()
+		v, err := sexpr.Next()
 		if err != nil {
 			if err != io.EOF {
 				return nil, err
@@ -176,7 +176,7 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 
 				// Check that the file does not have any trailing garbage
 				// after the library specification.
-				v, err = parser.Next()
+				v, err = sexpr.Next()
 				if err == nil {
 					return nil, fmt.Errorf("garbage after library: %v", v)
 				}
@@ -206,7 +206,7 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 		return nil, err
 	}
 
-	c.addInstr(parser, OpReturn, nil, 0)
+	c.addInstr(sexpr, OpReturn, nil, 0)
 
 	library.PCMap = c.pcmap
 

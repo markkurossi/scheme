@@ -758,7 +758,7 @@ var numberBuiltins = []Builtin{
 				}
 			}
 
-			parser := NewParser("{data}", strings.NewReader(string(str)))
+			parser := NewSexprParser("{data}", strings.NewReader(string(str)))
 			v, err := parser.Next()
 			if err != nil {
 				return Boolean(false), nil
