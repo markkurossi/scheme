@@ -44,6 +44,11 @@ type ASTSequence struct {
 	Items []AST
 }
 
+// Add adds an item to the sequence.
+func (ast *ASTSequence) Add(item AST) {
+	ast.Items = append(ast.Items, item)
+}
+
 // Locator implements AST.Locator.
 func (ast *ASTSequence) Locator() Locator {
 	return ast.From

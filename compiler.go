@@ -138,6 +138,9 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 		Source: source,
 	}
 
+	// Source as a sequence.
+	code := &ASTSequence{}
+
 	for {
 		v, err := parser.Next()
 		if err != nil {
@@ -163,11 +166,12 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 
 				// Compile library body.
 				for i := 4; i < len(list); i++ {
-					err = c.compileValue(env, list[i], list[i].Car(), false,
+					ast, err := c.astValue(env, list[i], list[i].Car(), false,
 						true)
 					if err != nil {
 						return nil, err
 					}
+					code.Add(ast)
 				}
 
 				// Check that the file does not have any trailing garbage
@@ -190,11 +194,18 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 			first = false
 		}
 
-		err = c.compileValue(env, Point{}, v, false, true)
+		ast, err := c.astValue(env, Point{}, v, false, true)
 		if err != nil {
 			return nil, err
 		}
+		code.Add(ast)
 	}
+
+	err := code.Bytecode(c)
+	if err != nil {
+		return nil, err
+	}
+
 	c.addInstr(parser, OpReturn, nil, 0)
 
 	library.PCMap = c.pcmap
@@ -331,17 +342,6 @@ func (c *Compiler) parseLibraryHeader(list []Pair) error {
 	return nil
 }
 
-func (c *Compiler) compileValue(env *Env, loc Locator, value Value,
-	tail, captures bool) error {
-
-	ast, err := c.astValue(env, loc, value, tail, captures)
-	if err != nil {
-		return err
-	}
-
-	return ast.Bytecode(c)
-}
-
 func (c *Compiler) astValue(env *Env, loc Locator, value Value,
 	tail, captures bool) (AST, error) {
 
@@ -384,7 +384,7 @@ func (c *Compiler) astValue(env *Env, loc Locator, value Value,
 				if err != nil {
 					return err
 				}
-				seq.Items = append(seq.Items, ast)
+				seq.Add(ast)
 				return nil
 			}, v.Cdr())
 			if err != nil {
