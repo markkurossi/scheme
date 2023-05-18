@@ -82,7 +82,7 @@ var loadBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("invalid library: %v", args[0])
 			}
-			return lib.c.Compile(lib)
+			return lib.Compile()
 		},
 	},
 }

@@ -16,7 +16,7 @@ import (
 
 // Library implements a Scheme compilation unit.
 type Library struct {
-	c         *Parser
+	scm       *Scheme
 	Source    string
 	Name      Value
 	Body      *ASTSequence
@@ -25,6 +25,10 @@ type Library struct {
 	Imports   Value
 	Init      Code
 	PCMap     PCMap
+
+	lambdas   []*lambdaCompilation
+	nextLabel int
+	exported  map[string]*export
 }
 
 // Scheme implements Value.Scheme.
@@ -140,37 +144,37 @@ func (code Code) Print(w io.Writer) {
 }
 
 // Compile compiles the library into bytecode.
-func (c *Parser) Compile(library *Library) (Value, error) {
-	err := library.Body.Bytecode(c)
+func (lib *Library) Compile() (Value, error) {
+	err := lib.Body.Bytecode(lib)
 	if err != nil {
 		return nil, err
 	}
 
-	c.addInstr(nil, OpReturn, nil, 0)
+	lib.addInstr(nil, OpReturn, nil, 0)
 
 	// Compile lambdas.
 
 	var pcmaps []PCMap
 
-	for i := 0; i < len(c.lambdas); i++ {
-		lambda := c.lambdas[i]
-		pcmapStart := len(library.PCMap)
+	for i := 0; i < len(lib.lambdas); i++ {
+		lambda := lib.lambdas[i]
+		pcmapStart := len(lib.PCMap)
 
 		// Lambda body starts after the label.
-		ofs := len(c.code)
+		ofs := len(lib.Init)
 		lambda.Start = ofs + 1
 
-		c.addInstr(nil, OpLabel, nil, lambda.Start)
+		lib.addInstr(nil, OpLabel, nil, lambda.Start)
 		for _, ast := range lambda.Body {
-			err := ast.Bytecode(c)
+			err := ast.Bytecode(lib)
 			if err != nil {
 				return nil, err
 			}
 		}
-		c.addInstr(nil, OpReturn, nil, 0)
-		lambda.End = len(c.code)
+		lib.addInstr(nil, OpReturn, nil, 0)
+		lambda.End = len(lib.Init)
 
-		pcmap := c.library.PCMap[pcmapStart:len(c.library.PCMap)]
+		pcmap := lib.PCMap[pcmapStart:len(lib.PCMap)]
 		for i := 0; i < len(pcmap); i++ {
 			pcmap[i].PC -= lambda.Start
 		}
@@ -179,19 +183,19 @@ func (c *Parser) Compile(library *Library) (Value, error) {
 
 	// Collect label offsets
 	labels := make(map[int]int)
-	for idx, c := range c.code {
+	for idx, c := range lib.Init {
 		if c.Op == OpLabel {
 			labels[c.I] = idx
 		}
 	}
 
 	// Patch code offsets.
-	for i := 0; i < len(c.code); i++ {
-		instr := c.code[i]
+	for i := 0; i < len(lib.Init); i++ {
+		instr := lib.Init[i]
 		switch instr.Op {
 		case OpLambda:
 			pcmap := pcmaps[instr.I]
-			def := c.lambdas[instr.I]
+			def := lib.lambdas[instr.I]
 
 			var name string
 			if def.Name != nil {
@@ -205,8 +209,8 @@ func (c *Parser) Compile(library *Library) (Value, error) {
 				Args:     def.Args,
 				Return:   def.Body[len(def.Body)-1].Type(),
 				Captures: def.Captures,
-				Source:   c.source,
-				Code:     c.code[def.Start:def.End],
+				Source:   lib.Source,
+				Code:     lib.Init[def.Start:def.End],
 				MaxStack: def.Env.Stats.MaxStack,
 				PCMap:    pcmap,
 				Body:     def.Body,
@@ -222,7 +226,7 @@ func (c *Parser) Compile(library *Library) (Value, error) {
 	}
 
 	// Check that all exported names were defined.
-	for k, v := range c.exported {
+	for k, v := range lib.exported {
 		if v.id == nil {
 			return nil, v.from.Errorf("exported symbol '%s' not defined", k)
 		}
@@ -231,12 +235,78 @@ func (c *Parser) Compile(library *Library) (Value, error) {
 	return &Lambda{
 		Impl: &LambdaImpl{
 			Return:   types.Any,
-			Source:   library.Source,
-			Code:     c.code,
-			PCMap:    library.PCMap,
+			Source:   lib.Source,
+			Code:     lib.Init,
+			PCMap:    lib.PCMap,
 			Captures: true,
 		},
 	}, nil
+}
+
+func (lib *Library) addCall(from Locator, numArgs int, tail bool) {
+	if numArgs >= 0 {
+		lib.addInstr(from, OpConst, Int(numArgs), 0)
+	}
+	var i int
+	if tail {
+		i = 1
+	}
+	lib.addInstr(from, OpCall, nil, i)
+}
+
+func (lib *Library) addPushS(from Locator, size int, capture bool) {
+	var op Operand
+	if capture {
+		op = OpPushE
+	} else {
+		op = OpPushS
+	}
+	lib.addInstr(from, op, nil, size)
+}
+
+func (lib *Library) addPopS(from Locator, size int, capture bool) {
+	var op Operand
+	if capture {
+		op = OpPopE
+	} else {
+		op = OpPopS
+	}
+	instr := lib.addInstr(from, op, nil, size)
+	if !capture {
+		instr.J = 1
+	}
+}
+
+func (lib *Library) addInstr(from Locator, op Operand, v Value, i int) *Instr {
+	instr := &Instr{
+		Op: op,
+		V:  v,
+		I:  i,
+	}
+	if from != nil {
+		p := from.From()
+		if len(lib.PCMap) == 0 ||
+			lib.PCMap[len(lib.PCMap)-1].Line != p.Line {
+			lib.PCMap = append(lib.PCMap, PCLine{
+				PC:   len(lib.Init),
+				Line: p.Line,
+			})
+		}
+	}
+	lib.Init = append(lib.Init, instr)
+	return instr
+}
+
+func (lib *Library) addLabel(l *Instr) {
+	lib.Init = append(lib.Init, l)
+}
+
+func (lib *Library) newLabel() *Instr {
+	lib.nextLabel++
+	return &Instr{
+		Op: OpLabel,
+		I:  lib.nextLabel - 1,
+	}
 }
 
 type lambdaCompilation struct {

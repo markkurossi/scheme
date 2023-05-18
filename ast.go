@@ -17,7 +17,7 @@ type AST interface {
 	Locator() Locator
 	Equal(o AST) bool
 	Type() *types.Type
-	Bytecode(c *Parser) error
+	Bytecode(lib *Library) error
 }
 
 // AbstractSyntaxTree defines AST as a Value.
@@ -106,9 +106,9 @@ func (ast *ASTSequence) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTSequence) Bytecode(c *Parser) error {
+func (ast *ASTSequence) Bytecode(lib *Library) error {
 	for _, item := range ast.Items {
-		err := item.Bytecode(c)
+		err := item.Bytecode(lib)
 		if err != nil {
 			return err
 		}
@@ -146,16 +146,16 @@ func (ast *ASTDefine) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTDefine) Bytecode(c *Parser) error {
-	err := ast.Value.Bytecode(c)
+func (ast *ASTDefine) Bytecode(lib *Library) error {
+	err := ast.Value.Bytecode(lib)
 	if err != nil {
 		return err
 	}
 
 	// XXX Define symbol's type.
 
-	instr := c.addInstr(ast.From, OpDefine, nil, int(ast.Flags))
-	instr.Sym = c.scm.Intern(ast.Name.Name)
+	instr := lib.addInstr(ast.From, OpDefine, nil, int(ast.Flags))
+	instr.Sym = lib.scm.Intern(ast.Name.Name)
 	return nil
 }
 
@@ -193,24 +193,24 @@ func (ast *ASTSet) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTSet) Bytecode(c *Parser) error {
-	err := ast.Value.Bytecode(c)
+func (ast *ASTSet) Bytecode(lib *Library) error {
+	err := ast.Value.Bytecode(lib)
 	if err != nil {
 		return err
 	}
 
 	if ast.Binding != nil {
 		if ast.Binding.Frame.Type == TypeStack {
-			c.addInstr(ast.From, OpLocalSet, nil,
+			lib.addInstr(ast.From, OpLocalSet, nil,
 				ast.Binding.Frame.Index+ast.Binding.Index)
 		} else {
-			instr := c.addInstr(ast.From, OpEnvSet, nil,
+			instr := lib.addInstr(ast.From, OpEnvSet, nil,
 				ast.Binding.Frame.Index)
 			instr.J = ast.Binding.Index
 		}
 	} else {
-		instr := c.addInstr(ast.From, OpGlobalSet, nil, 0)
-		instr.Sym = c.scm.Intern(ast.Name)
+		instr := lib.addInstr(ast.From, OpGlobalSet, nil, 0)
+		instr.Sym = lib.scm.Intern(ast.Name)
 	}
 
 	return nil
@@ -269,32 +269,32 @@ func (ast *ASTLet) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTLet) Bytecode(c *Parser) error {
-	c.addPushS(ast.From, len(ast.Bindings), ast.Captures)
+func (ast *ASTLet) Bytecode(lib *Library) error {
+	lib.addPushS(ast.From, len(ast.Bindings), ast.Captures)
 
 	for _, binding := range ast.Bindings {
-		err := binding.Init.Bytecode(c)
+		err := binding.Init.Bytecode(lib)
 		if err != nil {
 			return err
 		}
 		if binding.Binding.Frame.Type == TypeStack {
-			c.addInstr(binding.From, OpLocalSet, nil,
+			lib.addInstr(binding.From, OpLocalSet, nil,
 				binding.Binding.Frame.Index+binding.Binding.Index)
 		} else {
-			instr := c.addInstr(binding.From, OpEnvSet, nil,
+			instr := lib.addInstr(binding.From, OpEnvSet, nil,
 				binding.Binding.Frame.Index)
 			instr.J = binding.Binding.Index
 		}
 	}
 
 	for _, item := range ast.Body {
-		err := item.Bytecode(c)
+		err := item.Bytecode(lib)
 		if err != nil {
 			return err
 		}
 	}
 	if !ast.Tail {
-		c.addPopS(nil, len(ast.Bindings), ast.Captures)
+		lib.addPopS(nil, len(ast.Bindings), ast.Captures)
 	}
 
 	return nil
@@ -348,43 +348,43 @@ func (ast *ASTIf) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTIf) Bytecode(c *Parser) error {
-	labelFalse := c.newLabel()
-	labelEnd := c.newLabel()
+func (ast *ASTIf) Bytecode(lib *Library) error {
+	labelFalse := lib.newLabel()
+	labelEnd := lib.newLabel()
 
-	err := ast.Cond.Bytecode(c)
+	err := ast.Cond.Bytecode(lib)
 	if err != nil {
 		return err
 	}
 
 	if ast.False == nil {
 		// (if cond t)
-		instr := c.addInstr(ast.From, OpIfNot, nil, 0)
+		instr := lib.addInstr(ast.From, OpIfNot, nil, 0)
 		instr.J = labelEnd.I
 
-		err = ast.True.Bytecode(c)
+		err = ast.True.Bytecode(lib)
 		if err != nil {
 			return err
 		}
 	} else {
 		// (if cond t f)
-		instr := c.addInstr(ast.From, OpIfNot, nil, 0)
+		instr := lib.addInstr(ast.From, OpIfNot, nil, 0)
 		instr.J = labelFalse.I
 
-		err = ast.True.Bytecode(c)
+		err = ast.True.Bytecode(lib)
 		if err != nil {
 			return err
 		}
-		instr = c.addInstr(nil, OpJmp, nil, 0)
+		instr = lib.addInstr(nil, OpJmp, nil, 0)
 		instr.J = labelEnd.I
 
-		c.addLabel(labelFalse)
-		err = ast.False.Bytecode(c)
+		lib.addLabel(labelFalse)
+		err = ast.False.Bytecode(lib)
 		if err != nil {
 			return err
 		}
 	}
-	c.addLabel(labelEnd)
+	lib.addLabel(labelEnd)
 
 	return nil
 }
@@ -423,25 +423,25 @@ func (ast *ASTApply) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTApply) Bytecode(c *Parser) error {
-	err := ast.Lambda.Bytecode(c)
+func (ast *ASTApply) Bytecode(lib *Library) error {
+	err := ast.Lambda.Bytecode(lib)
 	if err != nil {
 		return err
 	}
 
 	// Create a call frame.
-	c.addInstr(nil, OpPushF, nil, 0)
+	lib.addInstr(nil, OpPushF, nil, 0)
 
 	// Compile arguments.
-	err = ast.Args.Bytecode(c)
+	err = ast.Args.Bytecode(lib)
 	if err != nil {
 		return err
 	}
 
 	// Push apply scope.
-	c.addInstr(nil, OpPushA, nil, 0)
+	lib.addInstr(nil, OpPushA, nil, 0)
 
-	c.addCall(nil, -1, ast.Tail)
+	lib.addCall(nil, -1, ast.Tail)
 
 	return nil
 }
@@ -515,33 +515,33 @@ func (ast *ASTCall) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTCall) Bytecode(c *Parser) error {
+func (ast *ASTCall) Bytecode(lib *Library) error {
 	if !ast.Inline {
-		err := ast.Func.Bytecode(c)
+		err := ast.Func.Bytecode(lib)
 		if err != nil {
 			return nil
 		}
 		// Create call frame.
-		c.addInstr(ast.From, OpPushF, nil, 0)
+		lib.addInstr(ast.From, OpPushF, nil, 0)
 	}
 
 	// Push argument scope.
-	c.addInstr(ast.From, OpPushS, nil, len(ast.Args))
+	lib.addInstr(ast.From, OpPushS, nil, len(ast.Args))
 
 	// Evaluate arguments.
 	for idx, arg := range ast.Args {
-		err := arg.Bytecode(c)
+		err := arg.Bytecode(lib)
 		if err != nil {
 			return err
 		}
-		c.addInstr(ast.ArgLocs[idx], OpLocalSet, nil, ast.ArgFrame.Index+idx)
+		lib.addInstr(ast.ArgLocs[idx], OpLocalSet, nil, ast.ArgFrame.Index+idx)
 	}
 
 	if ast.Inline {
-		c.addInstr(ast.From, ast.InlineOp, nil, 0)
-		c.addInstr(ast.From, OpPopS, nil, len(ast.Args))
+		lib.addInstr(ast.From, ast.InlineOp, nil, 0)
+		lib.addInstr(ast.From, OpPopS, nil, len(ast.Args))
 	} else {
-		c.addCall(nil, len(ast.Args), ast.Tail)
+		lib.addCall(nil, len(ast.Args), ast.Tail)
 	}
 
 	return nil
@@ -587,12 +587,12 @@ func (ast *ASTCallUnary) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTCallUnary) Bytecode(c *Parser) error {
-	err := ast.Arg.Bytecode(c)
+func (ast *ASTCallUnary) Bytecode(lib *Library) error {
+	err := ast.Arg.Bytecode(lib)
 	if err != nil {
 		return err
 	}
-	c.addInstr(ast.From, ast.Op, nil, 0)
+	lib.addInstr(ast.From, ast.Op, nil, 0)
 
 	return nil
 }
@@ -650,9 +650,9 @@ func (ast *ASTLambda) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTLambda) Bytecode(c *Parser) error {
-	c.addInstr(ast.From, OpLambda, nil, len(c.lambdas))
-	c.lambdas = append(c.lambdas, &lambdaCompilation{
+func (ast *ASTLambda) Bytecode(lib *Library) error {
+	lib.addInstr(ast.From, OpLambda, nil, len(lib.lambdas))
+	lib.lambdas = append(lib.lambdas, &lambdaCompilation{
 		Name:     ast.Name,
 		Args:     ast.Args,
 		Body:     ast.Body,
@@ -661,7 +661,7 @@ func (ast *ASTLambda) Bytecode(c *Parser) error {
 	})
 	if ast.Define {
 		// XXX Define symbol's type.
-		err := c.define(ast.From, ast.Env, ast.Name, ast.Flags)
+		err := lib.define(ast.From, ast.Env, ast.Name, ast.Flags)
 		if err != nil {
 			return err
 		}
@@ -700,8 +700,8 @@ func (ast *ASTConstant) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTConstant) Bytecode(c *Parser) error {
-	c.addInstr(nil, OpConst, ast.Value, 0)
+func (ast *ASTConstant) Bytecode(lib *Library) error {
+	lib.addInstr(nil, OpConst, ast.Value, 0)
 	return nil
 }
 
@@ -742,18 +742,18 @@ func (ast *ASTIdentifier) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTIdentifier) Bytecode(c *Parser) error {
+func (ast *ASTIdentifier) Bytecode(lib *Library) error {
 	if ast.Binding != nil {
 		if ast.Binding.Frame.Type == TypeStack {
-			c.addInstr(ast.From, OpLocal, nil,
+			lib.addInstr(ast.From, OpLocal, nil,
 				ast.Binding.Frame.Index+ast.Binding.Index)
 		} else {
-			instr := c.addInstr(ast.From, OpEnv, nil, ast.Binding.Frame.Index)
+			instr := lib.addInstr(ast.From, OpEnv, nil, ast.Binding.Frame.Index)
 			instr.J = ast.Binding.Index
 		}
 	} else {
-		instr := c.addInstr(ast.From, OpGlobal, nil, 0)
-		instr.Sym = c.scm.Intern(ast.Name)
+		instr := lib.addInstr(ast.From, OpGlobal, nil, 0)
+		instr.Sym = lib.scm.Intern(ast.Name)
 	}
 	return nil
 }
@@ -832,19 +832,19 @@ func (ast *ASTCond) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTCond) Bytecode(c *Parser) error {
-	labelEnd := c.newLabel()
+func (ast *ASTCond) Bytecode(lib *Library) error {
+	labelEnd := lib.newLabel()
 
 	var labelClause *Instr
 
 	for i, choice := range ast.Choices {
 		if labelClause != nil {
-			c.addLabel(labelClause)
+			lib.addLabel(labelClause)
 		}
 
 		var next *Instr
 		if i+1 < len(ast.Choices) {
-			next = c.newLabel()
+			next = lib.newLabel()
 			labelClause = next
 		} else {
 			next = labelEnd
@@ -853,47 +853,47 @@ func (ast *ASTCond) Bytecode(c *Parser) error {
 		// The choice.Cond is nil for else case.
 		if choice.Cond != nil {
 			// Compile condition.
-			err := choice.Cond.Bytecode(c)
+			err := choice.Cond.Bytecode(lib)
 			if err != nil {
 				return err
 			}
-			instr := c.addInstr(choice.From, OpIfNot, nil, 0)
+			instr := lib.addInstr(choice.From, OpIfNot, nil, 0)
 			instr.J = next.I
 		}
 		// cond => func
 		if choice.Func != nil {
 			// Push value scope.
-			c.addInstr(choice.From, OpPushS, nil, 1)
+			lib.addInstr(choice.From, OpPushS, nil, 1)
 
 			// Save value
-			c.addInstr(choice.From, OpLocalSet, nil,
+			lib.addInstr(choice.From, OpLocalSet, nil,
 				choice.FuncValueFrame.Index)
 
 			// Compile function.
-			err := choice.Func.Bytecode(c)
+			err := choice.Func.Bytecode(lib)
 			if err != nil {
 				return err
 			}
 
 			// Create call frame.
-			c.addInstr(choice.From, OpPushF, nil, 0)
+			lib.addInstr(choice.From, OpPushF, nil, 0)
 
 			// Push argument scope.
-			c.addInstr(choice.From, OpPushS, nil, 1)
+			lib.addInstr(choice.From, OpPushS, nil, 1)
 
 			// Set argument.
-			c.addInstr(choice.From, OpLocal, nil, choice.FuncValueFrame.Index)
-			c.addInstr(choice.From, OpLocalSet, nil, choice.FuncArgsFrame.Index)
+			lib.addInstr(choice.From, OpLocal, nil, choice.FuncValueFrame.Index)
+			lib.addInstr(choice.From, OpLocalSet, nil, choice.FuncArgsFrame.Index)
 
-			c.addCall(nil, 1, ast.Tail)
+			lib.addCall(nil, 1, ast.Tail)
 			if !ast.Tail {
 				// Pop value scope.
-				c.addPopS(choice.From, 1, ast.Captures)
+				lib.addPopS(choice.From, 1, ast.Captures)
 			}
 		} else {
 			// Compile expressions.
 			for _, expr := range choice.Exprs {
-				err := expr.Bytecode(c)
+				err := expr.Bytecode(lib)
 				if err != nil {
 					return err
 				}
@@ -901,10 +901,10 @@ func (ast *ASTCond) Bytecode(c *Parser) error {
 		}
 
 		// Jump to end.
-		instr := c.addInstr(nil, OpJmp, nil, 0)
+		instr := lib.addInstr(nil, OpJmp, nil, 0)
 		instr.J = labelEnd.I
 	}
-	c.addLabel(labelEnd)
+	lib.addLabel(labelEnd)
 
 	return nil
 }
@@ -993,20 +993,20 @@ func (ast *ASTCase) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTCase) Bytecode(c *Parser) error {
-	labelEnd := c.newLabel()
+func (ast *ASTCase) Bytecode(lib *Library) error {
+	labelEnd := lib.newLabel()
 
 	// Push value scope.
-	c.addInstr(ast.From, OpPushS, nil, 1)
+	lib.addInstr(ast.From, OpPushS, nil, 1)
 
 	// Compile key.
-	err := ast.Expr.Bytecode(c)
+	err := ast.Expr.Bytecode(lib)
 	if err != nil {
 		return err
 	}
 
 	// Save value.
-	c.addInstr(ast.From, OpLocalSet, nil, ast.ValueFrame.Index)
+	lib.addInstr(ast.From, OpLocalSet, nil, ast.ValueFrame.Index)
 
 	// Compile clauses
 
@@ -1014,12 +1014,12 @@ func (ast *ASTCase) Bytecode(c *Parser) error {
 
 	for i, choice := range ast.Choices {
 		if labelClause != nil {
-			c.addLabel(labelClause)
+			lib.addLabel(labelClause)
 		}
 
 		var next *Instr
 		if i+1 < len(ast.Choices) {
-			next = c.newLabel()
+			next = lib.newLabel()
 			labelClause = next
 		} else {
 			next = labelEnd
@@ -1029,59 +1029,59 @@ func (ast *ASTCase) Bytecode(c *Parser) error {
 
 		var labelExprs *Instr
 		if len(choice.Datums) > 0 {
-			labelExprs = c.newLabel()
+			labelExprs = lib.newLabel()
 
 			// Compare datums: ((datum1 ...) expr1 expr2...)
 			for idx, datum := range choice.Datums {
 				// (eqv? value datum)
 				from := choice.DatumLocs[idx]
 
-				instr := c.addInstr(from, OpGlobal, nil, 0)
-				instr.Sym = c.scm.Intern("eqv?")
+				instr := lib.addInstr(from, OpGlobal, nil, 0)
+				instr.Sym = lib.scm.Intern("eqv?")
 
-				c.addInstr(from, OpPushF, nil, 0)
+				lib.addInstr(from, OpPushF, nil, 0)
 
-				c.addInstr(from, OpPushS, nil, 2)
+				lib.addInstr(from, OpPushS, nil, 2)
 
-				c.addInstr(from, OpLocal, nil, ast.ValueFrame.Index)
-				c.addInstr(from, OpLocalSet, nil, ast.EqvArgFrame.Index)
+				lib.addInstr(from, OpLocal, nil, ast.ValueFrame.Index)
+				lib.addInstr(from, OpLocalSet, nil, ast.EqvArgFrame.Index)
 
-				c.addInstr(from, OpConst, datum, 0)
-				c.addInstr(from, OpLocalSet, nil, ast.EqvArgFrame.Index+1)
+				lib.addInstr(from, OpConst, datum, 0)
+				lib.addInstr(from, OpLocalSet, nil, ast.EqvArgFrame.Index+1)
 
-				c.addCall(from, 2, false)
+				lib.addCall(from, 2, false)
 
-				instr = c.addInstr(from, OpIf, nil, 0)
+				instr = lib.addInstr(from, OpIf, nil, 0)
 				instr.J = labelExprs.I
 			}
 
 			// No datum matched.
-			instr := c.addInstr(nil, OpJmp, nil, 0)
+			instr := lib.addInstr(nil, OpJmp, nil, 0)
 			instr.J = next.I
 		}
 
 		if labelExprs != nil {
-			c.addLabel(labelExprs)
+			lib.addLabel(labelExprs)
 		}
 
 		// Compile expressions.
 		for _, expr := range choice.Exprs {
-			err := expr.Bytecode(c)
+			err := expr.Bytecode(lib)
 			if err != nil {
 				return err
 			}
 		}
 
 		// Jump to end.
-		instr := c.addInstr(nil, OpJmp, nil, 0)
+		instr := lib.addInstr(nil, OpJmp, nil, 0)
 		instr.J = labelEnd.I
 	}
 
-	c.addLabel(labelEnd)
+	lib.addLabel(labelEnd)
 
 	if !ast.Tail {
 		// Pop value scope.
-		c.addPopS(nil, 1, ast.Captures)
+		lib.addPopS(nil, 1, ast.Captures)
 	}
 
 	return nil
@@ -1125,29 +1125,29 @@ func (ast *ASTAnd) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTAnd) Bytecode(c *Parser) error {
+func (ast *ASTAnd) Bytecode(lib *Library) error {
 	if len(ast.Exprs) == 0 {
-		c.addInstr(ast.From, OpConst, Boolean(true), 0)
+		lib.addInstr(ast.From, OpConst, Boolean(true), 0)
 		return nil
 	}
 
-	labelEnd := c.newLabel()
+	labelEnd := lib.newLabel()
 	for i := 0; i < len(ast.Exprs)-1; i++ {
-		err := ast.Exprs[i].Bytecode(c)
+		err := ast.Exprs[i].Bytecode(lib)
 		if err != nil {
 			return err
 		}
-		instr := c.addInstr(ast.Exprs[i].Locator(), OpIfNot, nil, 0)
+		instr := lib.addInstr(ast.Exprs[i].Locator(), OpIfNot, nil, 0)
 		instr.J = labelEnd.I
 	}
 
 	// Last expression.
-	err := ast.Exprs[len(ast.Exprs)-1].Bytecode(c)
+	err := ast.Exprs[len(ast.Exprs)-1].Bytecode(lib)
 	if err != nil {
 		return err
 	}
 
-	c.addLabel(labelEnd)
+	lib.addLabel(labelEnd)
 
 	return nil
 }
@@ -1194,29 +1194,49 @@ func (ast *ASTOr) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTOr) Bytecode(c *Parser) error {
+func (ast *ASTOr) Bytecode(lib *Library) error {
 	if len(ast.Exprs) == 0 {
-		c.addInstr(ast.From, OpConst, Boolean(false), 0)
+		lib.addInstr(ast.From, OpConst, Boolean(false), 0)
 		return nil
 	}
 
-	labelEnd := c.newLabel()
+	labelEnd := lib.newLabel()
 	for i := 0; i < len(ast.Exprs)-1; i++ {
-		err := ast.Exprs[i].Bytecode(c)
+		err := ast.Exprs[i].Bytecode(lib)
 		if err != nil {
 			return err
 		}
-		instr := c.addInstr(ast.Exprs[i].Locator(), OpIf, nil, 0)
+		instr := lib.addInstr(ast.Exprs[i].Locator(), OpIf, nil, 0)
 		instr.J = labelEnd.I
 	}
 
 	// Last expression.
-	err := ast.Exprs[len(ast.Exprs)-1].Bytecode(c)
+	err := ast.Exprs[len(ast.Exprs)-1].Bytecode(lib)
 	if err != nil {
 		return err
 	}
 
-	c.addLabel(labelEnd)
+	lib.addLabel(labelEnd)
+
+	return nil
+}
+
+func (lib *Library) define(loc Locator, env *Env, name *Identifier,
+	flags Flags) error {
+
+	export, ok := lib.exported[name.Name]
+	if /* c.exportAll || */ ok {
+		// XXX Defined global symbol.
+	} else {
+		// XXX Define library symbol.
+		// fmt.Printf("XXX define local symbol %v\n", name)
+	}
+	if ok {
+		export.id = name
+	}
+
+	instr := lib.addInstr(loc, OpDefine, nil, int(flags))
+	instr.Sym = lib.scm.Intern(name.Name)
 
 	return nil
 }

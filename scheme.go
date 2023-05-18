@@ -248,7 +248,7 @@ func (scm *Scheme) eval(source string, in io.Reader) (Value, error) {
 		return nil, fmt.Errorf("invalid library: %T", values[4])
 	}
 
-	init, err := lib.c.Compile(lib)
+	init, err := lib.Compile()
 	if err != nil {
 		return nil, err
 	}

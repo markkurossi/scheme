@@ -103,7 +103,7 @@ func bytecode(scm *scheme.Scheme, file string) error {
 	if err != nil {
 		return err
 	}
-	v, err := c.Compile(library)
+	v, err := library.Compile()
 	if err != nil {
 		return err
 	}
