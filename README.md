@@ -28,6 +28,18 @@ fp ---> Next fp ---+
                    v
 ```
 
+## Loading and Evaluation
+
+```
+EvalFile(file)
+  Eval(source)
+    library := Load(sourc)
+    Apply(scheme::init-library, []Value{library})
+      (importer lib-imports)
+      (lib-init) =>
+      ((scheme::compile))
+```
+
 # TODO
 
 ## Language

@@ -17,18 +17,12 @@ import (
 
 // Compiler implements the byte-code compiler.
 type Compiler struct {
-	scm    *Scheme
-	source string
-
-	// Library header.
-	libraryName Value
-	exportAll   bool
-	exports     Value
-	exported    map[string]*export
-	imports     Value
+	scm      *Scheme
+	source   string
+	library  *Library
+	exported map[string]*export
 
 	code      Code
-	pcmap     PCMap
 	lambdas   []*lambdaCompilation
 	nextLabel int
 }
@@ -40,27 +34,93 @@ type export struct {
 
 // Library implements a Scheme compilation unit.
 type Library struct {
-	Source  string
-	Name    Value
-	Exports Value
-	Imports Value
-	Init    Code
-	PCMap   PCMap
+	c         *Compiler
+	Source    string
+	Name      Value
+	Body      *ASTSequence
+	Exports   Value
+	ExportAll bool
+	Imports   Value
+	Init      Code
+	PCMap     PCMap
+}
+
+// Scheme implements Value.Scheme.
+func (lib *Library) Scheme() string {
+	return fmt.Sprintf("library %s", lib.Name.Scheme())
+}
+
+// Eq implements Value.Eq.
+func (lib *Library) Eq(o Value) bool {
+	olib, ok := o.(*Library)
+	return ok && lib == olib
+}
+
+// Equal implements Value.Equal.
+func (lib *Library) Equal(o Value) bool {
+	return lib.Eq(o)
+}
+
+// Type implements Value.Type.
+func (lib *Library) Type() *types.Type {
+	return types.Any
+}
+
+func (lib *Library) parseLibraryHeader(list []Pair) error {
+	if len(list) < 4 {
+		return list[0].Errorf("truncated library header")
+	}
+	// Name.
+	pair, ok := list[1].Car().(Pair)
+	if !ok {
+		return list[1].Errorf("invalid library name: %v", list[1].Car())
+	}
+	l, ok := ListPairs(pair)
+	if !ok || len(l) == 0 {
+		return list[1].Errorf("invalid library name: %v", pair)
+	}
+	lib.Name = pair
+
+	// Export.
+	l, ok = ListPairs(list[2].Car())
+	if !ok || len(l) == 0 || !isNamedIdentifier(l[0].Car(), "export") {
+		return list[2].Errorf("expected (export ...)")
+	}
+	for i := 1; i < len(l); i++ {
+		_, ok := isIdentifier(l[i].Car())
+		if !ok {
+			return l[i].Errorf("invalid export name: %v", l[i])
+		}
+	}
+	lib.Exports = l[0].Cdr()
+
+	// Import.
+	pair, ok = list[3].Car().(Pair)
+	if !ok {
+		return list[3].Errorf("invalid library import: %v", list[3].Car())
+	}
+	_, ok = ListPairs(list[3].Car())
+	if !ok {
+		return list[3].Errorf("expected (import ...)")
+	}
+	lib.Imports, _ = Cdr(pair, true)
+
+	return nil
 }
 
 // MapPC maps the program counter value to the source location.
-func (m *Library) MapPC(pc int) (source string, line int) {
-	source = m.Source
+func (lib *Library) MapPC(pc int) (source string, line int) {
+	source = lib.Source
 
 	if false {
 		fmt.Printf("Library.MapPC: %v:%v\n", source, pc)
-		for idx, pm := range m.PCMap {
+		for idx, pm := range lib.PCMap {
 			fmt.Printf(" - %v\tPC=%v, Line=%v\n", idx, pm.PC, pm.Line)
 		}
-		m.Init.Print(os.Stdout)
+		lib.Init.Print(os.Stdout)
 	}
 
-	line = m.PCMap.MapPC(pc)
+	line = lib.PCMap.MapPC(pc)
 	return
 }
 
@@ -105,23 +165,12 @@ func NewCompiler(scm *Scheme) *Compiler {
 	}
 }
 
-// CompileFile compiles the Scheme file.
-func (c *Compiler) CompileFile(file string) (*Library, error) {
-	in, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer in.Close()
-	return c.Compile(file, in)
-}
-
-// Compile compiles the scheme source.
-func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
+// Parse parses the source.
+func (c *Compiler) Parse(source string, in io.Reader) (*Library, error) {
 	sexpr := NewSexprParser(source, in)
 
 	c.source = source
 	c.code = nil
-	c.pcmap = nil
 	c.lambdas = nil
 	c.nextLabel = 0
 	c.scm.Parsing = true
@@ -135,11 +184,12 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 	first := true
 
 	library := &Library{
+		c:      c,
 		Source: source,
+		Body:   &ASTSequence{},
 	}
-
-	// Source as a sequence.
-	code := &ASTSequence{}
+	// XXX
+	c.library = library
 
 	for {
 		v, err := sexpr.Next()
@@ -159,7 +209,7 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 				if !ok || len(list) < 4 {
 					return nil, pair.Errorf("invalid library: %v", v)
 				}
-				err = c.parseLibraryHeader(list)
+				err = library.parseLibraryHeader(list)
 				if err != nil {
 					return nil, err
 				}
@@ -171,7 +221,7 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 					if err != nil {
 						return nil, err
 					}
-					code.Add(ast)
+					library.Body.Add(ast)
 				}
 
 				// Check that the file does not have any trailing garbage
@@ -186,8 +236,8 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 				break
 			} else {
 				// Not a library source.
-				c.exportAll = true
-				c.libraryName = NewPair(&Identifier{
+				library.ExportAll = true
+				library.Name = NewPair(&Identifier{
 					Name: "main",
 				}, nil)
 			}
@@ -198,17 +248,20 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 		if err != nil {
 			return nil, err
 		}
-		code.Add(ast)
+		library.Body.Add(ast)
 	}
 
-	err := code.Bytecode(c)
+	return library, nil
+}
+
+// Compile compiles the library into bytecode.
+func (c *Compiler) Compile(library *Library) (Value, error) {
+	err := library.Body.Bytecode(c)
 	if err != nil {
 		return nil, err
 	}
 
-	c.addInstr(sexpr, OpReturn, nil, 0)
-
-	library.PCMap = c.pcmap
+	c.addInstr(nil, OpReturn, nil, 0)
 
 	// Compile lambdas.
 
@@ -216,7 +269,7 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 
 	for i := 0; i < len(c.lambdas); i++ {
 		lambda := c.lambdas[i]
-		pcmapStart := len(c.pcmap)
+		pcmapStart := len(library.PCMap)
 
 		// Lambda body starts after the label.
 		ofs := len(c.code)
@@ -232,7 +285,7 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 		c.addInstr(nil, OpReturn, nil, 0)
 		lambda.End = len(c.code)
 
-		pcmap := c.pcmap[pcmapStart:len(c.pcmap)]
+		pcmap := c.library.PCMap[pcmapStart:len(c.library.PCMap)]
 		for i := 0; i < len(pcmap); i++ {
 			pcmap[i].PC -= lambda.Start
 		}
@@ -290,56 +343,15 @@ func (c *Compiler) Compile(source string, in io.Reader) (*Library, error) {
 		}
 	}
 
-	library.Name = c.libraryName
-	library.Exports = c.exports
-	library.Imports = c.imports
-	library.Init = c.code
-
-	return library, nil
-}
-
-func (c *Compiler) parseLibraryHeader(list []Pair) error {
-	if len(list) < 4 {
-		return list[0].Errorf("truncated library header")
-	}
-	// Name.
-	pair, ok := list[1].Car().(Pair)
-	if !ok {
-		return list[1].Errorf("invalid library name: %v", list[1].Car())
-	}
-	l, ok := ListPairs(pair)
-	if !ok || len(l) == 0 {
-		return list[1].Errorf("invalid library name: %v", pair)
-	}
-	c.libraryName = pair
-
-	// Export.
-	l, ok = ListPairs(list[2].Car())
-	if !ok || len(l) == 0 || !isNamedIdentifier(l[0].Car(), "export") {
-		return list[2].Errorf("expected (export ...)")
-	}
-	for i := 1; i < len(l); i++ {
-		id, ok := isIdentifier(l[i].Car())
-		if !ok {
-			return l[i].Errorf("invalid export name: %v", l[i])
-		}
-		c.exported[id.Name] = &export{
-			from: l[i],
-		}
-	}
-
-	// Import.
-	pair, ok = list[3].Car().(Pair)
-	if !ok {
-		return list[3].Errorf("invalid library import: %v", list[3].Car())
-	}
-	_, ok = ListPairs(list[3].Car())
-	if !ok {
-		return list[3].Errorf("expected (import ...)")
-	}
-	c.imports, _ = Cdr(pair, true)
-
-	return nil
+	return &Lambda{
+		Impl: &LambdaImpl{
+			Return:   types.Any,
+			Source:   library.Source,
+			Code:     c.code,
+			PCMap:    library.PCMap,
+			Captures: true,
+		},
+	}, nil
 }
 
 func (c *Compiler) astValue(env *Env, loc Locator, value Value,
@@ -610,8 +622,9 @@ func (c *Compiler) addInstr(from Locator, op Operand, v Value, i int) *Instr {
 	}
 	if from != nil {
 		p := from.From()
-		if len(c.pcmap) == 0 || c.pcmap[len(c.pcmap)-1].Line != p.Line {
-			c.pcmap = append(c.pcmap, PCLine{
+		if len(c.library.PCMap) == 0 ||
+			c.library.PCMap[len(c.library.PCMap)-1].Line != p.Line {
+			c.library.PCMap = append(c.library.PCMap, PCLine{
 				PC:   len(c.code),
 				Line: p.Line,
 			})
@@ -662,7 +675,7 @@ func (c *Compiler) define(loc Locator, env *Env, name *Identifier,
 	flags Flags) error {
 
 	export, ok := c.exported[name.Name]
-	if c.exportAll || ok {
+	if /* c.exportAll || */ ok {
 		// XXX Defined global symbol.
 	} else {
 		// XXX Define library symbol.
@@ -671,7 +684,6 @@ func (c *Compiler) define(loc Locator, env *Env, name *Identifier,
 	if ok {
 		export.id = name
 	}
-	c.exports = NewPair(name, c.exports)
 
 	instr := c.addInstr(loc, OpDefine, nil, int(flags))
 	instr.Sym = c.scm.Intern(name.Name)

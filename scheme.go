@@ -243,8 +243,17 @@ func (scm *Scheme) eval(source string, in io.Reader) (Value, error) {
 	if !ok || len(values) != 5 {
 		return nil, fmt.Errorf("invalid library: %v", library)
 	}
+	lib, ok := values[4].(*Library)
+	if !ok {
+		return nil, fmt.Errorf("invalid library: %T", values[4])
+	}
 
-	return scm.Apply(values[4], nil)
+	init, err := lib.c.Compile(lib)
+	if err != nil {
+		return nil, err
+	}
+
+	return scm.Apply(init, nil)
 }
 
 // Global returns the global value of the symbol.

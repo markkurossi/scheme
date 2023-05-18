@@ -20,6 +20,32 @@ type AST interface {
 	Bytecode(c *Compiler) error
 }
 
+// AbstractSyntaxTree defines AST as a Value.
+type AbstractSyntaxTree struct {
+	AST AST
+}
+
+// Scheme implements Value.Scheme.
+func (ast *AbstractSyntaxTree) Scheme() string {
+	return "#<ast>"
+}
+
+// Eq implements Value.Eq.
+func (ast *AbstractSyntaxTree) Eq(o Value) bool {
+	oast, ok := o.(*AbstractSyntaxTree)
+	return ok && ast == oast
+}
+
+// Equal implements Value.Equal.
+func (ast *AbstractSyntaxTree) Equal(o Value) bool {
+	return ast.Eq(o)
+}
+
+// Type implements Value.Type.
+func (ast *AbstractSyntaxTree) Type() *types.Type {
+	return types.Any
+}
+
 var (
 	_ AST = &ASTSequence{}
 	_ AST = &ASTDefine{}
@@ -125,6 +151,8 @@ func (ast *ASTDefine) Bytecode(c *Compiler) error {
 	if err != nil {
 		return err
 	}
+
+	// XXX Define symbol's type.
 
 	instr := c.addInstr(ast.From, OpDefine, nil, int(ast.Flags))
 	instr.Sym = c.scm.Intern(ast.Name.Name)
@@ -632,6 +660,7 @@ func (ast *ASTLambda) Bytecode(c *Compiler) error {
 		Captures: ast.Captures,
 	})
 	if ast.Define {
+		// XXX Define symbol's type.
 		err := c.define(ast.From, ast.Env, ast.Name, ast.Flags)
 		if err != nil {
 			return err

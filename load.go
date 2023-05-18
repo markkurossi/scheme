@@ -70,6 +70,21 @@ var loadBuiltins = []Builtin{
 			return result, nil
 		},
 	},
+	{
+		Name: "scheme::compile",
+		Args: []string{"ast<any>"},
+		Return: &types.Type{
+			Enum:   types.EnumLambda,
+			Return: types.Any,
+		},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			lib, ok := args[0].(*Library)
+			if !ok {
+				return nil, fmt.Errorf("invalid library: %v", args[0])
+			}
+			return lib.c.Compile(lib)
+		},
+	},
 }
 
 // LoadFile loads and compiles the file.
@@ -86,7 +101,7 @@ func (scm *Scheme) LoadFile(file string) (Value, error) {
 func (scm *Scheme) Load(source string, in io.Reader) (Value, error) {
 	c := NewCompiler(scm)
 
-	library, err := c.Compile(source, in)
+	library, err := c.Parse(source, in)
 	if err != nil {
 		return nil, err
 	}
@@ -101,15 +116,5 @@ func (scm *Scheme) Load(source string, in io.Reader) (Value, error) {
 		NewPair(library.Name,
 			NewPair(library.Exports,
 				NewPair(library.Imports,
-					NewPair(
-						&Lambda{
-							Impl: &LambdaImpl{
-								Return:   types.Any,
-								Source:   library.Source,
-								Code:     library.Init,
-								PCMap:    library.PCMap,
-								Captures: true,
-							},
-						},
-						nil))))), nil
+					NewPair(library, nil))))), nil
 }

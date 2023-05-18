@@ -137,7 +137,7 @@
            (lib-version (parse-lib-version (cadr library)))
            (lib-exports (caddr library))
            (lib-imports (cadddr library))
-           (lib-init (cadddr (cdr library)))
+           (lib-library (cadddr (cdr library)))
            (this (assoc lib-name scheme::libraries))
            (result #f))
       (if #f
@@ -164,7 +164,7 @@
             (if (importer lib-imports)
                 (begin
                   ;; Imports loaded, now init this module.
-                  (set! result (lib-init))
+                  (set! result ((scheme::compile lib-library)))
                   (set-lib-status! this 'initialized))
                 (set-lib-status! this 'error))
 

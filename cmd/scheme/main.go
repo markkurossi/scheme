@@ -99,11 +99,20 @@ func bytecode(scm *scheme.Scheme, file string) error {
 
 	c := scheme.NewCompiler(scm)
 
-	module, err := c.Compile(file, in)
+	library, err := c.Parse(file, in)
 	if err != nil {
 		return err
 	}
-	module.Init.Print(out)
+	v, err := c.Compile(library)
+	if err != nil {
+		return err
+	}
+	lambda, ok := v.(*scheme.Lambda)
+	if !ok {
+		return fmt.Errorf("unexpected init: %v", v)
+	}
+
+	lambda.Impl.Code.Print(out)
 	return nil
 }
 
