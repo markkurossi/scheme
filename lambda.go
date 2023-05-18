@@ -42,7 +42,6 @@ func (v *Lambda) Equal(o Value) bool {
 
 // Type implements the Value.Type().
 func (v *Lambda) Type() *types.Type {
-	fmt.Printf("*** Lambda.Type: v.Impl.Return=%v\n", v.Impl.Return)
 	t := &types.Type{
 		Enum:   types.EnumLambda,
 		Return: v.Impl.Return,
