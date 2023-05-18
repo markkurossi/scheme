@@ -97,7 +97,7 @@ func bytecode(scm *scheme.Scheme, file string) error {
 	}
 	defer out.Close()
 
-	c := scheme.NewCompiler(scm)
+	c := scheme.NewParser(scm)
 
 	library, err := c.Parse(file, in)
 	if err != nil {

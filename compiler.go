@@ -10,13 +10,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/markkurossi/scheme/types"
 )
 
-// Compiler implements the byte-code compiler.
-type Compiler struct {
+// Parser implements the byte-code compiler.
+type Parser struct {
 	scm      *Scheme
 	source   string
 	library  *Library
@@ -32,141 +31,16 @@ type export struct {
 	id   *Identifier
 }
 
-// Library implements a Scheme compilation unit.
-type Library struct {
-	c         *Compiler
-	Source    string
-	Name      Value
-	Body      *ASTSequence
-	Exports   Value
-	ExportAll bool
-	Imports   Value
-	Init      Code
-	PCMap     PCMap
-}
-
-// Scheme implements Value.Scheme.
-func (lib *Library) Scheme() string {
-	return fmt.Sprintf("library %s", lib.Name.Scheme())
-}
-
-// Eq implements Value.Eq.
-func (lib *Library) Eq(o Value) bool {
-	olib, ok := o.(*Library)
-	return ok && lib == olib
-}
-
-// Equal implements Value.Equal.
-func (lib *Library) Equal(o Value) bool {
-	return lib.Eq(o)
-}
-
-// Type implements Value.Type.
-func (lib *Library) Type() *types.Type {
-	return types.Any
-}
-
-func (lib *Library) parseLibraryHeader(list []Pair) error {
-	if len(list) < 4 {
-		return list[0].Errorf("truncated library header")
-	}
-	// Name.
-	pair, ok := list[1].Car().(Pair)
-	if !ok {
-		return list[1].Errorf("invalid library name: %v", list[1].Car())
-	}
-	l, ok := ListPairs(pair)
-	if !ok || len(l) == 0 {
-		return list[1].Errorf("invalid library name: %v", pair)
-	}
-	lib.Name = pair
-
-	// Export.
-	l, ok = ListPairs(list[2].Car())
-	if !ok || len(l) == 0 || !isNamedIdentifier(l[0].Car(), "export") {
-		return list[2].Errorf("expected (export ...)")
-	}
-	for i := 1; i < len(l); i++ {
-		_, ok := isIdentifier(l[i].Car())
-		if !ok {
-			return l[i].Errorf("invalid export name: %v", l[i])
-		}
-	}
-	lib.Exports = l[0].Cdr()
-
-	// Import.
-	pair, ok = list[3].Car().(Pair)
-	if !ok {
-		return list[3].Errorf("invalid library import: %v", list[3].Car())
-	}
-	_, ok = ListPairs(list[3].Car())
-	if !ok {
-		return list[3].Errorf("expected (import ...)")
-	}
-	lib.Imports, _ = Cdr(pair, true)
-
-	return nil
-}
-
-// MapPC maps the program counter value to the source location.
-func (lib *Library) MapPC(pc int) (source string, line int) {
-	source = lib.Source
-
-	if false {
-		fmt.Printf("Library.MapPC: %v:%v\n", source, pc)
-		for idx, pm := range lib.PCMap {
-			fmt.Printf(" - %v\tPC=%v, Line=%v\n", idx, pm.PC, pm.Line)
-		}
-		lib.Init.Print(os.Stdout)
-	}
-
-	line = lib.PCMap.MapPC(pc)
-	return
-}
-
-// PCMap implements mapping from program counter values to source line
-// numbers.
-type PCMap []PCLine
-
-// MapPC maps the program counter value to the source line number.
-func (pcmap PCMap) MapPC(pc int) (line int) {
-	for _, pm := range pcmap {
-		if pc > pm.PC {
-			line = pm.Line
-		}
-		if pc <= pm.PC {
-			break
-		}
-	}
-	return
-}
-
-// PCLine maps program counter values to line numbers.
-type PCLine struct {
-	PC   int
-	Line int
-}
-
-// Code implements scheme bytecode.
-type Code []*Instr
-
-// Print prints the code to standard output.
-func (code Code) Print(w io.Writer) {
-	for idx, c := range code {
-		fmt.Fprintf(w, "%v\t%s\n", idx, c)
-	}
-}
-
-// NewCompiler creates a new bytecode compiler.
-func NewCompiler(scm *Scheme) *Compiler {
-	return &Compiler{
+// NewParser creates a new bytecode compiler.
+func NewParser(scm *Scheme) *Parser {
+	return &Parser{
 		scm:      scm,
 		exported: make(map[string]*export),
 	}
 }
 
 // Parse parses the source.
-func (c *Compiler) Parse(source string, in io.Reader) (*Library, error) {
+func (c *Parser) Parse(source string, in io.Reader) (*Library, error) {
 	sexpr := NewSexprParser(source, in)
 
 	c.source = source
@@ -216,7 +90,7 @@ func (c *Compiler) Parse(source string, in io.Reader) (*Library, error) {
 
 				// Compile library body.
 				for i := 4; i < len(list); i++ {
-					ast, err := c.astValue(env, list[i], list[i].Car(), false,
+					ast, err := c.parseValue(env, list[i], list[i].Car(), false,
 						true)
 					if err != nil {
 						return nil, err
@@ -244,7 +118,7 @@ func (c *Compiler) Parse(source string, in io.Reader) (*Library, error) {
 			first = false
 		}
 
-		ast, err := c.astValue(env, Point{}, v, false, true)
+		ast, err := c.parseValue(env, Point{}, v, false, true)
 		if err != nil {
 			return nil, err
 		}
@@ -254,107 +128,7 @@ func (c *Compiler) Parse(source string, in io.Reader) (*Library, error) {
 	return library, nil
 }
 
-// Compile compiles the library into bytecode.
-func (c *Compiler) Compile(library *Library) (Value, error) {
-	err := library.Body.Bytecode(c)
-	if err != nil {
-		return nil, err
-	}
-
-	c.addInstr(nil, OpReturn, nil, 0)
-
-	// Compile lambdas.
-
-	var pcmaps []PCMap
-
-	for i := 0; i < len(c.lambdas); i++ {
-		lambda := c.lambdas[i]
-		pcmapStart := len(library.PCMap)
-
-		// Lambda body starts after the label.
-		ofs := len(c.code)
-		lambda.Start = ofs + 1
-
-		c.addInstr(nil, OpLabel, nil, lambda.Start)
-		for _, ast := range lambda.Body {
-			err := ast.Bytecode(c)
-			if err != nil {
-				return nil, err
-			}
-		}
-		c.addInstr(nil, OpReturn, nil, 0)
-		lambda.End = len(c.code)
-
-		pcmap := c.library.PCMap[pcmapStart:len(c.library.PCMap)]
-		for i := 0; i < len(pcmap); i++ {
-			pcmap[i].PC -= lambda.Start
-		}
-		pcmaps = append(pcmaps, pcmap)
-	}
-
-	// Collect label offsets
-	labels := make(map[int]int)
-	for idx, c := range c.code {
-		if c.Op == OpLabel {
-			labels[c.I] = idx
-		}
-	}
-
-	// Patch code offsets.
-	for i := 0; i < len(c.code); i++ {
-		instr := c.code[i]
-		switch instr.Op {
-		case OpLambda:
-			pcmap := pcmaps[instr.I]
-			def := c.lambdas[instr.I]
-
-			var name string
-			if def.Name != nil {
-				name = def.Name.Name
-			}
-
-			instr.I = def.Start
-			instr.J = def.End
-			instr.V = &LambdaImpl{
-				Name:     name,
-				Args:     def.Args,
-				Return:   def.Body[len(def.Body)-1].Type(),
-				Captures: def.Captures,
-				Source:   c.source,
-				Code:     c.code[def.Start:def.End],
-				MaxStack: def.Env.Stats.MaxStack,
-				PCMap:    pcmap,
-				Body:     def.Body,
-			}
-
-		case OpIf, OpIfNot, OpJmp:
-			ofs, ok := labels[instr.J]
-			if !ok {
-				return nil, fmt.Errorf("Label l%v not defined", instr.J)
-			}
-			instr.I = ofs - i
-		}
-	}
-
-	// Check that all exported names were defined.
-	for k, v := range c.exported {
-		if v.id == nil {
-			return nil, v.from.Errorf("exported symbol '%s' not defined", k)
-		}
-	}
-
-	return &Lambda{
-		Impl: &LambdaImpl{
-			Return:   types.Any,
-			Source:   library.Source,
-			Code:     c.code,
-			PCMap:    library.PCMap,
-			Captures: true,
-		},
-	}, nil
-}
-
-func (c *Compiler) astValue(env *Env, loc Locator, value Value,
+func (c *Parser) parseValue(env *Env, loc Locator, value Value,
 	tail, captures bool) (AST, error) {
 
 	switch v := value.(type) {
@@ -366,32 +140,32 @@ func (c *Compiler) astValue(env *Env, loc Locator, value Value,
 		length := len(list)
 
 		if isKeyword(v.Car(), KwDefine) {
-			return c.astDefine(env, list, 0, captures)
+			return c.parseDefine(env, list, 0, captures)
 		}
 		if isKeyword(v.Car(), KwDefineConstant) {
-			return c.astDefine(env, list, FlagConst, captures)
+			return c.parseDefine(env, list, FlagConst, captures)
 		}
 		if isKeyword(v.Car(), KwLambda) {
-			return c.astLambda(env, false, 0, list)
+			return c.parseLambda(env, false, 0, list)
 		}
 		if isKeyword(v.Car(), KwSet) {
-			return c.astSet(env, list, captures)
+			return c.parseSet(env, list, captures)
 		}
 		if isKeyword(v.Car(), KwLet) {
-			return c.astLet(KwLet, env, list, tail, captures)
+			return c.parseLet(KwLet, env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwLetStar) {
-			return c.astLet(KwLetStar, env, list, tail, captures)
+			return c.parseLet(KwLetStar, env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwLetrec) {
-			return c.astLet(KwLetrec, env, list, tail, captures)
+			return c.parseLet(KwLetrec, env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwBegin) {
 			seq := &ASTSequence{
 				From: loc,
 			}
 			err := MapPairs(func(idx int, p Pair) error {
-				ast, err := c.astValue(env, p, p.Car(),
+				ast, err := c.parseValue(env, p, p.Car(),
 					tail && idx+1 >= length-1, captures)
 				if err != nil {
 					return err
@@ -405,7 +179,7 @@ func (c *Compiler) astValue(env *Env, loc Locator, value Value,
 			return seq, nil
 		}
 		if isKeyword(v.Car(), KwIf) {
-			return c.astIf(env, list, tail, captures)
+			return c.parseIf(env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwQuote) {
 			if length != 2 {
@@ -424,19 +198,19 @@ func (c *Compiler) astValue(env *Env, loc Locator, value Value,
 			if length != 3 {
 				return nil, v.Errorf("invalid scheme::apply: %v", v)
 			}
-			return c.astApply(env, v, tail, captures)
+			return c.parseApply(env, v, tail, captures)
 		}
 		if isKeyword(v.Car(), KwCond) {
-			return c.astCond(env, list, tail, captures)
+			return c.parseCond(env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwCase) {
-			return c.astCase(env, list, tail, captures)
+			return c.parseCase(env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwAnd) {
-			return c.astAnd(env, list, tail, captures)
+			return c.parseAnd(env, list, tail, captures)
 		}
 		if isKeyword(v.Car(), KwOr) {
-			return c.astOr(env, list, tail, captures)
+			return c.parseOr(env, list, tail, captures)
 		}
 
 		// Function call.
@@ -448,7 +222,8 @@ func (c *Compiler) astValue(env *Env, loc Locator, value Value,
 				From: list[0],
 				Op:   inlineOp,
 			}
-			arg, err := c.astValue(env, list[1], list[1].Car(), false, captures)
+			arg, err := c.parseValue(env, list[1], list[1].Car(), false,
+				captures)
 			if err != nil {
 				return nil, err
 			}
@@ -474,7 +249,7 @@ func (c *Compiler) astValue(env *Env, loc Locator, value Value,
 
 		if !ast.Inline {
 			// Compile function.
-			a, err := c.astValue(env, list[0], list[0].Car(), false, captures)
+			a, err := c.parseValue(env, list[0], list[0].Car(), false, captures)
 			if err != nil {
 				return nil, err
 			}
@@ -489,7 +264,7 @@ func (c *Compiler) astValue(env *Env, loc Locator, value Value,
 
 		// Evaluate arguments.
 		for i := 1; i < len(list); i++ {
-			a, err := c.astValue(lambdaEnv, list[i], list[i].Car(), false,
+			a, err := c.parseValue(lambdaEnv, list[i], list[i].Car(), false,
 				captures)
 			if err != nil {
 				return nil, err
@@ -535,7 +310,7 @@ var inlineUnary = map[string]Operand{
 	"not":   OpNot,
 }
 
-func (c *Compiler) inlineUnary(env *Env, list []Pair) (bool, Operand) {
+func (c *Parser) inlineUnary(env *Env, list []Pair) (bool, Operand) {
 
 	if len(list) != 2 {
 		return false, 0
@@ -563,7 +338,7 @@ var inlineBinary = map[string]Operand{
 	">=":   OpGe,
 }
 
-func (c *Compiler) inlineBinary(env *Env, list []Pair) (bool, Operand) {
+func (c *Parser) inlineBinary(env *Env, list []Pair) (bool, Operand) {
 
 	if len(list) != 3 {
 		return false, 0
@@ -580,7 +355,7 @@ func (c *Compiler) inlineBinary(env *Env, list []Pair) (bool, Operand) {
 	return true, op
 }
 
-func (c *Compiler) addCall(from Locator, numArgs int, tail bool) {
+func (c *Parser) addCall(from Locator, numArgs int, tail bool) {
 	if numArgs >= 0 {
 		c.addInstr(from, OpConst, Int(numArgs), 0)
 	}
@@ -591,7 +366,7 @@ func (c *Compiler) addCall(from Locator, numArgs int, tail bool) {
 	c.addInstr(from, OpCall, nil, i)
 }
 
-func (c *Compiler) addPushS(from Locator, size int, capture bool) {
+func (c *Parser) addPushS(from Locator, size int, capture bool) {
 	var op Operand
 	if capture {
 		op = OpPushE
@@ -601,7 +376,7 @@ func (c *Compiler) addPushS(from Locator, size int, capture bool) {
 	c.addInstr(from, op, nil, size)
 }
 
-func (c *Compiler) addPopS(from Locator, size int, capture bool) {
+func (c *Parser) addPopS(from Locator, size int, capture bool) {
 	var op Operand
 	if capture {
 		op = OpPopE
@@ -614,7 +389,7 @@ func (c *Compiler) addPopS(from Locator, size int, capture bool) {
 	}
 }
 
-func (c *Compiler) addInstr(from Locator, op Operand, v Value, i int) *Instr {
+func (c *Parser) addInstr(from Locator, op Operand, v Value, i int) *Instr {
 	instr := &Instr{
 		Op: op,
 		V:  v,
@@ -634,11 +409,11 @@ func (c *Compiler) addInstr(from Locator, op Operand, v Value, i int) *Instr {
 	return instr
 }
 
-func (c *Compiler) addLabel(l *Instr) {
+func (c *Parser) addLabel(l *Instr) {
 	c.code = append(c.code, l)
 }
 
-func (c *Compiler) newLabel() *Instr {
+func (c *Parser) newLabel() *Instr {
 	c.nextLabel++
 	return &Instr{
 		Op: OpLabel,
@@ -646,7 +421,7 @@ func (c *Compiler) newLabel() *Instr {
 	}
 }
 
-func (c *Compiler) astDefine(env *Env, list []Pair, flags Flags,
+func (c *Parser) parseDefine(env *Env, list []Pair, flags Flags,
 	captures bool) (AST, error) {
 
 	if len(list) < 3 {
@@ -655,7 +430,7 @@ func (c *Compiler) astDefine(env *Env, list []Pair, flags Flags,
 	// (define name value)
 	name, ok := isIdentifier(list[1].Car())
 	if ok {
-		ast, err := c.astValue(env, list[2], list[2].Car(), false, captures)
+		ast, err := c.parseValue(env, list[2], list[2].Car(), false, captures)
 		if err != nil {
 			return nil, err
 		}
@@ -668,10 +443,10 @@ func (c *Compiler) astDefine(env *Env, list []Pair, flags Flags,
 	}
 
 	// (define (name args?) body)
-	return c.astLambda(env, true, flags, list)
+	return c.parseLambda(env, true, flags, list)
 }
 
-func (c *Compiler) define(loc Locator, env *Env, name *Identifier,
+func (c *Parser) define(loc Locator, env *Env, name *Identifier,
 	flags Flags) error {
 
 	export, ok := c.exported[name.Name]
@@ -706,7 +481,7 @@ func (seen seen) add(name string) error {
 	return nil
 }
 
-func (c *Compiler) astLambda(env *Env, define bool, flags Flags,
+func (c *Parser) parseLambda(env *Env, define bool, flags Flags,
 	list []Pair) (AST, error) {
 
 	// (define (name args?) body)
@@ -865,8 +640,8 @@ func (c *Compiler) astLambda(env *Env, define bool, flags Flags,
 	}
 
 	for i := 2; i < len(list); i++ {
-		a, err := c.astValue(capture, list[i], list[i].Car(), i+1 >= len(list),
-			captures)
+		a, err := c.parseValue(capture, list[i], list[i].Car(),
+			i+1 >= len(list), captures)
 		if err != nil {
 			return nil, err
 		}
@@ -876,7 +651,7 @@ func (c *Compiler) astLambda(env *Env, define bool, flags Flags,
 	return ast, nil
 }
 
-func (c *Compiler) astSet(env *Env, list []Pair, captures bool) (AST, error) {
+func (c *Parser) parseSet(env *Env, list []Pair, captures bool) (AST, error) {
 	// (set! name value)
 	if len(list) != 3 {
 		return nil, list[0].Errorf("syntax error: %v", list[0])
@@ -886,7 +661,7 @@ func (c *Compiler) astSet(env *Env, list []Pair, captures bool) (AST, error) {
 		return nil, list[1].Errorf("set!: expected variable name: %v",
 			list[1].Car())
 	}
-	ast, err := c.astValue(env, list[2], list[2].Car(), false, captures)
+	ast, err := c.parseValue(env, list[2], list[2].Car(), false, captures)
 	if err != nil {
 		return nil, err
 	}
@@ -901,7 +676,7 @@ func (c *Compiler) astSet(env *Env, list []Pair, captures bool) (AST, error) {
 	}, nil
 }
 
-func (c *Compiler) astLet(kind Keyword, env *Env, list []Pair,
+func (c *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 	tail, captures bool) (AST, error) {
 
 	if len(list) < 3 {
@@ -953,7 +728,7 @@ func (c *Compiler) astLet(kind Keyword, env *Env, list []Pair,
 			return nil, list[1].Errorf("%s: invalid init: %v", kind, binding)
 		}
 
-		initAst, err := c.astValue(letEnv, def[1], def[1].Car(), false,
+		initAst, err := c.parseValue(letEnv, def[1], def[1].Car(), false,
 			captures)
 		if err != nil {
 			return nil, err
@@ -978,7 +753,7 @@ func (c *Compiler) astLet(kind Keyword, env *Env, list []Pair,
 
 	// Compile body.
 	for i := 2; i < len(list); i++ {
-		bodyAst, err := c.astValue(letEnv, list[i], list[i].Car(),
+		bodyAst, err := c.parseValue(letEnv, list[i], list[i].Car(),
 			tail && i+1 >= len(list), captures)
 		if err != nil {
 			return nil, err
@@ -989,7 +764,7 @@ func (c *Compiler) astLet(kind Keyword, env *Env, list []Pair,
 	return ast, nil
 }
 
-func (c *Compiler) astIf(env *Env, list []Pair,
+func (c *Parser) parseIf(env *Env, list []Pair,
 	tail, captures bool) (AST, error) {
 
 	if len(list) < 3 || len(list) > 4 {
@@ -999,20 +774,20 @@ func (c *Compiler) astIf(env *Env, list []Pair,
 	ast := &ASTIf{
 		From: list[0],
 	}
-	a, err := c.astValue(env, list[1], list[1].Car(), false, captures)
+	a, err := c.parseValue(env, list[1], list[1].Car(), false, captures)
 	if err != nil {
 		return nil, err
 	}
 	ast.Cond = a
 
-	a, err = c.astValue(env, list[2], list[2].Car(), tail, captures)
+	a, err = c.parseValue(env, list[2], list[2].Car(), tail, captures)
 	if err != nil {
 		return nil, err
 	}
 	ast.True = a
 
 	if len(list) == 4 {
-		a, err = c.astValue(env, list[3], list[3].Car(), tail, captures)
+		a, err = c.parseValue(env, list[3], list[3].Car(), tail, captures)
 		if err != nil {
 			return nil, err
 		}
@@ -1022,7 +797,7 @@ func (c *Compiler) astIf(env *Env, list []Pair,
 	return ast, nil
 }
 
-func (c *Compiler) astApply(env *Env, pair Pair,
+func (c *Parser) parseApply(env *Env, pair Pair,
 	tail, captures bool) (AST, error) {
 
 	f, ok := Car(pair.Cdr(), true)
@@ -1035,7 +810,7 @@ func (c *Compiler) astApply(env *Env, pair Pair,
 	}
 
 	// Lambda.
-	lambdaAST, err := c.astValue(env, pair, f, false, captures)
+	lambdaAST, err := c.parseValue(env, pair, f, false, captures)
 	if err != nil {
 		return nil, err
 	}
@@ -1044,7 +819,7 @@ func (c *Compiler) astApply(env *Env, pair Pair,
 	env.PushFrame(TypeStack, FUFrame, 1)
 
 	// Compile arguments.
-	argsAST, err := c.astValue(env, pair, args, false, captures)
+	argsAST, err := c.parseValue(env, pair, args, false, captures)
 	if err != nil {
 		return nil, err
 	}
@@ -1060,7 +835,7 @@ func (c *Compiler) astApply(env *Env, pair Pair,
 	}, nil
 }
 
-func (c *Compiler) astCond(env *Env, list []Pair,
+func (c *Parser) parseCond(env *Env, list []Pair,
 	tail, captures bool) (AST, error) {
 
 	if len(list) < 2 {
@@ -1095,7 +870,7 @@ func (c *Compiler) astCond(env *Env, list []Pair,
 
 		if !isElse {
 			// Compile condition.
-			condAST, err := c.astValue(env, clause[0], clause[0].Car(), false,
+			condAST, err := c.parseValue(env, clause[0], clause[0].Car(), false,
 				captures)
 			if err != nil {
 				return nil, err
@@ -1112,7 +887,7 @@ func (c *Compiler) astCond(env *Env, list []Pair,
 			choice.FuncValueFrame = env.PushCaptureFrame(false, FUValue, 1)
 
 			// Compile function.
-			funcAST, err := c.astValue(env, clause[2], clause[2].Car(), false,
+			funcAST, err := c.parseValue(env, clause[2], clause[2].Car(), false,
 				captures)
 			if err != nil {
 				return nil, err
@@ -1132,7 +907,7 @@ func (c *Compiler) astCond(env *Env, list []Pair,
 			// Compile expressions.
 			for j := 1; j < len(clause); j++ {
 				last := j+1 >= len(clause)
-				expr, err := c.astValue(env, clause[j], clause[j].Car(),
+				expr, err := c.parseValue(env, clause[j], clause[j].Car(),
 					tail && last, captures)
 				if err != nil {
 					return nil, err
@@ -1145,7 +920,7 @@ func (c *Compiler) astCond(env *Env, list []Pair,
 	return ast, nil
 }
 
-func (c *Compiler) astCase(env *Env, list []Pair,
+func (c *Parser) parseCase(env *Env, list []Pair,
 	tail, captures bool) (AST, error) {
 
 	if len(list) < 3 {
@@ -1162,7 +937,7 @@ func (c *Compiler) astCase(env *Env, list []Pair,
 	ast.ValueFrame = env.PushCaptureFrame(false, FUValue, 1)
 
 	// Compile key.
-	expr, err := c.astValue(env, list[1], list[1].Car(), false, captures)
+	expr, err := c.parseValue(env, list[1], list[1].Car(), false, captures)
 	if err != nil {
 		return nil, err
 	}
@@ -1214,7 +989,7 @@ func (c *Compiler) astCase(env *Env, list []Pair,
 		for j := 1; j < len(clause); j++ {
 			last := j+1 >= len(clause)
 
-			expr, err := c.astValue(env, clause[j], clause[j].Car(),
+			expr, err := c.parseValue(env, clause[j], clause[j].Car(),
 				tail && last, captures)
 			if err != nil {
 				return nil, err
@@ -1228,7 +1003,7 @@ func (c *Compiler) astCase(env *Env, list []Pair,
 	return ast, nil
 }
 
-func (c *Compiler) astAnd(env *Env, list []Pair,
+func (c *Parser) parseAnd(env *Env, list []Pair,
 	tail, captures bool) (AST, error) {
 
 	ast := &ASTAnd{
@@ -1236,7 +1011,7 @@ func (c *Compiler) astAnd(env *Env, list []Pair,
 	}
 
 	for i := 1; i < len(list); i++ {
-		expr, err := c.astValue(env, list[i], list[i].Car(), false, captures)
+		expr, err := c.parseValue(env, list[i], list[i].Car(), false, captures)
 		if err != nil {
 			return nil, err
 		}
@@ -1246,7 +1021,7 @@ func (c *Compiler) astAnd(env *Env, list []Pair,
 	return ast, nil
 }
 
-func (c *Compiler) astOr(env *Env, list []Pair,
+func (c *Parser) parseOr(env *Env, list []Pair,
 	tail, captures bool) (AST, error) {
 
 	ast := &ASTOr{
@@ -1254,7 +1029,7 @@ func (c *Compiler) astOr(env *Env, list []Pair,
 	}
 
 	for i := 1; i < len(list); i++ {
-		expr, err := c.astValue(env, list[i], list[i].Car(), false, captures)
+		expr, err := c.parseValue(env, list[i], list[i].Car(), false, captures)
 		if err != nil {
 			return nil, err
 		}
@@ -1280,15 +1055,4 @@ func isIdentifier(value Value) (*Identifier, bool) {
 func isNamedIdentifier(value Value, name string) bool {
 	id, ok := isIdentifier(value)
 	return ok && id.Name == name
-}
-
-type lambdaCompilation struct {
-	Start    int
-	End      int
-	Name     *Identifier
-	Args     Args
-	Body     []AST
-	Env      *Env
-	MaxStack int
-	Captures bool
 }

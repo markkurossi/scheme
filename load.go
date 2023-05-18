@@ -99,7 +99,7 @@ func (scm *Scheme) LoadFile(file string) (Value, error) {
 
 // Load loads and compiles the input.
 func (scm *Scheme) Load(source string, in io.Reader) (Value, error) {
-	c := NewCompiler(scm)
+	c := NewParser(scm)
 
 	library, err := c.Parse(source, in)
 	if err != nil {

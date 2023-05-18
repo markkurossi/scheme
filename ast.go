@@ -17,7 +17,7 @@ type AST interface {
 	Locator() Locator
 	Equal(o AST) bool
 	Type() *types.Type
-	Bytecode(c *Compiler) error
+	Bytecode(c *Parser) error
 }
 
 // AbstractSyntaxTree defines AST as a Value.
@@ -106,7 +106,7 @@ func (ast *ASTSequence) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTSequence) Bytecode(c *Compiler) error {
+func (ast *ASTSequence) Bytecode(c *Parser) error {
 	for _, item := range ast.Items {
 		err := item.Bytecode(c)
 		if err != nil {
@@ -146,7 +146,7 @@ func (ast *ASTDefine) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTDefine) Bytecode(c *Compiler) error {
+func (ast *ASTDefine) Bytecode(c *Parser) error {
 	err := ast.Value.Bytecode(c)
 	if err != nil {
 		return err
@@ -193,7 +193,7 @@ func (ast *ASTSet) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTSet) Bytecode(c *Compiler) error {
+func (ast *ASTSet) Bytecode(c *Parser) error {
 	err := ast.Value.Bytecode(c)
 	if err != nil {
 		return err
@@ -269,7 +269,7 @@ func (ast *ASTLet) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTLet) Bytecode(c *Compiler) error {
+func (ast *ASTLet) Bytecode(c *Parser) error {
 	c.addPushS(ast.From, len(ast.Bindings), ast.Captures)
 
 	for _, binding := range ast.Bindings {
@@ -348,7 +348,7 @@ func (ast *ASTIf) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTIf) Bytecode(c *Compiler) error {
+func (ast *ASTIf) Bytecode(c *Parser) error {
 	labelFalse := c.newLabel()
 	labelEnd := c.newLabel()
 
@@ -423,7 +423,7 @@ func (ast *ASTApply) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTApply) Bytecode(c *Compiler) error {
+func (ast *ASTApply) Bytecode(c *Parser) error {
 	err := ast.Lambda.Bytecode(c)
 	if err != nil {
 		return err
@@ -515,7 +515,7 @@ func (ast *ASTCall) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTCall) Bytecode(c *Compiler) error {
+func (ast *ASTCall) Bytecode(c *Parser) error {
 	if !ast.Inline {
 		err := ast.Func.Bytecode(c)
 		if err != nil {
@@ -587,7 +587,7 @@ func (ast *ASTCallUnary) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTCallUnary) Bytecode(c *Compiler) error {
+func (ast *ASTCallUnary) Bytecode(c *Parser) error {
 	err := ast.Arg.Bytecode(c)
 	if err != nil {
 		return err
@@ -650,7 +650,7 @@ func (ast *ASTLambda) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTLambda) Bytecode(c *Compiler) error {
+func (ast *ASTLambda) Bytecode(c *Parser) error {
 	c.addInstr(ast.From, OpLambda, nil, len(c.lambdas))
 	c.lambdas = append(c.lambdas, &lambdaCompilation{
 		Name:     ast.Name,
@@ -700,7 +700,7 @@ func (ast *ASTConstant) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTConstant) Bytecode(c *Compiler) error {
+func (ast *ASTConstant) Bytecode(c *Parser) error {
 	c.addInstr(nil, OpConst, ast.Value, 0)
 	return nil
 }
@@ -742,7 +742,7 @@ func (ast *ASTIdentifier) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTIdentifier) Bytecode(c *Compiler) error {
+func (ast *ASTIdentifier) Bytecode(c *Parser) error {
 	if ast.Binding != nil {
 		if ast.Binding.Frame.Type == TypeStack {
 			c.addInstr(ast.From, OpLocal, nil,
@@ -832,7 +832,7 @@ func (ast *ASTCond) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTCond) Bytecode(c *Compiler) error {
+func (ast *ASTCond) Bytecode(c *Parser) error {
 	labelEnd := c.newLabel()
 
 	var labelClause *Instr
@@ -993,7 +993,7 @@ func (ast *ASTCase) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTCase) Bytecode(c *Compiler) error {
+func (ast *ASTCase) Bytecode(c *Parser) error {
 	labelEnd := c.newLabel()
 
 	// Push value scope.
@@ -1125,7 +1125,7 @@ func (ast *ASTAnd) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTAnd) Bytecode(c *Compiler) error {
+func (ast *ASTAnd) Bytecode(c *Parser) error {
 	if len(ast.Exprs) == 0 {
 		c.addInstr(ast.From, OpConst, Boolean(true), 0)
 		return nil
@@ -1194,7 +1194,7 @@ func (ast *ASTOr) Type() *types.Type {
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTOr) Bytecode(c *Compiler) error {
+func (ast *ASTOr) Bytecode(c *Parser) error {
 	if len(ast.Exprs) == 0 {
 		c.addInstr(ast.From, OpConst, Boolean(false), 0)
 		return nil
