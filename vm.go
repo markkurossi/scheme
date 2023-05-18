@@ -732,7 +732,8 @@ func (scm *Scheme) Intern(name string) *Identifier {
 	id, ok := scm.symbols[name]
 	if !ok {
 		id = &Identifier{
-			Name: name,
+			Name:       name,
+			GlobalType: types.Unspecified,
 		}
 		scm.symbols[name] = id
 	}

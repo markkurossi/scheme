@@ -17,33 +17,8 @@ type AST interface {
 	Locator() Locator
 	Equal(o AST) bool
 	Type() *types.Type
+	Typecheck(lib *Library) error
 	Bytecode(lib *Library) error
-}
-
-// AbstractSyntaxTree defines AST as a Value.
-type AbstractSyntaxTree struct {
-	AST AST
-}
-
-// Scheme implements Value.Scheme.
-func (ast *AbstractSyntaxTree) Scheme() string {
-	return "#<ast>"
-}
-
-// Eq implements Value.Eq.
-func (ast *AbstractSyntaxTree) Eq(o Value) bool {
-	oast, ok := o.(*AbstractSyntaxTree)
-	return ok && ast == oast
-}
-
-// Equal implements Value.Equal.
-func (ast *AbstractSyntaxTree) Equal(o Value) bool {
-	return ast.Eq(o)
-}
-
-// Type implements Value.Type.
-func (ast *AbstractSyntaxTree) Type() *types.Type {
-	return types.Any
 }
 
 var (
@@ -105,6 +80,17 @@ func (ast *ASTSequence) Type() *types.Type {
 	return ast.Items[len(ast.Items)-1].Type()
 }
 
+// Typecheck implements AST.Type.
+func (ast *ASTSequence) Typecheck(lib *Library) error {
+	for _, item := range ast.Items {
+		err := item.Typecheck(lib)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTSequence) Bytecode(lib *Library) error {
 	for _, item := range ast.Items {
@@ -145,18 +131,24 @@ func (ast *ASTDefine) Type() *types.Type {
 	return ast.Value.Type()
 }
 
+// Typecheck implements AST.Type.
+func (ast *ASTDefine) Typecheck(lib *Library) error {
+	sym := lib.scm.Intern(ast.Name.Name)
+	if !sym.GlobalType.IsA(types.Unspecified) {
+		return ast.From.Errorf("redefining symbol '%s'", ast.Name.Name)
+	}
+	sym.GlobalType = ast.Value.Type()
+
+	return nil
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTDefine) Bytecode(lib *Library) error {
 	err := ast.Value.Bytecode(lib)
 	if err != nil {
 		return err
 	}
-
-	// XXX Define symbol's type.
-
-	instr := lib.addInstr(ast.From, OpDefine, nil, int(ast.Flags))
-	instr.Sym = lib.scm.Intern(ast.Name.Name)
-	return nil
+	return lib.define(ast.From, ast.Name, ast.Flags)
 }
 
 // ASTSet implements (set name value).
@@ -190,6 +182,22 @@ func (ast *ASTSet) Equal(o AST) bool {
 // Type implements AST.Type.
 func (ast *ASTSet) Type() *types.Type {
 	return ast.Value.Type()
+}
+
+// Typecheck implements AST.Type.
+func (ast *ASTSet) Typecheck(lib *Library) error {
+	if ast.Binding == nil {
+		sym := lib.scm.Intern(ast.Name)
+		if sym.GlobalType.IsA(types.Unspecified) {
+			return ast.From.Errorf("setting undefined symbol '%s'", ast.Name)
+		}
+		vtype := ast.Value.Type()
+		if !vtype.IsKindOf(sym.GlobalType) {
+			return ast.From.Errorf("can't assign %s to variable of type %s",
+				vtype, sym.GlobalType)
+		}
+	}
+	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -268,6 +276,11 @@ func (ast *ASTLet) Type() *types.Type {
 	return ast.Body[len(ast.Body)-1].Type()
 }
 
+// Typecheck implements AST.Type.
+func (ast *ASTLet) Typecheck(lib *Library) error {
+	return nil
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTLet) Bytecode(lib *Library) error {
 	lib.addPushS(ast.From, len(ast.Bindings), ast.Captures)
@@ -344,7 +357,11 @@ func (ast *ASTIf) Type() *types.Type {
 		return types.Unify(ast.Cond.Type(), ast.True.Type())
 	}
 	return types.Unify(ast.True.Type(), ast.False.Type())
+}
 
+// Typecheck implements AST.Type.
+func (ast *ASTIf) Typecheck(lib *Library) error {
+	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -420,6 +437,11 @@ func (ast *ASTApply) Type() *types.Type {
 		return nil
 	}
 	return t.Return
+}
+
+// Typecheck implements AST.Type.
+func (ast *ASTApply) Typecheck(lib *Library) error {
+	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -514,6 +536,11 @@ func (ast *ASTCall) Type() *types.Type {
 	return t.Return
 }
 
+// Typecheck implements AST.Type.
+func (ast *ASTCall) Typecheck(lib *Library) error {
+	return nil
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTCall) Bytecode(lib *Library) error {
 	if !ast.Inline {
@@ -586,6 +613,11 @@ func (ast *ASTCallUnary) Type() *types.Type {
 	return t
 }
 
+// Typecheck implements AST.Type.
+func (ast *ASTCallUnary) Typecheck(lib *Library) error {
+	return nil
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTCallUnary) Bytecode(lib *Library) error {
 	err := ast.Arg.Bytecode(lib)
@@ -649,6 +681,17 @@ func (ast *ASTLambda) Type() *types.Type {
 	return t
 }
 
+// Typecheck implements AST.Type.
+func (ast *ASTLambda) Typecheck(lib *Library) error {
+	sym := lib.scm.Intern(ast.Name.Name)
+	if !sym.GlobalType.IsA(types.Unspecified) {
+		return ast.From.Errorf("redefining symbol '%s'", ast.Name.Name)
+	}
+	sym.GlobalType = ast.Type()
+
+	return nil
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTLambda) Bytecode(lib *Library) error {
 	lib.addInstr(ast.From, OpLambda, nil, len(lib.lambdas))
@@ -660,8 +703,7 @@ func (ast *ASTLambda) Bytecode(lib *Library) error {
 		Captures: ast.Captures,
 	})
 	if ast.Define {
-		// XXX Define symbol's type.
-		err := lib.define(ast.From, ast.Env, ast.Name, ast.Flags)
+		err := lib.define(ast.From, ast.Name, ast.Flags)
 		if err != nil {
 			return err
 		}
@@ -697,6 +739,11 @@ func (ast *ASTConstant) Type() *types.Type {
 		return types.Any
 	}
 	return ast.Value.Type()
+}
+
+// Typecheck implements AST.Type.
+func (ast *ASTConstant) Typecheck(lib *Library) error {
+	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -739,6 +786,11 @@ func (ast *ASTIdentifier) Equal(o AST) bool {
 func (ast *ASTIdentifier) Type() *types.Type {
 	// XXX
 	return types.Unspecified
+}
+
+// Typecheck implements AST.Type.
+func (ast *ASTIdentifier) Typecheck(lib *Library) error {
+	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -829,6 +881,11 @@ func (ast *ASTCond) Type() *types.Type {
 		t = types.Unify(t, types.Boolean)
 	}
 	return t
+}
+
+// Typecheck implements AST.Type.
+func (ast *ASTCond) Typecheck(lib *Library) error {
+	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -992,6 +1049,11 @@ func (ast *ASTCase) Type() *types.Type {
 	return t
 }
 
+// Typecheck implements AST.Type.
+func (ast *ASTCase) Typecheck(lib *Library) error {
+	return nil
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTCase) Bytecode(lib *Library) error {
 	labelEnd := lib.newLabel()
@@ -1124,6 +1186,11 @@ func (ast *ASTAnd) Type() *types.Type {
 	return t
 }
 
+// Typecheck implements AST.Type.
+func (ast *ASTAnd) Typecheck(lib *Library) error {
+	return nil
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTAnd) Bytecode(lib *Library) error {
 	if len(ast.Exprs) == 0 {
@@ -1193,6 +1260,11 @@ func (ast *ASTOr) Type() *types.Type {
 	return t
 }
 
+// Typecheck implements AST.Type.
+func (ast *ASTOr) Typecheck(lib *Library) error {
+	return nil
+}
+
 // Bytecode implements AST.Bytecode.
 func (ast *ASTOr) Bytecode(lib *Library) error {
 	if len(ast.Exprs) == 0 {
@@ -1221,11 +1293,10 @@ func (ast *ASTOr) Bytecode(lib *Library) error {
 	return nil
 }
 
-func (lib *Library) define(loc Locator, env *Env, name *Identifier,
-	flags Flags) error {
+func (lib *Library) define(loc Locator, name *Identifier, flags Flags) error {
 
 	export, ok := lib.exported[name.Name]
-	if /* c.exportAll || */ ok {
+	if lib.ExportAll || ok {
 		// XXX Defined global symbol.
 	} else {
 		// XXX Define library symbol.

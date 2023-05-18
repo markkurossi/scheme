@@ -75,10 +75,11 @@ func (f Flags) String() string {
 
 // Identifier implements identifier values.
 type Identifier struct {
-	Name   string
-	Point  Point
-	Global Value
-	Flags  Flags
+	Name       string
+	Point      Point
+	GlobalType *types.Type
+	Global     Value
+	Flags      Flags
 }
 
 // Scheme returns the value as a Scheme string.

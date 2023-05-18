@@ -145,7 +145,11 @@ func (code Code) Print(w io.Writer) {
 
 // Compile compiles the library into bytecode.
 func (lib *Library) Compile() (Value, error) {
-	err := lib.Body.Bytecode(lib)
+	err := lib.Body.Typecheck(lib)
+	if err != nil {
+		return nil, err
+	}
+	err = lib.Body.Bytecode(lib)
 	if err != nil {
 		return nil, err
 	}
