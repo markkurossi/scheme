@@ -26,9 +26,15 @@ type Library struct {
 	Init      Code
 	PCMap     PCMap
 
-	lambdas   []*lambdaCompilation
-	nextLabel int
-	exported  map[string]*export
+	lambdas     []*lambdaCompilation
+	nextLabel   int
+	exported    map[string]*export
+	typeBacklog []AST
+	recheck     bool
+}
+
+func (lib *Library) addToTypeBacklog(ast AST) {
+	lib.typeBacklog = append(lib.typeBacklog, ast)
 }
 
 // Scheme implements Value.Scheme.
@@ -145,11 +151,16 @@ func (code Code) Print(w io.Writer) {
 
 // Compile compiles the library into bytecode.
 func (lib *Library) Compile() (Value, error) {
-	err := lib.Body.Typecheck(lib)
-	if err != nil {
-		return nil, err
+	lib.recheck = true
+	for round := 0; lib.recheck; round++ {
+		lib.recheck = false
+		err := lib.Body.Typecheck(lib, round)
+		if err != nil {
+			return nil, err
+		}
 	}
-	err = lib.Body.Bytecode(lib)
+
+	err := lib.Body.Bytecode(lib)
 	if err != nil {
 		return nil, err
 	}
