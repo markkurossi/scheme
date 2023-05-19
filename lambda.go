@@ -246,7 +246,6 @@ func (args *Args) Init() {
 type TypedName struct {
 	Name string
 	Type *types.Type
-	Kind types.Kind
 }
 
 func (tn *TypedName) String() string {
@@ -255,7 +254,7 @@ func (tn *TypedName) String() string {
 	if tn.Type != nil {
 		result += fmt.Sprintf("<%s>", tn.Type)
 	}
-	switch tn.Kind {
+	switch tn.Type.Kind {
 	case types.Optional:
 		return "[" + result + "]"
 

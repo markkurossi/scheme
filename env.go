@@ -9,6 +9,8 @@ package scheme
 import (
 	"fmt"
 	"sort"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // Env implements environment bindings.
@@ -78,6 +80,7 @@ type EnvBinding struct {
 	Frame    *EnvFrame
 	Disabled bool
 	Index    int
+	Type     *types.Type
 }
 
 // NewEnv creates a new empty environment.

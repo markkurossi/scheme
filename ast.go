@@ -361,6 +361,17 @@ func (ast *ASTIf) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTIf) Typecheck(lib *Library) error {
+	err := ast.Cond.Typecheck(lib)
+	if err != nil {
+		return err
+	}
+	err = ast.True.Typecheck(lib)
+	if err != nil {
+		return err
+	}
+	if ast.False != nil {
+		return ast.False.Typecheck(lib)
+	}
 	return nil
 }
 
@@ -530,7 +541,7 @@ func (ast *ASTCall) Type() *types.Type {
 		return t
 	}
 	t := ast.Func.Type()
-	if t.Enum != types.EnumLambda {
+	if t == nil || t.Enum != types.EnumLambda {
 		return types.Unspecified
 	}
 	return t.Return
@@ -538,6 +549,35 @@ func (ast *ASTCall) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTCall) Typecheck(lib *Library) error {
+	for _, arg := range ast.Args {
+		err := arg.Typecheck(lib)
+		if err != nil {
+			return err
+		}
+	}
+	if !ast.Inline {
+		err := ast.Func.Typecheck(lib)
+		if err != nil {
+			return err
+		}
+		ft := ast.Func.Type()
+		if ft == nil || ft.IsA(types.Unspecified) || ft.IsA(types.Any) {
+			return nil
+		}
+		if ft.Enum != types.EnumLambda {
+			return ast.Func.Locator().Errorf("invalid procedure: %s", ft)
+		}
+		if len(ast.Args) < ft.MinArgs() {
+			return ast.From.Errorf("too few arguments: got %v, need %v",
+				len(ast.Args), ft.MinArgs())
+		}
+		if len(ast.Args) > ft.MaxArgs() {
+			return ast.From.Errorf("too many arguments: got %v, max %v",
+				len(ast.Args), ft.MinArgs())
+		}
+		//fmt.Printf("ASTCall.Typecheck: %v\n", ft)
+		//fmt.Printf("*** call %s with %v\n", ft, ast.Args)
+	}
 	return nil
 }
 
@@ -683,11 +723,19 @@ func (ast *ASTLambda) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTLambda) Typecheck(lib *Library) error {
-	sym := lib.scm.Intern(ast.Name.Name)
-	if !sym.GlobalType.IsA(types.Unspecified) {
-		return ast.From.Errorf("redefining symbol '%s'", ast.Name.Name)
+	for _, body := range ast.Body {
+		err := body.Typecheck(lib)
+		if err != nil {
+			return err
+		}
 	}
-	sym.GlobalType = ast.Type()
+	if ast.Name != nil {
+		sym := lib.scm.Intern(ast.Name.Name)
+		if !sym.GlobalType.IsA(types.Unspecified) {
+			return ast.From.Errorf("redefining symbol '%s'", ast.Name.Name)
+		}
+		sym.GlobalType = ast.Type()
+	}
 
 	return nil
 }
@@ -757,6 +805,7 @@ type ASTIdentifier struct {
 	From    Locator
 	Name    string
 	Binding *EnvBinding
+	Global  *Identifier
 }
 
 // Locator implements AST.Locator.
@@ -784,8 +833,10 @@ func (ast *ASTIdentifier) Equal(o AST) bool {
 
 // Type implements AST.Type.
 func (ast *ASTIdentifier) Type() *types.Type {
-	// XXX
-	return types.Unspecified
+	if ast.Binding != nil {
+		return ast.Binding.Type
+	}
+	return ast.Global.GlobalType
 }
 
 // Typecheck implements AST.Type.
@@ -1188,6 +1239,12 @@ func (ast *ASTAnd) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTAnd) Typecheck(lib *Library) error {
+	for _, expr := range ast.Exprs {
+		err := expr.Typecheck(lib)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -1262,6 +1319,12 @@ func (ast *ASTOr) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTOr) Typecheck(lib *Library) error {
+	for _, expr := range ast.Exprs {
+		err := expr.Typecheck(lib)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

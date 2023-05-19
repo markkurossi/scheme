@@ -265,11 +265,16 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 		return ast, nil
 
 	case *Identifier:
-		binding, _ := env.Lookup(v.Name)
+		var sym *Identifier
+		binding, ok := env.Lookup(v.Name)
+		if !ok {
+			sym = p.scm.Intern(v.Name)
+		}
 		return &ASTIdentifier{
 			From:    loc,
 			Name:    v.Name,
 			Binding: binding,
+			Global:  sym,
 		}, nil
 
 	case Keyword:

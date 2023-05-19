@@ -153,20 +153,19 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 	var rest bool
 
 	for _, arg := range builtin.Args {
-		typ, name, kind, err := types.Parse(arg)
+		typ, name, err := types.Parse(arg)
 		if err != nil {
 			fmt.Printf("- %v %v: %v\n", builtin.Name, builtin.Args, err)
 		}
 		usage = append(usage, &TypedName{
 			Name: name,
 			Type: typ,
-			Kind: kind,
 		})
 		maxArgs++
-		if kind == types.Fixed {
+		if typ.Kind == types.Fixed {
 			minArgs++
 		}
-		if kind == types.Rest {
+		if typ.Kind == types.Rest {
 			rest = true
 		}
 	}
@@ -180,8 +179,7 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 		Fixed: usage,
 	}
 
-	sym := scm.Intern(builtin.Name)
-	sym.Global = &Lambda{
+	lambda := &Lambda{
 		Impl: &LambdaImpl{
 			Name:   builtin.Name,
 			Args:   args,
@@ -189,12 +187,16 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 			Native: builtin.Native,
 		},
 	}
+	sym := scm.Intern(builtin.Name)
+	sym.GlobalType = lambda.Type()
+	sym.Global = lambda
 	sym.Flags |= FlagDefined
 	sym.Flags |= builtin.Flags
 
 	for _, alias := range builtin.Aliases {
-		sym = scm.Intern(alias)
-		sym.Global = &Lambda{
+		as := scm.Intern(alias)
+		as.GlobalType = sym.GlobalType
+		as.Global = &Lambda{
 			Impl: &LambdaImpl{
 				Name:   alias,
 				Args:   args,
@@ -202,7 +204,7 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 				Native: builtin.Native,
 			},
 		}
-		sym.Flags |= FlagDefined
+		as.Flags |= FlagDefined
 	}
 }
 
