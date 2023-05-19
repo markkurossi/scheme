@@ -10,19 +10,21 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	"github.com/markkurossi/scheme/types"
 )
 
-// ByteVector implements bytevector values.
-type ByteVector []byte
+// Bytevector implements bytevector values.
+type Bytevector []byte
 
 // Scheme returns the value as a Scheme string.
-func (v ByteVector) Scheme() string {
+func (v Bytevector) Scheme() string {
 	return v.String()
 }
 
 // Eq tests if the argument value is eq? to this value.
-func (v ByteVector) Eq(o Value) bool {
-	ov, ok := o.(ByteVector)
+func (v Bytevector) Eq(o Value) bool {
+	ov, ok := o.(Bytevector)
 	if !ok {
 		return false
 	}
@@ -33,8 +35,8 @@ func (v ByteVector) Eq(o Value) bool {
 }
 
 // Equal tests if the argument value is equal to this value.
-func (v ByteVector) Equal(o Value) bool {
-	ov, ok := o.(ByteVector)
+func (v Bytevector) Equal(o Value) bool {
+	ov, ok := o.(Bytevector)
 	if !ok || len(v) != len(ov) {
 		return false
 	}
@@ -46,7 +48,12 @@ func (v ByteVector) Equal(o Value) bool {
 	return true
 }
 
-func (v ByteVector) String() string {
+// Type implements Value.Type.
+func (v Bytevector) Type() *types.Type {
+	return types.Bytevector
+}
+
+func (v Bytevector) String() string {
 	var str strings.Builder
 	str.WriteString("#vu8(")
 
@@ -62,16 +69,18 @@ func (v ByteVector) String() string {
 
 var rnrsBytevectorBuiltins = []Builtin{
 	{
-		Name: "bytevector?",
-		Args: []string{"obj"},
+		Name:   "bytevector?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			_, ok := args[0].(ByteVector)
+			_, ok := args[0].(Bytevector)
 			return Boolean(ok), nil
 		},
 	},
 	{
-		Name: "make-bytevector",
-		Args: []string{"k", "[fill<int>]"},
+		Name:   "make-bytevector",
+		Args:   []string{"k", "[fill<int>]"},
+		Return: types.Bytevector,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			length, err := Int64(args[0])
 			if err != nil || length < 0 {
@@ -91,14 +100,15 @@ var rnrsBytevectorBuiltins = []Builtin{
 				elements[i] = fill
 			}
 
-			return ByteVector(elements), nil
+			return Bytevector(elements), nil
 		},
 	},
 	{
-		Name: "bytevector-length",
-		Args: []string{"bytevector"},
+		Name:   "bytevector-length",
+		Args:   []string{"bytevector"},
+		Return: types.InexactInteger,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			v, ok := args[0].(ByteVector)
+			v, ok := args[0].(Bytevector)
 			if !ok {
 				return nil, fmt.Errorf("not a bytevector: %v", args[0])
 			}
@@ -106,14 +116,15 @@ var rnrsBytevectorBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "bytevector=?",
-		Args: []string{"bytevector1", "bytevector2"},
+		Name:   "bytevector=?",
+		Args:   []string{"bytevector1", "bytevector2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			v1, ok := args[0].(ByteVector)
+			v1, ok := args[0].(Bytevector)
 			if !ok {
 				return nil, fmt.Errorf("not a bytevector: %v", args[0])
 			}
-			v2, ok := args[1].(ByteVector)
+			v2, ok := args[1].(Bytevector)
 			if !ok {
 				return nil, fmt.Errorf("not a bytevector: %v", args[1])
 			}
@@ -121,10 +132,11 @@ var rnrsBytevectorBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "bytevector-fill",
-		Args: []string{"bytevector", "fill<int>"},
+		Name:   "bytevector-fill",
+		Args:   []string{"bytevector", "fill<int>"},
+		Return: types.Bytevector,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			v, ok := args[0].(ByteVector)
+			v, ok := args[0].(Bytevector)
 			if !ok {
 				return nil, fmt.Errorf("invalid bytevector: %v", args[0])
 			}
@@ -147,12 +159,13 @@ var rnrsBytevectorBuiltins = []Builtin{
 			"source<bytevector>", "source-start<int>",
 			"target<bytevector>", "target-start<int>", "k",
 		},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			source, ok := args[0].(ByteVector)
+			source, ok := args[0].(Bytevector)
 			if !ok {
 				return nil, fmt.Errorf("invalid source: %v", args[0])
 			}
-			target, ok := args[2].(ByteVector)
+			target, ok := args[2].(Bytevector)
 			if !ok {
 				return nil, fmt.Errorf("invalid target: %v", args[2])
 			}
@@ -187,24 +200,26 @@ var rnrsBytevectorBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "bytevector-copy",
-		Args: []string{"bytevector"},
+		Name:   "bytevector-copy",
+		Args:   []string{"bytevector"},
+		Return: types.Bytevector,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			v, ok := args[0].(ByteVector)
+			v, ok := args[0].(Bytevector)
 			if !ok {
 				return nil, fmt.Errorf("not a bytevector: %v", args[0])
 			}
 			arr := make([]byte, len(v))
 			copy(arr, v)
 
-			return ByteVector(arr), nil
+			return Bytevector(arr), nil
 		},
 	},
 	{
-		Name: "bytevector-u8-ref",
-		Args: []string{"bytevector", "k"},
+		Name:   "bytevector-u8-ref",
+		Args:   []string{"bytevector", "k"},
+		Return: types.InexactInteger,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			v, ok := args[0].(ByteVector)
+			v, ok := args[0].(Bytevector)
 			if !ok {
 				return nil, fmt.Errorf("not a bytevector: %v", args[0])
 			}
@@ -220,10 +235,11 @@ var rnrsBytevectorBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "bytevector-s8-ref",
-		Args: []string{"bytevector", "k"},
+		Name:   "bytevector-s8-ref",
+		Args:   []string{"bytevector", "k"},
+		Return: types.InexactInteger,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			v, ok := args[0].(ByteVector)
+			v, ok := args[0].(Bytevector)
 			if !ok {
 				return nil, fmt.Errorf("not a bytevector: %v", args[0])
 			}

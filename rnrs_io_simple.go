@@ -9,6 +9,8 @@ package scheme
 import (
 	"fmt"
 	"io"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // Port implements Scheme ports.
@@ -73,10 +75,16 @@ func (p *Port) Equal(o Value) bool {
 	return p.Eq(o)
 }
 
+// Type implements Value.Type.
+func (p *Port) Type() *types.Type {
+	return types.Port
+}
+
 var rnrsIOSimpleBuiltins = []Builtin{
 	{
-		Name: "input-port?",
-		Args: []string{"obj"},
+		Name:   "input-port?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			port, ok := args[0].(*Port)
 			if !ok {
@@ -87,8 +95,9 @@ var rnrsIOSimpleBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "output-port?",
-		Args: []string{"obj"},
+		Name:   "output-port?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			port, ok := args[0].(*Port)
 			if !ok {
@@ -99,20 +108,23 @@ var rnrsIOSimpleBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "current-output-port",
+		Name:   "current-output-port",
+		Return: types.Port,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return scm.Stdout, nil
 		},
 	},
 	{
-		Name: "current-error-port",
+		Name:   "current-error-port",
+		Return: types.Port,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return scm.Stderr, nil
 		},
 	},
 	{
-		Name: "newline",
-		Args: []string{"[port]"},
+		Name:   "newline",
+		Args:   []string{"[port]"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var ok bool
 			port := scm.Stdout
@@ -131,8 +143,9 @@ var rnrsIOSimpleBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "display",
-		Args: []string{"obj", "[port]"},
+		Name:   "display",
+		Args:   []string{"obj", "[port]"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var ok bool
 			port := scm.Stdout
@@ -151,8 +164,9 @@ var rnrsIOSimpleBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "write",
-		Args: []string{"obj", "[port]"},
+		Name:   "write",
+		Args:   []string{"obj", "[port]"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var ok bool
 			port := scm.Stdout

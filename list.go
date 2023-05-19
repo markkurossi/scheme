@@ -10,12 +10,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 var (
-	_ Pair  = &PlainPair{}
-	_ Pair  = &LocationPair{}
-	_ Value = &PlainPair{}
+	_ Pair = &PlainPair{}
+	_ Pair = &LocationPair{}
 )
 
 // Pair implements a Scheme pair.
@@ -28,6 +29,7 @@ type Pair interface {
 	Scheme() string
 	Eq(o Value) bool
 	Equal(o Value) bool
+	Type() *types.Type
 }
 
 // PlainPair implements a Scheme pair with car and cdr values.
@@ -100,6 +102,32 @@ func (pair *PlainPair) Eq(o Value) bool {
 func (pair *PlainPair) Equal(o Value) bool {
 	ov, ok := o.(Pair)
 	return ok && Equal(pair.car, ov.Car()) && Equal(pair.cdr, ov.Cdr())
+}
+
+// Type implements the Value.Type().
+func (pair *PlainPair) Type() *types.Type {
+	var t *types.Type
+
+	err := Map(func(idx int, v Value) error {
+		t = types.Unify(t, v.Type())
+		return nil
+	}, pair)
+	if err == nil {
+		return &types.Type{
+			Enum:    types.EnumList,
+			Element: t,
+		}
+	}
+
+	t = &types.Type{
+		Enum: types.EnumPair,
+	}
+	if pair.car != nil {
+		t.Car = pair.car.Type()
+	}
+	t.Cdr = types.Any
+
+	return t
 }
 
 func (pair *PlainPair) String() string {
@@ -322,26 +350,33 @@ func Cdr(pair Value, ok bool) (Value, bool) {
 
 var listBuiltins = []Builtin{
 	{
-		Name:  "pair?",
-		Args:  []string{"obj"},
-		Flags: FlagConst,
+		Name:   "pair?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
+		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(Pair)
 			return Boolean(ok), nil
 		},
 	},
 	{
-		Name:  "cons",
-		Args:  []string{"obj1", "obj2"},
+		Name: "cons",
+		Args: []string{"obj1", "obj2"},
+		Return: &types.Type{
+			Enum: types.EnumPair,
+			Car:  types.Any,
+			Cdr:  types.Any,
+		},
 		Flags: FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return NewPair(args[0], args[1]), nil
 		},
 	},
 	{
-		Name:  "car",
-		Args:  []string{"pair"},
-		Flags: FlagConst,
+		Name:   "car",
+		Args:   []string{"pair"},
+		Return: types.Any,
+		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
@@ -351,9 +386,10 @@ var listBuiltins = []Builtin{
 		},
 	},
 	{
-		Name:  "cdr",
-		Args:  []string{"pair"},
-		Flags: FlagConst,
+		Name:   "cdr",
+		Args:   []string{"pair"},
+		Return: types.Any,
+		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
@@ -363,9 +399,10 @@ var listBuiltins = []Builtin{
 		},
 	},
 	{
-		Name:  "null?",
-		Args:  []string{"obj"},
-		Flags: FlagConst,
+		Name:   "null?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
+		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return Boolean(args[0] == nil), nil
 		},

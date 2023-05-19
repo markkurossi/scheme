@@ -11,12 +11,15 @@ import (
 	"io"
 	"os"
 	"path"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 var loadBuiltins = []Builtin{
 	{
-		Name: "scheme::load",
-		Args: []string{"caller<string>", "filename<string>"},
+		Name:   "scheme::load",
+		Args:   []string{"caller<string>", "filename<string>"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			caller, ok := args[0].(String)
 			if !ok {
@@ -38,6 +41,14 @@ var loadBuiltins = []Builtin{
 	},
 	{
 		Name: "scheme::stack-trace",
+		Return: &types.Type{
+			Enum: types.EnumList,
+			Element: &types.Type{
+				Enum: types.EnumPair,
+				Car:  types.String,
+				Cdr:  types.InexactInteger,
+			},
+		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			stack := scm.StackTrace()
 
@@ -59,6 +70,25 @@ var loadBuiltins = []Builtin{
 			return result, nil
 		},
 	},
+	{
+		Name: "scheme::compile",
+		Args: []string{"ast<any>"},
+		Return: &types.Type{
+			Enum:   types.EnumLambda,
+			Return: types.Any,
+		},
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			lib, ok := args[0].(*Library)
+			if !ok {
+				return nil, fmt.Errorf("invalid library: %v", args[0])
+			}
+			v, err := lib.Compile()
+			if err != nil {
+				return nil, fmt.Errorf("<<%s", err.Error())
+			}
+			return v, nil
+		},
+	},
 }
 
 // LoadFile loads and compiles the file.
@@ -73,9 +103,9 @@ func (scm *Scheme) LoadFile(file string) (Value, error) {
 
 // Load loads and compiles the input.
 func (scm *Scheme) Load(source string, in io.Reader) (Value, error) {
-	c := NewCompiler(scm)
+	c := NewParser(scm)
 
-	library, err := c.Compile(source, in)
+	library, err := c.Parse(source, in)
 	if err != nil {
 		return nil, err
 	}
@@ -90,14 +120,5 @@ func (scm *Scheme) Load(source string, in io.Reader) (Value, error) {
 		NewPair(library.Name,
 			NewPair(library.Exports,
 				NewPair(library.Imports,
-					NewPair(
-						&Lambda{
-							Impl: &LambdaImpl{
-								Source:   library.Source,
-								Code:     library.Init,
-								PCMap:    library.PCMap,
-								Captures: true,
-							},
-						},
-						nil))))), nil
+					NewPair(library, nil))))), nil
 }

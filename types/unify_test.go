@@ -17,8 +17,14 @@ func TestUnify(t *testing.T) {
 		u *Type
 	}{
 		{nil, nil, nil},
+		{nil, Unspecified, Unspecified},
+		{Unspecified, nil, Unspecified},
 		{Any, nil, Any},
 		{nil, Any, Any},
+
+		{Any, Unspecified, Unspecified},
+		{Unspecified, Any, Unspecified},
+
 		{Any, Number, Any},
 		{Number, Any, Any},
 		{ExactInteger, Any, Any},

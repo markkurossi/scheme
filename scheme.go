@@ -144,25 +144,28 @@ func (scm *Scheme) DefineBuiltins(builtins []Builtin) {
 // DefineBuiltin defines a built-in native function.
 func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 
+	if builtin.Return == nil {
+		panic(fmt.Sprintf("builtin %v: no return type defined", builtin.Name))
+	}
+
 	var minArgs, maxArgs int
 	var usage []*TypedName
 	var rest bool
 
 	for _, arg := range builtin.Args {
-		typ, name, kind, err := types.Parse(arg)
+		typ, name, err := types.Parse(arg)
 		if err != nil {
 			fmt.Printf("- %v %v: %v\n", builtin.Name, builtin.Args, err)
 		}
 		usage = append(usage, &TypedName{
 			Name: name,
 			Type: typ,
-			Kind: kind,
 		})
 		maxArgs++
-		if kind == types.Fixed {
+		if typ.Kind == types.Fixed {
 			minArgs++
 		}
-		if kind == types.Rest {
+		if typ.Kind == types.Rest {
 			rest = true
 		}
 	}
@@ -176,27 +179,32 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 		Fixed: usage,
 	}
 
-	sym := scm.Intern(builtin.Name)
-	sym.Global = &Lambda{
+	lambda := &Lambda{
 		Impl: &LambdaImpl{
 			Name:   builtin.Name,
 			Args:   args,
+			Return: builtin.Return,
 			Native: builtin.Native,
 		},
 	}
+	sym := scm.Intern(builtin.Name)
+	sym.GlobalType = lambda.Type()
+	sym.Global = lambda
 	sym.Flags |= FlagDefined
 	sym.Flags |= builtin.Flags
 
 	for _, alias := range builtin.Aliases {
-		sym = scm.Intern(alias)
-		sym.Global = &Lambda{
+		as := scm.Intern(alias)
+		as.GlobalType = sym.GlobalType
+		as.Global = &Lambda{
 			Impl: &LambdaImpl{
 				Name:   alias,
 				Args:   args,
+				Return: builtin.Return,
 				Native: builtin.Native,
 			},
 		}
-		sym.Flags |= FlagDefined
+		as.Flags |= FlagDefined
 	}
 }
 
@@ -237,8 +245,17 @@ func (scm *Scheme) eval(source string, in io.Reader) (Value, error) {
 	if !ok || len(values) != 5 {
 		return nil, fmt.Errorf("invalid library: %v", library)
 	}
+	lib, ok := values[4].(*Library)
+	if !ok {
+		return nil, fmt.Errorf("invalid library: %T", values[4])
+	}
 
-	return scm.Apply(values[4], nil)
+	init, err := lib.Compile()
+	if err != nil {
+		return nil, err
+	}
+
+	return scm.Apply(init, nil)
 }
 
 // Global returns the global value of the symbol.

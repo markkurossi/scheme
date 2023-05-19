@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strconv"
 	"unicode"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // Character implements character values.
@@ -29,6 +31,11 @@ func (v Character) Eq(o Value) bool {
 func (v Character) Equal(o Value) bool {
 	ch, ok := o.(Character)
 	return ok && v == ch
+}
+
+// Type implements the Value.Type().
+func (v Character) Type() *types.Type {
+	return types.Character
 }
 
 func (v Character) String() string {
@@ -136,16 +143,18 @@ func CharacterToScheme(r rune) string {
 var characterBuiltins = []Builtin{
 	// rnrs
 	{
-		Name: "char?",
-		Args: []string{"obj"},
+		Name:   "char?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(Character)
 			return Boolean(ok), nil
 		},
 	},
 	{
-		Name: "char->integer",
-		Args: []string{"obj"},
+		Name:   "char->integer",
+		Args:   []string{"obj"},
+		Return: types.InexactInteger,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
 			if !ok {
@@ -155,8 +164,9 @@ var characterBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "integer->char",
-		Args: []string{"obj"},
+		Name:   "integer->char",
+		Args:   []string{"obj"},
+		Return: types.Character,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			n, err := Int64(args[0])
 			if err != nil {
@@ -166,8 +176,9 @@ var characterBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::char=?",
-		Args: []string{"char1", "char2"},
+		Name:   "scheme::char=?",
+		Args:   []string{"char1", "char2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			char1, ok := args[0].(Character)
 			if !ok {
@@ -181,8 +192,9 @@ var characterBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::char<?",
-		Args: []string{"char1", "char2"},
+		Name:   "scheme::char<?",
+		Args:   []string{"char1", "char2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			char1, ok := args[0].(Character)
 			if !ok {
@@ -196,8 +208,9 @@ var characterBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::char>?",
-		Args: []string{"char1", "char2"},
+		Name:   "scheme::char>?",
+		Args:   []string{"char1", "char2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			char1, ok := args[0].(Character)
 			if !ok {

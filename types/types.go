@@ -8,6 +8,7 @@ package types
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strings"
 )
@@ -17,7 +18,8 @@ type Enum int
 
 // Known type values.
 const (
-	EnumAny Enum = iota
+	EnumUnspecified Enum = iota
+	EnumAny
 	EnumBoolean
 	EnumString
 	EnumCharacter
@@ -36,6 +38,7 @@ const (
 )
 
 var enumNames = map[Enum]string{
+	EnumUnspecified:    "?",
 	EnumAny:            "any",
 	EnumBoolean:        "bool",
 	EnumString:         "string",
@@ -65,6 +68,9 @@ func (e Enum) String() string {
 // Super returns the type enum's supertype.
 func (e Enum) Super() Enum {
 	switch e {
+	case EnumUnspecified:
+		return EnumUnspecified
+
 	case EnumAny, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
 		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair,
 		EnumList, EnumVector:
@@ -87,6 +93,10 @@ func (e Enum) Super() Enum {
 // Unify resolves the closest supertype of this and the argument
 // enum.
 func (e Enum) Unify(o Enum) Enum {
+	if e == EnumUnspecified || o == EnumUnspecified {
+		return EnumUnspecified
+	}
+
 	for eIter := e; ; eIter = eIter.Super() {
 		for oIter := o; ; oIter = oIter.Super() {
 			if eIter == oIter {
@@ -106,7 +116,7 @@ var (
 
 // Parse parses the type of the function argument based on naming
 // conventions.
-func Parse(arg string) (*Type, string, Kind, error) {
+func Parse(arg string) (*Type, string, error) {
 	m := reArgType.FindStringSubmatch(arg)
 	if m == nil {
 		panic(fmt.Sprintf("types.Parse: no match: %v", arg))
@@ -134,54 +144,88 @@ func Parse(arg string) (*Type, string, Kind, error) {
 	}
 
 	if strings.HasPrefix(typeName, "bool") {
-		return Boolean, name, kind, nil
+		return &Type{
+			Enum: EnumBoolean,
+			Kind: kind,
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "bytevector") {
-		return Bytevector, name, kind, nil
+		return &Type{
+			Enum: EnumBytevector,
+			Kind: kind,
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "char") {
-		return Character, name, kind, nil
+		return &Type{
+			Enum: EnumCharacter,
+			Kind: kind,
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "k") || typeName == "int" {
-		return InexactInteger, name, kind, nil
+		return &Type{
+			Enum: EnumInexactInteger,
+			Kind: kind,
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "list") {
 		return &Type{
 			Enum:    EnumList,
+			Kind:    kind,
 			Element: Any,
-		}, name, kind, nil
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "obj") ||
 		strings.HasPrefix(typeName, "who") ||
 		strings.HasPrefix(typeName, "irritant") || typeName == "any" {
-		return Any, name, kind, nil
+		return &Type{
+			Enum: EnumAny,
+			Kind: kind,
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "pair") {
 		return &Type{
 			Enum: EnumPair,
+			Kind: kind,
 			Car:  Any,
 			Cdr:  Any,
-		}, name, kind, nil
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "port") {
-		return Port, name, kind, nil
+		return &Type{
+			Enum: EnumPort,
+			Kind: kind,
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "string") ||
 		strings.HasPrefix(typeName, "message") {
-		return String, name, kind, nil
+		return &Type{
+			Enum: EnumString,
+			Kind: kind,
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "sym") {
-		return Symbol, name, kind, nil
+		return &Type{
+			Enum: EnumSymbol,
+			Kind: kind,
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "vector") {
 		return &Type{
 			Enum:    EnumVector,
+			Kind:    kind,
 			Element: Any,
-		}, name, kind, nil
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "x") ||
 		strings.HasPrefix(typeName, "z") {
-		return Number, name, kind, nil
+		return &Type{
+			Enum: EnumNumber,
+			Kind: kind,
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "start") ||
 		strings.HasPrefix(typeName, "end") {
-		return InexactInteger, name, kind, nil
+		return &Type{
+			Enum: EnumInexactInteger,
+			Kind: kind,
+		}, name, nil
 	} else {
-		return nil, name, kind, fmt.Errorf("unsupported argument: %v", arg)
+		return Unspecified, name, fmt.Errorf("unsupported argument: %v", arg)
 	}
 }
 
 // Type defines Scheme types.
 type Type struct {
 	Enum    Enum
+	Kind    Kind
 	Args    []*Type
 	Rest    *Type
 	Return  *Type
@@ -206,14 +250,22 @@ func (t *Type) String() string {
 			result += " . "
 			result += t.Rest.String()
 		}
-		return result + ")" + t.Return.String()
+		result = result + ")" + t.Return.String()
 
 	case EnumPair:
-		return result + "(" + t.Car.String() + "," + t.Cdr.String() + ")"
+		result = result + "(" + t.Car.String() + "," + t.Cdr.String() + ")"
 
-	case EnumList:
-		return result + "(" + t.Element.String() + ")"
+	case EnumList, EnumVector:
+		result = result + "(" + t.Element.String() + ")"
 
+	default:
+	}
+
+	switch t.Kind {
+	case Optional:
+		return "[" + result + "]"
+	case Rest:
+		return result + "..."
 	default:
 		return result
 	}
@@ -221,6 +273,9 @@ func (t *Type) String() string {
 
 // Basic types.
 var (
+	Unspecified = &Type{
+		Enum: EnumUnspecified,
+	}
 	Any = &Type{
 		Enum: EnumAny,
 	}
@@ -297,6 +352,10 @@ func (t *Type) IsA(o *Type) bool {
 
 // IsKindOf tests if type is kind of the argument type.
 func (t *Type) IsKindOf(o *Type) bool {
+	if t.Enum == EnumUnspecified || o.Enum == EnumUnspecified {
+		return true
+	}
+
 	e := t.Enum
 	for {
 		if e == o.Enum {
@@ -341,6 +400,40 @@ func (t *Type) IsKindOf(o *Type) bool {
 	default:
 		return true
 	}
+}
+
+// MinArgs returns the minimum number for arguments for a lambda
+// type. For all other types the function returns 0.
+func (t *Type) MinArgs() int {
+	if t.Enum != EnumLambda {
+		return 0
+	}
+	var count int
+	for _, arg := range t.Args {
+		if arg.Kind == Fixed {
+			count++
+		}
+	}
+	return count
+}
+
+// MaxArgs returns the maximum number for arguments for a lambda
+// type. For all other types the function returns 0.
+func (t *Type) MaxArgs() int {
+	if t.Enum != EnumLambda {
+		return 0
+	}
+	if t.Rest != nil {
+		return math.MaxInt
+	}
+	var count int
+	for _, arg := range t.Args {
+		if arg.Kind == Rest {
+			return math.MaxInt
+		}
+		count++
+	}
+	return count
 }
 
 // Kind specifies argument type (fixed, optional, rest).

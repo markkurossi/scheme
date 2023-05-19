@@ -9,6 +9,9 @@ package scheme
 import (
 	"errors"
 	"fmt"
+	"strings"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // Operand defines a Scheme bytecode instruction.
@@ -569,14 +572,19 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 // Breakf breaks the program execution with the error.
 func (scm *Scheme) Breakf(format string, a ...interface{}) error {
 	err := scm.VMErrorf(format, a...)
+	msg := err.Error()
+	idx := strings.Index(msg, "<<")
+	if idx >= 0 {
+		msg = msg[idx+2:]
+	}
 	if true {
-		fmt.Printf("%s\n", err.Error())
+		fmt.Printf("%s\n", msg)
 		scm.PrintStack()
 	}
 
 	scm.popToplevel()
 
-	return err
+	return errors.New(msg)
 }
 
 // Location returns the source file location of the current VM
@@ -730,7 +738,8 @@ func (scm *Scheme) Intern(name string) *Identifier {
 	id, ok := scm.symbols[name]
 	if !ok {
 		id = &Identifier{
-			Name: name,
+			Name:       name,
+			GlobalType: types.Unspecified,
 		}
 		scm.symbols[name] = id
 	}
@@ -793,6 +802,11 @@ func (f *Frame) Equal(o Value) bool {
 		f.Toplevel == ov.Toplevel
 }
 
+// Type implements Value.Type.
+func (f *Frame) Type() *types.Type {
+	return nil
+}
+
 // VMEnvFrame implement a virtual machine environment frame.
 type VMEnvFrame struct {
 	Next   *VMEnvFrame
@@ -844,8 +858,9 @@ func (scm *Scheme) printStackLimit(limit int) {
 
 var vmBuiltins = []Builtin{
 	{
-		Name: "error",
-		Args: []string{"who", "message", "irritant..."},
+		Name:   "error",
+		Args:   []string{"who", "message", "irritant..."},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			message, ok := args[1].(String)
 			if !ok {
@@ -855,8 +870,9 @@ var vmBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::->scheme",
-		Args: []string{"obj"},
+		Name:   "scheme::->scheme",
+		Args:   []string{"obj"},
+		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return String(ToScheme(args[0])), nil
 		},

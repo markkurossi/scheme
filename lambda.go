@@ -40,6 +40,29 @@ func (v *Lambda) Equal(o Value) bool {
 	return v.Impl.Equal(ov.Impl)
 }
 
+// Type implements the Value.Type().
+func (v *Lambda) Type() *types.Type {
+	t := &types.Type{
+		Enum:   types.EnumLambda,
+		Return: v.Impl.Return,
+	}
+	for _, arg := range v.Impl.Args.Fixed {
+		if arg.Type == nil {
+			t.Args = append(t.Args, types.Any)
+		} else {
+			t.Args = append(t.Args, arg.Type)
+		}
+	}
+	if v.Impl.Args.Rest != nil {
+		if v.Impl.Args.Rest.Type == nil {
+			t.Rest = types.Any
+		} else {
+			t.Rest = v.Impl.Args.Rest.Type
+		}
+	}
+	return t
+}
+
 func (v *Lambda) String() string {
 	return v.Impl.Signature(false)
 }
@@ -64,6 +87,7 @@ func (v *Lambda) MapPC(pc int) (source string, line int) {
 type LambdaImpl struct {
 	Name     string
 	Args     Args
+	Return   *types.Type
 	Captures bool
 	Capture  *VMEnvFrame
 	Native   Native
@@ -71,7 +95,7 @@ type LambdaImpl struct {
 	Code     Code
 	MaxStack int
 	PCMap    PCMap
-	Body     []Pair
+	Body     []AST
 }
 
 // Scheme implements the Value.Scheme().
@@ -96,9 +120,9 @@ func (v *LambdaImpl) Signature(body bool) string {
 	if v.Native != nil {
 		str.WriteString(" {native}")
 	} else if body && len(v.Body) > 0 {
-		for _, pair := range v.Body {
+		for _, ast := range v.Body {
 			str.WriteRune(' ')
-			str.WriteString(fmt.Sprintf("%v", pair.Car()))
+			str.WriteString(fmt.Sprintf("%v", ast))
 		}
 	} else if v.Code != nil {
 		str.WriteString(" {compiled}")
@@ -106,6 +130,7 @@ func (v *LambdaImpl) Signature(body bool) string {
 		str.WriteString(" ...")
 	}
 	str.WriteRune(')')
+	str.WriteString(v.Return.String())
 
 	return str.String()
 }
@@ -144,12 +169,40 @@ func (v *LambdaImpl) Equal(o Value) bool {
 	return true
 }
 
+// Type implements the Value.Type().
+func (v *LambdaImpl) Type() *types.Type {
+	return nil
+}
+
 // Args specify lambda arguments.
 type Args struct {
 	Min   int
 	Max   int
 	Fixed []*TypedName
 	Rest  *TypedName
+}
+
+// Equal tests if the arguments are equal.
+func (args Args) Equal(o Args) bool {
+	if args.Min != o.Min || args.Max != o.Max ||
+		len(args.Fixed) != len(o.Fixed) {
+		return false
+	}
+	for idx, n := range args.Fixed {
+		if n.Name != o.Fixed[idx].Name {
+			return false
+		}
+	}
+	if args.Rest == nil {
+		if o.Rest != nil {
+			return false
+		}
+	} else if o.Rest == nil {
+		return false
+	} else if args.Rest.Name != o.Rest.Name {
+		return false
+	}
+	return true
 }
 
 func (args Args) String() string {
@@ -178,11 +231,6 @@ func (args Args) String() string {
 	return str.String()
 }
 
-// Equal tests if the arguments are equal.
-func (args Args) Equal(o Args) bool {
-	return args.Min == o.Min && args.Max == o.Max
-}
-
 // Init initializes argument limits and checks that all argument names
 // are unique.
 func (args *Args) Init() {
@@ -198,7 +246,6 @@ func (args *Args) Init() {
 type TypedName struct {
 	Name string
 	Type *types.Type
-	Kind types.Kind
 }
 
 func (tn *TypedName) String() string {
@@ -207,7 +254,7 @@ func (tn *TypedName) String() string {
 	if tn.Type != nil {
 		result += fmt.Sprintf("<%s>", tn.Type)
 	}
-	switch tn.Kind {
+	switch tn.Type.Kind {
 	case types.Optional:
 		return "[" + result + "]"
 
@@ -227,8 +274,7 @@ type Builtin struct {
 	Name    string
 	Aliases []string
 	Args    []string
+	Return  *types.Type
 	Flags   Flags
-	MinArgs int
-	MaxArgs int
 	Native  Native
 }

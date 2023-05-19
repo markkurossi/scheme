@@ -9,6 +9,8 @@ package scheme
 import (
 	"fmt"
 	"strings"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // String implements string values.
@@ -38,6 +40,11 @@ func (v String) Eq(o Value) bool {
 func (v String) Equal(o Value) bool {
 	ov, ok := o.(String)
 	return ok && v == ov
+}
+
+// Type implements the Value.Type().
+func (v String) Type() *types.Type {
+	return types.String
 }
 
 func (v String) String() string {
@@ -87,16 +94,18 @@ func StringToScheme(s string) string {
 
 var stringBuiltins = []Builtin{
 	{
-		Name: "string?",
-		Args: []string{"obj"},
+		Name:   "string?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(String)
 			return Boolean(ok), nil
 		},
 	},
 	{
-		Name: "make-string",
-		Args: []string{"k", "[char]"},
+		Name:   "make-string",
+		Args:   []string{"k", "[char]"},
+		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			length, err := Int64(args[0])
 			if err != nil || length < 0 {
@@ -120,8 +129,9 @@ var stringBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "string",
-		Args: []string{"char..."},
+		Name:   "string",
+		Args:   []string{"char..."},
+		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			length := len(args)
 			str := make([]byte, length, length)
@@ -137,8 +147,9 @@ var stringBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "string-length",
-		Args: []string{"string"},
+		Name:   "string-length",
+		Args:   []string{"string"},
+		Return: types.InexactInteger,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v := args[0].(type) {
 			case String:
@@ -150,8 +161,9 @@ var stringBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "string-ref",
-		Args: []string{"string", "k"},
+		Name:   "string-ref",
+		Args:   []string{"string", "k"},
+		Return: types.Character,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			str, ok := args[0].(String)
 			if !ok {
@@ -167,8 +179,9 @@ var stringBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::string=?",
-		Args: []string{"string1", "string2"},
+		Name:   "scheme::string=?",
+		Args:   []string{"string1", "string2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			str1, ok := args[0].(String)
 			if !ok {
@@ -182,8 +195,9 @@ var stringBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::string<?",
-		Args: []string{"string1", "string2"},
+		Name:   "scheme::string<?",
+		Args:   []string{"string1", "string2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			str1, ok := args[0].(String)
 			if !ok {
@@ -197,8 +211,9 @@ var stringBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "scheme::string>?",
-		Args: []string{"string1", "string2"},
+		Name:   "scheme::string>?",
+		Args:   []string{"string1", "string2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			str1, ok := args[0].(String)
 			if !ok {
@@ -212,8 +227,9 @@ var stringBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "substring",
-		Args: []string{"string", "start", "end"},
+		Name:   "substring",
+		Args:   []string{"string", "start", "end"},
+		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			strv, ok := args[0].(String)
 			if !ok {
@@ -240,8 +256,9 @@ var stringBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "string-append",
-		Args: []string{"string..."},
+		Name:   "string-append",
+		Args:   []string{"string..."},
+		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var result string
 
@@ -258,6 +275,10 @@ var stringBuiltins = []Builtin{
 	{
 		Name: "string->list",
 		Args: []string{"string"},
+		Return: &types.Type{
+			Enum:    types.EnumList,
+			Element: types.Character,
+		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			str, ok := args[0].(String)
 			if !ok {
@@ -279,8 +300,9 @@ var stringBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "list->string",
-		Args: []string{"chars"},
+		Name:   "list->string",
+		Args:   []string{"chars"},
+		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var str []rune
 			err := Map(func(idx int, v Value) error {
@@ -298,8 +320,9 @@ var stringBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "string-copy",
-		Args: []string{"string"},
+		Name:   "string-copy",
+		Args:   []string{"string"},
+		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			str, ok := args[0].(String)
 			if !ok {

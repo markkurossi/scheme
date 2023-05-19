@@ -9,6 +9,8 @@ package scheme
 import (
 	"fmt"
 	"sort"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 const (
@@ -19,10 +21,10 @@ const (
 
 var debugBuiltins = []Builtin{
 	{
-		Name: "print-env",
-		Args: []string{"sym..."},
+		Name:   "print-env",
+		Args:   []string{"sym..."},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-
 			var flags int
 
 			if len(args) == 0 {
@@ -99,8 +101,9 @@ var debugBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "disassemble",
-		Args: []string{"obj"},
+		Name:   "disassemble",
+		Args:   []string{"obj"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch arg := args[0].(type) {
 			case *Lambda:
@@ -113,6 +116,23 @@ var debugBuiltins = []Builtin{
 
 			default:
 				scm.Stdout.Printf("value: %v\n", arg)
+			}
+			return nil, nil
+		},
+	},
+	{
+		Name:   "type",
+		Args:   []string{"obj"},
+		Return: types.Any,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			if args[0] == nil {
+				scm.Stdout.Println("nil")
+			} else {
+				t := args[0].Type()
+				if t == nil {
+					t = types.Any
+				}
+				scm.Stdout.Printf("%v\n", t)
 			}
 			return nil, nil
 		},

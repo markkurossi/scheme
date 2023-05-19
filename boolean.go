@@ -8,6 +8,8 @@ package scheme
 
 import (
 	"fmt"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // Boolean implements boolean values.
@@ -37,6 +39,11 @@ func (v Boolean) Eq(o Value) bool {
 func (v Boolean) Equal(o Value) bool {
 	ov, ok := o.(Boolean)
 	return ok && v == ov
+}
+
+// Type implements the Value.Type().
+func (v Boolean) Type() *types.Type {
+	return types.Boolean
 }
 
 func (v Boolean) String() string {
@@ -94,24 +101,27 @@ func Eq(a, b Value) bool {
 
 var booleanBuiltins = []Builtin{
 	{
-		Name:  "not",
-		Args:  []string{"obj"},
-		Flags: FlagConst,
+		Name:   "not",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
+		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return Boolean(!IsTrue(args[0])), nil
 		},
 	},
 	{
-		Name: "boolean?",
-		Args: []string{"obj"},
+		Name:   "boolean?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			_, ok := args[0].(Boolean)
 			return Boolean(ok), nil
 		},
 	},
 	{
-		Name: "scheme::boolean=?",
-		Args: []string{"bool1", "bool2"},
+		Name:   "scheme::boolean=?",
+		Args:   []string{"bool1", "bool2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			bool1, ok := args[0].(Boolean)
 			if !ok {
@@ -125,22 +135,25 @@ var booleanBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "eqv?",
-		Args: []string{"obj1", "obj2"},
+		Name:   "eqv?",
+		Args:   []string{"obj1", "obj2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return Boolean(Eq(args[0], args[1])), nil
 		},
 	},
 	{
-		Name: "eq?",
-		Args: []string{"obj1", "obj2"},
+		Name:   "eq?",
+		Args:   []string{"obj1", "obj2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return Boolean(Eq(args[0], args[1])), nil
 		},
 	},
 	{
-		Name: "equal?",
-		Args: []string{"obj1", "obj2"},
+		Name:   "equal?",
+		Args:   []string{"obj1", "obj2"},
+		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return Boolean(Equal(args[0], args[1])), nil
 		},

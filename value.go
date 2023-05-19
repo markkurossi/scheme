@@ -9,18 +9,24 @@ package scheme
 import (
 	"fmt"
 	"strings"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 var (
-	_ Value = &Vector{}
-	_ Value = &Identifier{}
-	_ Value = Keyword(0)
-	_ Value = Boolean(true)
-	_ Value = String("string")
-	_ Value = Character('@')
-	_ Value = &Lambda{}
+	_ Value = &BigInt{}
+	_ Value = &Bytevector{}
 	_ Value = &Frame{}
+	_ Value = &Identifier{}
+	_ Value = &Lambda{}
+	_ Value = &PlainPair{}
 	_ Value = &Port{}
+	_ Value = &Vector{}
+	_ Value = Boolean(true)
+	_ Value = Character('@')
+	_ Value = Int(0)
+	_ Value = Keyword(0)
+	_ Value = String("string")
 )
 
 // Value implements a Scheme value.
@@ -28,6 +34,7 @@ type Value interface {
 	Scheme() string
 	Eq(o Value) bool
 	Equal(o Value) bool
+	Type() *types.Type
 }
 
 // ToString returns a display representation of the value.
@@ -68,10 +75,11 @@ func (f Flags) String() string {
 
 // Identifier implements identifier values.
 type Identifier struct {
-	Name   string
-	Point  Point
-	Global Value
-	Flags  Flags
+	Name       string
+	Point      Point
+	GlobalType *types.Type
+	Global     Value
+	Flags      Flags
 }
 
 // Scheme returns the value as a Scheme string.
@@ -88,6 +96,11 @@ func (v *Identifier) Eq(o Value) bool {
 func (v *Identifier) Equal(o Value) bool {
 	ov, ok := o.(*Identifier)
 	return ok && v.Name == ov.Name
+}
+
+// Type implements Value.Type.
+func (v *Identifier) Type() *types.Type {
+	return types.Symbol
 }
 
 func (v *Identifier) String() string {

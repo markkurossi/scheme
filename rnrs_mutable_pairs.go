@@ -10,12 +10,15 @@ package scheme
 
 import (
 	"fmt"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 var rnrsMutablePairsBuiltins = []Builtin{
 	{
-		Name: "set-car!",
-		Args: []string{"pair", "obj"},
+		Name:   "set-car!",
+		Args:   []string{"pair", "obj"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {
@@ -29,8 +32,9 @@ var rnrsMutablePairsBuiltins = []Builtin{
 		},
 	},
 	{
-		Name: "set-cdr!",
-		Args: []string{"pair", "obj"},
+		Name:   "set-cdr!",
+		Args:   []string{"pair", "obj"},
+		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
 			if !ok {

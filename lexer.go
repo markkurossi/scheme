@@ -13,6 +13,8 @@ import (
 	"math/big"
 	"strings"
 	"unicode"
+
+	"github.com/markkurossi/scheme/types"
 )
 
 // TokenType specifies input token types.
@@ -71,6 +73,11 @@ func (kw Keyword) Eq(o Value) bool {
 func (kw Keyword) Equal(o Value) bool {
 	ov, ok := o.(Keyword)
 	return ok && kw == ov
+}
+
+// Type implements the Value.Type().
+func (kw Keyword) Type() *types.Type {
+	return nil
 }
 
 func (kw Keyword) String() string {
@@ -180,7 +187,7 @@ var (
 	_ Locator = Point{}
 	_ Locator = &PlainPair{}
 	_ Locator = &LocationPair{}
-	_ Locator = &Parser{}
+	_ Locator = &SexprParser{}
 )
 
 func (p Point) String() string {
