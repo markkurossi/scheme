@@ -577,7 +577,7 @@ func (scm *Scheme) Breakf(format string, a ...interface{}) error {
 	if idx >= 0 {
 		msg = msg[idx+2:]
 	}
-	if true {
+	if !scm.Params.Quiet {
 		fmt.Printf("%s\n", msg)
 		scm.PrintStack()
 	}

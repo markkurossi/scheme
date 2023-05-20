@@ -47,6 +47,9 @@ type Params struct {
 	// Verbose output.
 	Verbose bool
 
+	// Quiet output.
+	Quiet bool
+
 	// NoRuntime specifies if the Scheme-implemented runtime is
 	// initialized.
 	NoRuntime bool
