@@ -77,7 +77,7 @@ func (kw Keyword) Equal(o Value) bool {
 
 // Type implements the Value.Type().
 func (kw Keyword) Type() *types.Type {
-	return nil
+	return types.Unspecified
 }
 
 func (kw Keyword) String() string {

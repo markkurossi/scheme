@@ -171,7 +171,7 @@ func (v *LambdaImpl) Equal(o Value) bool {
 
 // Type implements the Value.Type().
 func (v *LambdaImpl) Type() *types.Type {
-	return nil
+	return types.Unspecified
 }
 
 // Args specify lambda arguments.

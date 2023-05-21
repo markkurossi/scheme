@@ -75,7 +75,7 @@ func (ast *ASTSequence) Equal(o AST) bool {
 // Type implements AST.Type.
 func (ast *ASTSequence) Type() *types.Type {
 	if len(ast.Items) == 0 {
-		return nil
+		return types.Unspecified
 	}
 	return ast.Items[len(ast.Items)-1].Type()
 }
@@ -450,8 +450,8 @@ func (ast *ASTApply) Equal(o AST) bool {
 // Type implements AST.Type.
 func (ast *ASTApply) Type() *types.Type {
 	t := ast.Lambda.Type()
-	if t == nil {
-		return nil
+	if t.Enum != types.EnumLambda {
+		return types.Unspecified
 	}
 	return t.Return
 }
@@ -547,7 +547,7 @@ func (ast *ASTCall) Type() *types.Type {
 		return t
 	}
 	t := ast.Func.Type()
-	if t == nil || t.Enum != types.EnumLambda {
+	if t.Enum != types.EnumLambda {
 		return types.Unspecified
 	}
 	return t.Return
@@ -567,7 +567,7 @@ func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 			return err
 		}
 		ft := ast.Func.Type()
-		if ft == nil || ft.IsA(types.Unspecified) || ft.IsA(types.Any) {
+		if ft.IsA(types.Unspecified) || ft.IsA(types.Any) {
 			return nil
 		}
 		if ft.Enum != types.EnumLambda {

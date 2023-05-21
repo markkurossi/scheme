@@ -804,7 +804,7 @@ func (f *Frame) Equal(o Value) bool {
 
 // Type implements Value.Type.
 func (f *Frame) Type() *types.Type {
-	return nil
+	return types.Unspecified
 }
 
 // VMEnvFrame implement a virtual machine environment frame.

@@ -169,7 +169,7 @@ func (e *Env) PopFrame() {
 }
 
 // Define defines the named symbol in the environment.
-func (e *Env) Define(name string) (*EnvBinding, error) {
+func (e *Env) Define(name string, t *types.Type) (*EnvBinding, error) {
 	frame := e.Frames[len(e.Frames)-1]
 
 	_, ok := frame.Bindings[name]
@@ -179,6 +179,7 @@ func (e *Env) Define(name string) (*EnvBinding, error) {
 	b := &EnvBinding{
 		Frame: frame,
 		Index: len(frame.Bindings),
+		Type:  t,
 	}
 	frame.Bindings[name] = b
 	return b, nil
@@ -210,7 +211,7 @@ func (e *Env) Push(o *Env) {
 
 		e.PushFrame(frame.Type, frame.Usage, len(names))
 		for _, name := range names {
-			e.Define(name)
+			e.Define(name, frame.Bindings[name].Type)
 		}
 	}
 }
