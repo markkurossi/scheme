@@ -573,11 +573,15 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 func (scm *Scheme) Breakf(format string, a ...interface{}) error {
 	err := scm.VMErrorf(format, a...)
 	msg := err.Error()
+
+	var compilerError bool
+
 	idx := strings.Index(msg, "<<")
 	if idx >= 0 {
 		msg = msg[idx+2:]
+		compilerError = true
 	}
-	if !scm.Params.Quiet {
+	if !scm.Params.Quiet && !compilerError {
 		fmt.Printf("%s\n", msg)
 		scm.PrintStack()
 	}
