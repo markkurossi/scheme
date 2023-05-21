@@ -133,14 +133,21 @@ func (ast *ASTDefine) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTDefine) Typecheck(lib *Library, round int) error {
-	if round > 0 {
-		return nil
-	}
 	sym := lib.scm.Intern(ast.Name.Name)
-	if !sym.GlobalType.IsA(types.Unspecified) {
-		return ast.From.Errorf("redefining symbol '%s'", ast.Name.Name)
+	nt := ast.Value.Type()
+
+	if round == 0 {
+		if !sym.GlobalType.IsA(types.Unspecified) {
+			return ast.From.Errorf("redefining symbol '%s'", ast.Name.Name)
+		}
+		sym.GlobalType = nt
+		lib.recheck = true
+	} else {
+		if !nt.IsA(sym.GlobalType) {
+			sym.GlobalType = nt
+			lib.recheck = true
+		}
 	}
-	sym.GlobalType = ast.Value.Type()
 
 	return nil
 }
@@ -743,13 +750,24 @@ func (ast *ASTLambda) Typecheck(lib *Library, round int) error {
 			return err
 		}
 	}
-	if ast.Name != nil && round == 0 {
-		sym := lib.scm.Intern(ast.Name.Name)
+	if ast.Name == nil {
+		return nil
+	}
+
+	sym := lib.scm.Intern(ast.Name.Name)
+	nt := ast.Type()
+
+	if round == 0 {
 		if !sym.GlobalType.IsA(types.Unspecified) {
 			return ast.From.Errorf("redefining symbol '%s'", ast.Name.Name)
 		}
-		sym.GlobalType = ast.Type()
+		sym.GlobalType = nt
 		lib.recheck = true
+	} else {
+		if !nt.IsA(sym.GlobalType) {
+			sym.GlobalType = nt
+			lib.recheck = true
+		}
 	}
 
 	return nil
