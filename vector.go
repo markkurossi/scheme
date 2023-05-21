@@ -57,6 +57,9 @@ func (v Vector) Type() *types.Type {
 			t.Element = types.Unify(t.Element, el.Type())
 		}
 	}
+	if t.Element == nil {
+		t.Element = types.Unspecified
+	}
 	return t
 }
 

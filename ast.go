@@ -581,8 +581,16 @@ func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 			return ast.From.Errorf("too many arguments: got %v, max %v",
 				len(ast.Args), ft.MinArgs())
 		}
-		//fmt.Printf("ASTCall.Typecheck: %v\n", ft)
-		//fmt.Printf("*** call %s with %v\n", ft, ast.Args)
+		// Check argument types.
+		for idx, arg := range ast.Args {
+			at := arg.Type()
+			if idx < len(ft.Args) {
+				if !at.IsKindOf(ft.Args[idx]) {
+					return arg.Locator().Errorf("invalid argument %v, expected %v",
+						at, ft.Args[idx])
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -930,6 +938,12 @@ func (ast *ASTCond) Type() *types.Type {
 	for _, choice := range ast.Choices {
 		if choice.Cond == nil {
 			hadDefault = true
+		}
+		if len(choice.Exprs) == 0 {
+			if hadDefault {
+				return types.Boolean
+			}
+			return choice.Cond.Type()
 		}
 		t = types.Unify(t, choice.Exprs[len(choice.Exprs)-1].Type())
 	}

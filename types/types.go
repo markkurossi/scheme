@@ -153,6 +153,12 @@ func Parse(arg string) (*Type, string, error) {
 			Enum: EnumBytevector,
 			Kind: kind,
 		}, name, nil
+	} else if typeName == "chars" {
+		return &Type{
+			Enum:    EnumList,
+			Kind:    kind,
+			Element: Character,
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "char") {
 		return &Type{
 			Enum: EnumCharacter,

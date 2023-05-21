@@ -58,6 +58,12 @@ var typecheckTests = []struct {
 (set! num #t)
 `,
 	},
+	{
+		name: "invalid fixed argument type",
+		data: `
+(string-length 1)
+`,
+	},
 }
 
 func TestTypecheck(t *testing.T) {
