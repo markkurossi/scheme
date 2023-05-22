@@ -318,6 +318,7 @@ var (
 	Port = &Type{
 		Enum: EnumPort,
 	}
+	Nil = Unspecified
 )
 
 // IsA tests if type is the same as the argument type.

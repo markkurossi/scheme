@@ -109,7 +109,11 @@ func (pair *PlainPair) Type() *types.Type {
 	var t *types.Type
 
 	err := Map(func(idx int, v Value) error {
-		t = types.Unify(t, v.Type())
+		if v == nil {
+			t = types.Unify(t, types.Nil)
+		} else {
+			t = types.Unify(t, v.Type())
+		}
 		return nil
 	}, pair)
 	if err == nil {
@@ -121,11 +125,12 @@ func (pair *PlainPair) Type() *types.Type {
 
 	t = &types.Type{
 		Enum: types.EnumPair,
+		Car:  types.Unspecified,
+		Cdr:  types.Unspecified,
 	}
 	if pair.car != nil {
 		t.Car = pair.car.Type()
 	}
-	t.Cdr = types.Any
 
 	return t
 }

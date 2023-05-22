@@ -207,6 +207,7 @@ func (ast *ASTSet) Typecheck(lib *Library, round int) error {
 				vtype, sym.GlobalType)
 		}
 	}
+	// XXX let-binding
 	return nil
 }
 
@@ -288,6 +289,7 @@ func (ast *ASTLet) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTLet) Typecheck(lib *Library, round int) error {
+	// XXX
 	return nil
 }
 
@@ -465,6 +467,7 @@ func (ast *ASTApply) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTApply) Typecheck(lib *Library, round int) error {
+	// XXX
 	return nil
 }
 
@@ -568,6 +571,7 @@ func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 			return err
 		}
 	}
+	// XXX inline call
 	if !ast.Inline {
 		err := ast.Func.Typecheck(lib, round)
 		if err != nil {
@@ -676,6 +680,7 @@ func (ast *ASTCallUnary) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTCallUnary) Typecheck(lib *Library, round int) error {
+	// XXX
 	return nil
 }
 
@@ -816,8 +821,7 @@ func (ast *ASTConstant) Equal(o AST) bool {
 // Type implements AST.Type.
 func (ast *ASTConstant) Type() *types.Type {
 	if ast.Value == nil {
-		// XXX nil type needed...
-		return types.Any
+		return types.Nil
 	}
 	return ast.Value.Type()
 }
@@ -975,6 +979,7 @@ func (ast *ASTCond) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTCond) Typecheck(lib *Library, round int) error {
+	// XXX
 	return nil
 }
 
@@ -1141,6 +1146,7 @@ func (ast *ASTCase) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTCase) Typecheck(lib *Library, round int) error {
+	// XXX
 	return nil
 }
 
@@ -1396,14 +1402,7 @@ func (ast *ASTOr) Bytecode(lib *Library) error {
 }
 
 func (lib *Library) define(loc Locator, name *Identifier, flags Flags) error {
-
 	export, ok := lib.exported[name.Name]
-	if lib.ExportAll || ok {
-		// XXX Defined global symbol.
-	} else {
-		// XXX Define library symbol.
-		// fmt.Printf("XXX define local symbol %v\n", name)
-	}
 	if ok {
 		export.id = name
 	}
