@@ -58,7 +58,7 @@
 
 (define (* . rest)
   (if (null? rest)
-      #e1
+      1
       (letrec ((iter
                 (lambda (product rest)
                   (if (null? rest)

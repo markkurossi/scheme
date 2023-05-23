@@ -141,7 +141,9 @@ func numAdd(z1, z2 Value) (Value, error) {
 			return v1 + v2, nil
 
 		case *BigInt:
-			return Int(int64(v1) + v2.I.Int64()), nil
+			return &BigInt{
+				I: new(big.Int).Add(big.NewInt(int64(v1)), v2.I),
+			}, nil
 
 		default:
 			return Int(0), fmt.Errorf("invalid number: %v", z2)
@@ -150,7 +152,9 @@ func numAdd(z1, z2 Value) (Value, error) {
 	case *BigInt:
 		switch v2 := z2.(type) {
 		case Int:
-			return Int(v1.I.Int64() + int64(v2)), nil
+			return &BigInt{
+				I: new(big.Int).Add(v1.I, big.NewInt(int64(v2))),
+			}, nil
 
 		case *BigInt:
 			return &BigInt{
@@ -175,7 +179,9 @@ func numSub(z1, z2 Value) (Value, error) {
 			return v1 - v2, nil
 
 		case *BigInt:
-			return Int(int64(v1) - v2.I.Int64()), nil
+			return &BigInt{
+				I: new(big.Int).Sub(big.NewInt(int64(v1)), v2.I),
+			}, nil
 
 		default:
 			return Int(0), fmt.Errorf("invalid number: %v", z2)
@@ -184,7 +190,9 @@ func numSub(z1, z2 Value) (Value, error) {
 	case *BigInt:
 		switch v2 := z2.(type) {
 		case Int:
-			return Int(v1.I.Int64() - int64(v2)), nil
+			return &BigInt{
+				I: new(big.Int).Sub(v1.I, big.NewInt(int64(v2))),
+			}, nil
 
 		case *BigInt:
 			return &BigInt{
@@ -479,7 +487,9 @@ var numberBuiltins = []Builtin{
 					return v1 * v2, nil
 
 				case *BigInt:
-					return Int(int64(v1) * v2.I.Int64()), nil
+					return &BigInt{
+						I: new(big.Int).Mul(big.NewInt(int64(v1)), v2.I),
+					}, nil
 
 				default:
 					return Int(0), fmt.Errorf("invalid number: %v", args[1])
@@ -488,7 +498,9 @@ var numberBuiltins = []Builtin{
 			case *BigInt:
 				switch v2 := args[1].(type) {
 				case Int:
-					return Int(v1.I.Int64() * int64(v2)), nil
+					return &BigInt{
+						I: new(big.Int).Mul(v1.I, big.NewInt(int64(v2))),
+					}, nil
 
 				case *BigInt:
 					return &BigInt{
@@ -554,7 +566,9 @@ var numberBuiltins = []Builtin{
 					return v1 / v2, nil
 
 				case *BigInt:
-					return Int(int64(v1) / v2.I.Int64()), nil
+					return &BigInt{
+						I: new(big.Int).Div(big.NewInt(int64(v1)), v2.I),
+					}, nil
 
 				default:
 					return Int(0), fmt.Errorf("invalid number: %v", args[1])
@@ -563,7 +577,9 @@ var numberBuiltins = []Builtin{
 			case *BigInt:
 				switch v2 := args[1].(type) {
 				case Int:
-					return Int(v1.I.Int64() / int64(v2)), nil
+					return &BigInt{
+						I: new(big.Int).Div(v1.I, big.NewInt(int64(v2))),
+					}, nil
 
 				case *BigInt:
 					return &BigInt{
