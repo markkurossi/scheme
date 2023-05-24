@@ -530,7 +530,11 @@ func (p *Parser) parseLambda(env *Env, define bool, flags Flags,
 		}
 	}
 	if args.Rest != nil {
-		_, err := capture.Define(args.Rest.Name, types.Unspecified)
+		_, err := capture.Define(args.Rest.Name, &types.Type{
+			Enum: types.EnumPair,
+			Car:  types.Unspecified,
+			Cdr:  types.Any,
+		})
 		if err != nil {
 			return nil, err
 		}

@@ -1009,7 +1009,26 @@ func (ast *ASTCond) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTCond) Typecheck(lib *Library, round int) error {
-	// XXX
+	for _, choice := range ast.Choices {
+		if choice.Cond != nil {
+			err := choice.Cond.Typecheck(lib, round)
+			if err != nil {
+				return err
+			}
+		}
+		if choice.Func != nil {
+			err := choice.Func.Typecheck(lib, round)
+			if err != nil {
+				return err
+			}
+		}
+		for _, expr := range choice.Exprs {
+			err := expr.Typecheck(lib, round)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -1176,7 +1195,18 @@ func (ast *ASTCase) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTCase) Typecheck(lib *Library, round int) error {
-	// XXX
+	err := ast.Expr.Typecheck(lib, round)
+	if err != nil {
+		return err
+	}
+	for _, choice := range ast.Choices {
+		for _, expr := range choice.Exprs {
+			err = expr.Typecheck(lib, round)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 

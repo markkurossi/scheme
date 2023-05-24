@@ -55,9 +55,17 @@ func (v *Lambda) Type() *types.Type {
 	}
 	if v.Impl.Args.Rest != nil {
 		if v.Impl.Args.Rest.Type == nil {
-			t.Rest = types.Any
+			t.Rest = &types.Type{
+				Enum: types.EnumPair,
+				Car:  types.Unspecified,
+				Cdr:  types.Any,
+			}
 		} else {
-			t.Rest = v.Impl.Args.Rest.Type
+			t.Rest = &types.Type{
+				Enum: types.EnumPair,
+				Car:  v.Impl.Args.Rest.Type,
+				Cdr:  types.Any,
+			}
 		}
 	}
 	return t
