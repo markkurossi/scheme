@@ -201,18 +201,20 @@ func (ast *ASTSet) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTSet) Typecheck(lib *Library, round int) error {
-	if ast.Binding == nil {
-		sym := lib.scm.Intern(ast.Name)
-		if sym.GlobalType.IsA(types.Unspecified) {
-			return ast.From.Errorf("setting undefined symbol '%s'", ast.Name)
-		}
-		vtype := ast.Value.Type()
-		if !vtype.IsKindOf(sym.GlobalType) {
-			return ast.From.Errorf("can't assign %s to variable of type %s",
-				vtype, sym.GlobalType)
-		}
+	vtype := ast.Value.Type()
+
+	if ast.Binding != nil {
+		// let-variables can be assigned with different value types.
+		return nil
 	}
-	// XXX let-binding
+	sym := lib.scm.Intern(ast.Name)
+	if sym.GlobalType.IsA(types.Unspecified) {
+		return ast.From.Errorf("setting undefined symbol '%s'", ast.Name)
+	}
+	if !vtype.IsKindOf(sym.GlobalType) {
+		return ast.From.Errorf("can't assign %s to variable of type %s",
+			vtype, sym.GlobalType)
+	}
 	return nil
 }
 
@@ -306,7 +308,7 @@ func (ast *ASTLet) Typecheck(lib *Library, round int) error {
 				lib.recheck = true
 			}
 		} else {
-			if !nt.IsA(b.Binding.Type) {
+			if !nt.IsKindOf(b.Binding.Type) {
 				b.Binding.Type = nt
 				lib.recheck = true
 			}
