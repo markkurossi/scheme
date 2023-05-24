@@ -152,7 +152,7 @@
       (if this
           ;; Library seen, check that is has been initialized
           ;; successfully.
-          ((eq? (lib-status this) 'initialized) #t)
+          (eq? (lib-status this) 'initialized)
 
           ;; Library not seen before. Initialize it now.
           (begin
