@@ -292,8 +292,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			// i.I != 0 for toplevel frames.
 			lambda, ok := accu.(*Lambda)
 			if !ok {
-				return nil, scm.Breakf("%s: invalid function: %v(%T)",
-					instr.Op, accu, accu)
+				return nil, scm.Breakf("invalid function: %v", accu)
 			}
 
 			var frame *Frame
