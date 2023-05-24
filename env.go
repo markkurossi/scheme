@@ -91,11 +91,26 @@ func NewEnv() *Env {
 }
 
 // Copy creates a new copy of the environment that shares the contents
-// of the environment frames and statistics.
+// of all environment frames and statistics.
 func (e *Env) Copy() *Env {
 	frames := make([]*EnvFrame, len(e.Frames))
 	copy(frames, e.Frames)
 
+	return &Env{
+		Stats:  e.Stats,
+		Frames: frames,
+	}
+}
+
+// CopyEnvFrames creates a new copy of the environment sharing TypeEnv
+// frames and statistics.
+func (e *Env) CopyEnvFrames() *Env {
+	var frames []*EnvFrame
+	for _, frame := range e.Frames {
+		if frame.Type == TypeEnv {
+			frames = append(frames, frame)
+		}
+	}
 	return &Env{
 		Stats:  e.Stats,
 		Frames: frames,
@@ -110,7 +125,8 @@ func (e *Env) Print() {
 
 		fmt.Printf("\u2502%v%v:%3d", frame.Type, frame.Usage, i)
 		for k, v := range frame.Bindings {
-			fmt.Printf(" %v=%d.%d(%v)", k, frame.Index, v.Index, v.Disabled)
+			fmt.Printf(" %v=%d.%d(%v) %v",
+				k, frame.Index, v.Index, v.Disabled, v.Type)
 		}
 		fmt.Println()
 	}

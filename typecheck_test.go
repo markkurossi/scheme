@@ -89,6 +89,15 @@ var typecheckTests = []struct {
   (newline))
 `,
 	},
+	{
+		name: "letrec forward-reference argument count",
+		data: `
+(letrec ((b (lambda (a) (f 1 2)))
+         (f (lambda (a) (+ a 1))))
+  (display (b 1))
+  (newline))
+`,
+	},
 }
 
 func TestTypecheck(t *testing.T) {

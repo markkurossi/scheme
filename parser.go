@@ -520,8 +520,7 @@ func (p *Parser) parseLambda(env *Env, define bool, flags Flags,
 		numArgs++
 	}
 
-	capture := NewEnv()
-	capture.Push(env)
+	capture := env.CopyEnvFrames()
 	capture.PushCaptureFrame(captures, FUArgs, numArgs)
 
 	for _, arg := range args.Fixed {
