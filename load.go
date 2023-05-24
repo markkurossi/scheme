@@ -42,12 +42,13 @@ var loadBuiltins = []Builtin{
 	{
 		Name: "scheme::stack-trace",
 		Return: &types.Type{
-			Enum: types.EnumList,
-			Element: &types.Type{
+			Enum: types.EnumPair,
+			Car: &types.Type{
 				Enum: types.EnumPair,
 				Car:  types.String,
 				Cdr:  types.InexactInteger,
 			},
+			Cdr: types.Any,
 		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			stack := scm.StackTrace()

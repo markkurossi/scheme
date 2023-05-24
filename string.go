@@ -276,8 +276,9 @@ var stringBuiltins = []Builtin{
 		Name: "string->list",
 		Args: []string{"string"},
 		Return: &types.Type{
-			Enum:    types.EnumList,
-			Element: types.Character,
+			Enum: types.EnumPair,
+			Car:  types.Character,
+			Cdr:  types.Any,
 		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			str, ok := args[0].(String)

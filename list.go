@@ -118,8 +118,9 @@ func (pair *PlainPair) Type() *types.Type {
 	}, pair)
 	if err == nil {
 		return &types.Type{
-			Enum:    types.EnumList,
-			Element: t,
+			Enum: types.EnumPair,
+			Car:  t,
+			Cdr:  types.Unspecified,
 		}
 	}
 
@@ -369,8 +370,8 @@ var listBuiltins = []Builtin{
 		Args: []string{"obj1", "obj2"},
 		Return: &types.Type{
 			Enum: types.EnumPair,
-			Car:  types.Any,
-			Cdr:  types.Any,
+			Car:  types.Unspecified,
+			Cdr:  types.Unspecified,
 		},
 		Flags: FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
@@ -380,7 +381,7 @@ var listBuiltins = []Builtin{
 	{
 		Name:   "car",
 		Args:   []string{"pair"},
-		Return: types.Any,
+		Return: types.Unspecified,
 		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)
@@ -393,7 +394,7 @@ var listBuiltins = []Builtin{
 	{
 		Name:   "cdr",
 		Args:   []string{"pair"},
-		Return: types.Any,
+		Return: types.Unspecified,
 		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			pair, ok := args[0].(Pair)

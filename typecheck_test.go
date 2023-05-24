@@ -64,6 +64,31 @@ var typecheckTests = []struct {
 (string-length 1)
 `,
 	},
+	{
+		name: "let init argument count",
+		data: `
+(let ((a (string-length 1 2))
+      (b 1))
+  (+ a b))
+`,
+	},
+	{
+		name: "let body argument count",
+		data: `
+(let ((f (lambda (a) (+ a 1)))
+      (b 1))
+  (f 1 2))
+`,
+	},
+	{
+		name: "let* back-reference argument count",
+		data: `
+(let* ((f (lambda (a) (+ a 1)))
+       (b (f 1 2)))
+  (display b)
+  (newline))
+`,
+	},
 }
 
 func TestTypecheck(t *testing.T) {

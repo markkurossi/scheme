@@ -133,6 +133,11 @@ func (ast *ASTDefine) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTDefine) Typecheck(lib *Library, round int) error {
+	err := ast.Value.Typecheck(lib, round)
+	if err != nil {
+		return err
+	}
+
 	sym := lib.scm.Intern(ast.Name.Name)
 	nt := ast.Value.Type()
 
@@ -289,7 +294,30 @@ func (ast *ASTLet) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTLet) Typecheck(lib *Library, round int) error {
-	// XXX
+	for _, b := range ast.Bindings {
+		err := b.Init.Typecheck(lib, round)
+		if err != nil {
+			return err
+		}
+		nt := b.Init.Type()
+		if round == 0 {
+			b.Binding.Type = nt
+			if ast.Kind == KwLetrec {
+				lib.recheck = true
+			}
+		} else {
+			if !nt.IsA(b.Binding.Type) {
+				b.Binding.Type = nt
+				lib.recheck = true
+			}
+		}
+	}
+	for _, body := range ast.Body {
+		err := body.Typecheck(lib, round)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -535,8 +563,8 @@ func (ast *ASTCall) Equal(o AST) bool {
 var inlineCallTypes = map[Operand]*types.Type{
 	OpCons: {
 		Enum: types.EnumPair,
-		Car:  types.Any,
-		Cdr:  types.Any,
+		Car:  types.Unspecified,
+		Cdr:  types.Unspecified,
 	},
 	OpAdd: types.Number,
 	OpSub: types.Number,
@@ -662,8 +690,8 @@ func (ast *ASTCallUnary) Equal(o AST) bool {
 
 var inlineUnaryTypes = map[Operand]*types.Type{
 	OpPairp: types.Boolean,
-	OpCar:   types.Any,
-	OpCdr:   types.Any,
+	OpCar:   types.Unspecified,
+	OpCdr:   types.Unspecified,
 	OpNullp: types.Boolean,
 	OpZerop: types.Boolean,
 	OpNot:   types.Boolean,
