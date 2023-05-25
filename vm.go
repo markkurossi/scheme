@@ -169,7 +169,27 @@ func (i Instr) String() string {
 	}
 }
 
-// Apply applies lambda for arguments.
+// Apply applies lambda for arguments. This function implements the
+// virtual machine program execution.
+//
+// The virtual machine is a stack machine with the following registers:
+//   - env - the current environment
+//   - fp - the current stack frame
+//   - pc - program counter
+//   - accu - holds the value of the latest operation
+//
+// The virtual machine stack is as follows:
+//
+//	sp --->
+//	        Value{n}
+//	        ...
+//	        Value{0}
+//	        Arg{n}
+//	        ...
+//	        Arg{0}
+//	fp ---> Next fp ---+
+//	                   |
+//	                   v
 func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 	var argsList, tail Pair
 

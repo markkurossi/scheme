@@ -11,35 +11,6 @@ API gives a clean and high-level abstraction, for example,
 configuration file parsing, data encoding and decoding, and other
 structured data operations.
 
-## Virtual Machine
-
-### Stack
-
-```
-sp --->
-        Value{n}
-        ...
-        Value{0}
-        Arg{n}
-        ...
-        Arg{0}
-fp ---> Next fp ---+
-                   |
-                   v
-```
-
-## Loading and Evaluation
-
-```
-EvalFile(file)
-  Eval(source)
-    library := Load(sourc)
-    Apply(scheme::init-library, []Value{library})
-      (importer lib-imports)
-      (lib-init) =>
-      ((scheme::compile))
-```
-
 # TODO
 
 ## Language
