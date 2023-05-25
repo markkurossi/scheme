@@ -604,35 +604,41 @@ func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 			return err
 		}
 	}
-	// XXX inline call
-	if !ast.Inline {
+	var ft *types.Type
+	if ast.Inline {
+		sym := lib.scm.Intern(ast.InlineOp.String())
+		ft = sym.GlobalType
+		if ft.IsA(types.Unspecified) {
+			return ast.From.Errorf("unknown inline operand: %v", ast.InlineOp)
+		}
+	} else {
 		err := ast.Func.Typecheck(lib, round)
 		if err != nil {
 			return err
 		}
-		ft := ast.Func.Type()
-		if ft.IsA(types.Unspecified) || ft.IsA(types.Any) {
-			return nil
-		}
-		if ft.Enum != types.EnumLambda {
-			return ast.Func.Locator().Errorf("invalid procedure: %s", ft)
-		}
-		if len(ast.Args) < ft.MinArgs() {
-			return ast.From.Errorf("too few arguments: got %v, need %v",
-				len(ast.Args), ft.MinArgs())
-		}
-		if len(ast.Args) > ft.MaxArgs() {
-			return ast.From.Errorf("too many arguments: got %v, max %v",
-				len(ast.Args), ft.MinArgs())
-		}
-		// Check argument types.
-		for idx, arg := range ast.Args {
-			at := arg.Type()
-			if idx < len(ft.Args) {
-				if !at.IsKindOf(ft.Args[idx]) {
-					return arg.Locator().Errorf("invalid argument %v, expected %v",
-						at, ft.Args[idx])
-				}
+		ft = ast.Func.Type()
+	}
+	if ft.IsA(types.Unspecified) || ft.IsA(types.Any) {
+		return nil
+	}
+	if ft.Enum != types.EnumLambda {
+		return ast.Func.Locator().Errorf("invalid procedure: %s", ft)
+	}
+	if len(ast.Args) < ft.MinArgs() {
+		return ast.From.Errorf("too few arguments: got %v, need %v",
+			len(ast.Args), ft.MinArgs())
+	}
+	if len(ast.Args) > ft.MaxArgs() {
+		return ast.From.Errorf("too many arguments: got %v, max %v",
+			len(ast.Args), ft.MinArgs())
+	}
+	// Check argument types.
+	for idx, arg := range ast.Args {
+		at := arg.Type()
+		if idx < len(ft.Args) {
+			if !at.IsKindOf(ft.Args[idx]) {
+				return arg.Locator().Errorf("invalid argument %v, expected %v",
+					at, ft.Args[idx])
 			}
 		}
 	}

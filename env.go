@@ -8,7 +8,6 @@ package scheme
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/markkurossi/scheme/types"
 )
@@ -210,24 +209,4 @@ func (e *Env) Lookup(name string) (*EnvBinding, bool) {
 		}
 	}
 	return nil, false
-}
-
-// Push pushes the frames of the argument environment to the top of
-// this environment.
-func (e *Env) Push(o *Env) {
-	for _, frame := range o.Frames {
-		var names []string
-		for k := range frame.Bindings {
-			names = append(names, k)
-		}
-		sort.Slice(names, func(i, j int) bool {
-			return frame.Bindings[names[i]].Index <
-				frame.Bindings[names[j]].Index
-		})
-
-		e.PushFrame(frame.Type, frame.Usage, len(names))
-		for _, name := range names {
-			e.Define(name, frame.Bindings[name].Type)
-		}
-	}
 }
