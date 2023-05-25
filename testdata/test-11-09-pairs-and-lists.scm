@@ -113,8 +113,8 @@
   (runner 'test "loop"
           (lambda () (eq? (list? loop-odd) #f))
           (lambda () (eq? (list? loop-even) #f))
-          (lambda () (eq? (length loop-odd) #f))
-          (lambda () (eq? (length loop-even) #f))
+          (lambda () (eq? (length loop-odd) -1))
+          (lambda () (eq? (length loop-even) -1))
           (lambda () (eq? (append '() loop-odd '(1 2)) #f))
           (lambda () (eq? (append '() loop-even '(1 2)) #f))
           (lambda () (eq? (reverse loop-odd) #f))

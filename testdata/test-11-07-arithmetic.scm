@@ -132,16 +132,28 @@
         (lambda () (= (+ 3) 3))
         (lambda () (= (+) 0))
         (lambda () (= (+ 1 2 3) 6))
+        (lambda () (inexact? (+ 1 2)))
+        (lambda () (exact? (+ 1 #e2)))
+        (lambda () (exact? (+ #e1 2)))
+        (lambda () (exact? (+ #e1 #e2)))
         )
 (runner 'test "*"
         (lambda () (= (* 4) 4))
         (lambda () (= (*) 1))
         (lambda () (= (* 1 2 3) 6))
+        (lambda () (inexact? (* 2 2)))
+        (lambda () (exact? (* 2 #e2)))
+        (lambda () (exact? (* #e2 2)))
+        (lambda () (exact? (* #e2 #e2)))
         )
 (runner 'test "-"
         (lambda () (= (- 3 4) -1))
         (lambda () (= (- 3 4 5) -6))
         (lambda () (= (- 3) -3))
+        (lambda () (inexact? (- 4 2)))
+        (lambda () (exact? (- 4 #e2)))
+        (lambda () (exact? (- #e4 2)))
+        (lambda () (exact? (- #e4 #e2)))
         )
 (runner 'test "/"
         (lambda () (= (/ 3) 0))
@@ -149,6 +161,10 @@
         (lambda () (= (/ #e4 2) #e2))
         (lambda () (= (/ 4 #e2) #e2))
         (lambda () (= (/ #e4 #e2) #e2))
+        (lambda () (inexact? (/ 4 2)))
+        (lambda () (exact? (/ 4 #e2)))
+        (lambda () (exact? (/ #e4 2)))
+        (lambda () (exact? (/ #e4 #e2)))
         )
 
 (runner 'test "mod"
@@ -187,8 +203,8 @@
 (letrec ((fact
           (lambda (n)
             (if (< n #e2)
-                #e1
-                (* n (fact (- n #e1)))))))
+                1
+                (* n (fact (- n 1)))))))
   (runner 'test "fact"
           (lambda () (eq? (fact 5) 120))
           (lambda () (eq? (fact #e5) #e120))

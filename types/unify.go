@@ -59,7 +59,7 @@ func Unify(a *Type, b *Type) *Type {
 			Cdr:  Unify(a.Cdr, b.Cdr),
 		}
 
-	case EnumList, EnumVector:
+	case EnumVector:
 		return &Type{
 			Enum:    e,
 			Element: Unify(a.Element, b.Element),

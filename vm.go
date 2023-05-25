@@ -292,8 +292,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			// i.I != 0 for toplevel frames.
 			lambda, ok := accu.(*Lambda)
 			if !ok {
-				return nil, scm.Breakf("%s: invalid function: %v(%T)",
-					instr.Op, accu, accu)
+				return nil, scm.Breakf("invalid function: %v", accu)
 			}
 
 			var frame *Frame
@@ -573,11 +572,15 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 func (scm *Scheme) Breakf(format string, a ...interface{}) error {
 	err := scm.VMErrorf(format, a...)
 	msg := err.Error()
+
+	var compilerError bool
+
 	idx := strings.Index(msg, "<<")
 	if idx >= 0 {
 		msg = msg[idx+2:]
+		compilerError = true
 	}
-	if true {
+	if !scm.Params.Quiet && !compilerError {
 		fmt.Printf("%s\n", msg)
 		scm.PrintStack()
 	}
@@ -804,7 +807,7 @@ func (f *Frame) Equal(o Value) bool {
 
 // Type implements Value.Type.
 func (f *Frame) Type() *types.Type {
-	return nil
+	return types.Unspecified
 }
 
 // VMEnvFrame implement a virtual machine environment frame.

@@ -19,8 +19,9 @@ var rnrsProgramsBuiltins = []Builtin{
 	{
 		Name: "command-line",
 		Return: &types.Type{
-			Enum:    types.EnumList,
-			Element: types.String,
+			Enum: types.EnumPair,
+			Car:  types.String,
+			Cdr:  types.Any,
 		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			var head, tail Pair

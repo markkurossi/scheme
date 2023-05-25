@@ -33,7 +33,6 @@ const (
 	EnumPort
 	EnumLambda
 	EnumPair
-	EnumList
 	EnumVector
 )
 
@@ -53,7 +52,6 @@ var enumNames = map[Enum]string{
 	EnumPort:           "port",
 	EnumLambda:         "lambda",
 	EnumPair:           "pair",
-	EnumList:           "list",
 	EnumVector:         "vector",
 }
 
@@ -72,8 +70,7 @@ func (e Enum) Super() Enum {
 		return EnumUnspecified
 
 	case EnumAny, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
-		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair,
-		EnumList, EnumVector:
+		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair, EnumVector:
 		return EnumAny
 
 	case EnumExactInteger, EnumExactFloat:
@@ -153,6 +150,13 @@ func Parse(arg string) (*Type, string, error) {
 			Enum: EnumBytevector,
 			Kind: kind,
 		}, name, nil
+	} else if typeName == "chars" {
+		return &Type{
+			Enum: EnumPair,
+			Kind: kind,
+			Car:  Character,
+			Cdr:  Any,
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "char") {
 		return &Type{
 			Enum: EnumCharacter,
@@ -165,9 +169,10 @@ func Parse(arg string) (*Type, string, error) {
 		}, name, nil
 	} else if strings.HasPrefix(typeName, "list") {
 		return &Type{
-			Enum:    EnumList,
-			Kind:    kind,
-			Element: Any,
+			Enum: EnumPair,
+			Kind: kind,
+			Car:  Any,
+			Cdr:  Any,
 		}, name, nil
 	} else if strings.HasPrefix(typeName, "obj") ||
 		strings.HasPrefix(typeName, "who") ||
@@ -255,7 +260,7 @@ func (t *Type) String() string {
 	case EnumPair:
 		result = result + "(" + t.Car.String() + "," + t.Cdr.String() + ")"
 
-	case EnumList, EnumVector:
+	case EnumVector:
 		result = result + "(" + t.Element.String() + ")"
 
 	default:
@@ -312,6 +317,12 @@ var (
 	Port = &Type{
 		Enum: EnumPort,
 	}
+	Pair = &Type{
+		Enum: EnumPair,
+		Car:  Any,
+		Cdr:  Any,
+	}
+	Nil = Unspecified
 )
 
 // IsA tests if type is the same as the argument type.
@@ -342,7 +353,7 @@ func (t *Type) IsA(o *Type) bool {
 	case EnumPair:
 		return t.Car.IsA(o.Car) && t.Cdr.IsA(o.Cdr)
 
-	case EnumList, EnumVector:
+	case EnumVector:
 		return t.Element.IsA(o.Element)
 
 	default:
@@ -394,7 +405,7 @@ func (t *Type) IsKindOf(o *Type) bool {
 	case EnumPair:
 		return t.Car.IsKindOf(o.Car) && t.Cdr.IsKindOf(o.Cdr)
 
-	case EnumList, EnumVector:
+	case EnumVector:
 		return t.Element.IsKindOf(o.Element)
 
 	default:

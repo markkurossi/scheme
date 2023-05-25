@@ -38,8 +38,7 @@ func TestSuper(t *testing.T) {
 func TestEnumUnify(t *testing.T) {
 	directs := []Enum{
 		EnumAny, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
-		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair,
-		EnumList, EnumVector,
+		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair, EnumVector,
 	}
 	for _, a := range directs {
 		for _, b := range directs {
@@ -92,14 +91,6 @@ func TestIsA(t *testing.T) {
 	}
 	if !pair.IsA(pair) {
 		t.Errorf("!%v.IsA(%v)", pair, pair)
-	}
-
-	list := &Type{
-		Enum:    EnumList,
-		Element: ExactInteger,
-	}
-	if !list.IsA(list) {
-		t.Errorf("!%v.IsA(%v)", list, list)
 	}
 
 	vector := &Type{
@@ -194,21 +185,6 @@ func TestIsKindOf(t *testing.T) {
 	}
 	if !pair.IsKindOf(pair2) {
 		t.Errorf("!%v.IsKindOf(%v)", pair, pair2)
-	}
-
-	list := &Type{
-		Enum:    EnumList,
-		Element: ExactInteger,
-	}
-	if !list.IsKindOf(Any) {
-		t.Errorf("!%v.IsKindOf(%v)", list, Any)
-	}
-	list1 := &Type{
-		Enum:    EnumList,
-		Element: Any,
-	}
-	if !list.IsKindOf(list1) {
-		t.Errorf("!%v.IsKindOf(%v)", list, list1)
 	}
 
 	vector := &Type{

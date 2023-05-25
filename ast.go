@@ -75,7 +75,7 @@ func (ast *ASTSequence) Equal(o AST) bool {
 // Type implements AST.Type.
 func (ast *ASTSequence) Type() *types.Type {
 	if len(ast.Items) == 0 {
-		return nil
+		return types.Unspecified
 	}
 	return ast.Items[len(ast.Items)-1].Type()
 }
@@ -133,14 +133,26 @@ func (ast *ASTDefine) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTDefine) Typecheck(lib *Library, round int) error {
-	if round > 0 {
-		return nil
+	err := ast.Value.Typecheck(lib, round)
+	if err != nil {
+		return err
 	}
+
 	sym := lib.scm.Intern(ast.Name.Name)
-	if !sym.GlobalType.IsA(types.Unspecified) {
-		return ast.From.Errorf("redefining symbol '%s'", ast.Name.Name)
+	nt := ast.Value.Type()
+
+	if round == 0 {
+		if !sym.GlobalType.IsA(types.Unspecified) {
+			return ast.From.Errorf("redefining symbol '%s'", ast.Name.Name)
+		}
+		sym.GlobalType = nt
+		lib.recheck = true
+	} else {
+		if !nt.IsA(sym.GlobalType) {
+			sym.GlobalType = nt
+			lib.recheck = true
+		}
 	}
-	sym.GlobalType = ast.Value.Type()
 
 	return nil
 }
@@ -189,16 +201,19 @@ func (ast *ASTSet) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTSet) Typecheck(lib *Library, round int) error {
-	if ast.Binding == nil {
-		sym := lib.scm.Intern(ast.Name)
-		if sym.GlobalType.IsA(types.Unspecified) {
-			return ast.From.Errorf("setting undefined symbol '%s'", ast.Name)
-		}
-		vtype := ast.Value.Type()
-		if !vtype.IsKindOf(sym.GlobalType) {
-			return ast.From.Errorf("can't assign %s to variable of type %s",
-				vtype, sym.GlobalType)
-		}
+	vtype := ast.Value.Type()
+
+	if ast.Binding != nil {
+		// let-variables can be assigned with different value types.
+		return nil
+	}
+	sym := lib.scm.Intern(ast.Name)
+	if sym.GlobalType.IsA(types.Unspecified) {
+		return ast.From.Errorf("setting undefined symbol '%s'", ast.Name)
+	}
+	if !vtype.IsKindOf(sym.GlobalType) {
+		return ast.From.Errorf("can't assign %s to variable of type %s",
+			vtype, sym.GlobalType)
 	}
 	return nil
 }
@@ -281,6 +296,30 @@ func (ast *ASTLet) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTLet) Typecheck(lib *Library, round int) error {
+	for _, b := range ast.Bindings {
+		err := b.Init.Typecheck(lib, round)
+		if err != nil {
+			return err
+		}
+		nt := b.Init.Type()
+		if round == 0 {
+			b.Binding.Type = nt
+			if ast.Kind == KwLetrec {
+				lib.recheck = true
+			}
+		} else {
+			if !nt.IsKindOf(b.Binding.Type) {
+				b.Binding.Type = nt
+				lib.recheck = true
+			}
+		}
+	}
+	for _, body := range ast.Body {
+		err := body.Typecheck(lib, round)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -450,15 +489,19 @@ func (ast *ASTApply) Equal(o AST) bool {
 // Type implements AST.Type.
 func (ast *ASTApply) Type() *types.Type {
 	t := ast.Lambda.Type()
-	if t == nil {
-		return nil
+	if t.Enum != types.EnumLambda {
+		return types.Unspecified
 	}
 	return t.Return
 }
 
 // Typecheck implements AST.Type.
 func (ast *ASTApply) Typecheck(lib *Library, round int) error {
-	return nil
+	err := ast.Lambda.Typecheck(lib, round)
+	if err != nil {
+		return err
+	}
+	return ast.Args.Typecheck(lib, round)
 }
 
 // Bytecode implements AST.Bytecode.
@@ -525,8 +568,8 @@ func (ast *ASTCall) Equal(o AST) bool {
 var inlineCallTypes = map[Operand]*types.Type{
 	OpCons: {
 		Enum: types.EnumPair,
-		Car:  types.Any,
-		Cdr:  types.Any,
+		Car:  types.Unspecified,
+		Cdr:  types.Unspecified,
 	},
 	OpAdd: types.Number,
 	OpSub: types.Number,
@@ -547,7 +590,7 @@ func (ast *ASTCall) Type() *types.Type {
 		return t
 	}
 	t := ast.Func.Type()
-	if t == nil || t.Enum != types.EnumLambda {
+	if t.Enum != types.EnumLambda {
 		return types.Unspecified
 	}
 	return t.Return
@@ -561,28 +604,43 @@ func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 			return err
 		}
 	}
-	if !ast.Inline {
+	var ft *types.Type
+	if ast.Inline {
+		sym := lib.scm.Intern(ast.InlineOp.String())
+		ft = sym.GlobalType
+		if ft.IsA(types.Unspecified) {
+			return ast.From.Errorf("unknown inline operand: %v", ast.InlineOp)
+		}
+	} else {
 		err := ast.Func.Typecheck(lib, round)
 		if err != nil {
 			return err
 		}
-		ft := ast.Func.Type()
-		if ft == nil || ft.IsA(types.Unspecified) || ft.IsA(types.Any) {
-			return nil
+		ft = ast.Func.Type()
+	}
+	if ft.IsA(types.Unspecified) || ft.IsA(types.Any) {
+		return nil
+	}
+	if ft.Enum != types.EnumLambda {
+		return ast.Func.Locator().Errorf("invalid procedure: %s", ft)
+	}
+	if len(ast.Args) < ft.MinArgs() {
+		return ast.From.Errorf("too few arguments: got %v, need %v",
+			len(ast.Args), ft.MinArgs())
+	}
+	if len(ast.Args) > ft.MaxArgs() {
+		return ast.From.Errorf("too many arguments: got %v, max %v",
+			len(ast.Args), ft.MinArgs())
+	}
+	// Check argument types.
+	for idx, arg := range ast.Args {
+		at := arg.Type()
+		if idx < len(ft.Args) {
+			if !at.IsKindOf(ft.Args[idx]) {
+				return arg.Locator().Errorf("invalid argument %v, expected %v",
+					at, ft.Args[idx])
+			}
 		}
-		if ft.Enum != types.EnumLambda {
-			return ast.Func.Locator().Errorf("invalid procedure: %s", ft)
-		}
-		if len(ast.Args) < ft.MinArgs() {
-			return ast.From.Errorf("too few arguments: got %v, need %v",
-				len(ast.Args), ft.MinArgs())
-		}
-		if len(ast.Args) > ft.MaxArgs() {
-			return ast.From.Errorf("too many arguments: got %v, max %v",
-				len(ast.Args), ft.MinArgs())
-		}
-		//fmt.Printf("ASTCall.Typecheck: %v\n", ft)
-		//fmt.Printf("*** call %s with %v\n", ft, ast.Args)
 	}
 	return nil
 }
@@ -643,8 +701,8 @@ func (ast *ASTCallUnary) Equal(o AST) bool {
 
 var inlineUnaryTypes = map[Operand]*types.Type{
 	OpPairp: types.Boolean,
-	OpCar:   types.Any,
-	OpCdr:   types.Any,
+	OpCar:   types.Unspecified,
+	OpCdr:   types.Unspecified,
 	OpNullp: types.Boolean,
 	OpZerop: types.Boolean,
 	OpNot:   types.Boolean,
@@ -659,8 +717,29 @@ func (ast *ASTCallUnary) Type() *types.Type {
 	return t
 }
 
+var inlineUnaryArgTypes = map[Operand]*types.Type{
+	OpPairp: types.Any,
+	OpCar:   types.Pair,
+	OpCdr:   types.Pair,
+	OpNullp: types.Any,
+	OpZerop: types.Any,
+	OpNot:   types.Any,
+}
+
 // Typecheck implements AST.Type.
 func (ast *ASTCallUnary) Typecheck(lib *Library, round int) error {
+	err := ast.Arg.Typecheck(lib, round)
+	if err != nil {
+		return err
+	}
+	at, ok := inlineUnaryArgTypes[ast.Op]
+	if !ok {
+		panic(fmt.Sprintf("unknown inline unary operand: %v", ast.Op))
+	}
+	t := ast.Arg.Type()
+	if !t.IsKindOf(at) {
+		return ast.From.Errorf("invalid argument %v, expected %v", t, at)
+	}
 	return nil
 }
 
@@ -735,13 +814,24 @@ func (ast *ASTLambda) Typecheck(lib *Library, round int) error {
 			return err
 		}
 	}
-	if ast.Name != nil && round == 0 {
-		sym := lib.scm.Intern(ast.Name.Name)
+	if ast.Name == nil {
+		return nil
+	}
+
+	sym := lib.scm.Intern(ast.Name.Name)
+	nt := ast.Type()
+
+	if round == 0 {
 		if !sym.GlobalType.IsA(types.Unspecified) {
 			return ast.From.Errorf("redefining symbol '%s'", ast.Name.Name)
 		}
-		sym.GlobalType = ast.Type()
+		sym.GlobalType = nt
 		lib.recheck = true
+	} else {
+		if !nt.IsA(sym.GlobalType) {
+			sym.GlobalType = nt
+			lib.recheck = true
+		}
 	}
 
 	return nil
@@ -790,8 +880,7 @@ func (ast *ASTConstant) Equal(o AST) bool {
 // Type implements AST.Type.
 func (ast *ASTConstant) Type() *types.Type {
 	if ast.Value == nil {
-		// XXX nil type needed...
-		return types.Any
+		return types.Nil
 	}
 	return ast.Value.Type()
 }
@@ -931,6 +1020,12 @@ func (ast *ASTCond) Type() *types.Type {
 		if choice.Cond == nil {
 			hadDefault = true
 		}
+		if len(choice.Exprs) == 0 {
+			if hadDefault {
+				return types.Boolean
+			}
+			return choice.Cond.Type()
+		}
 		t = types.Unify(t, choice.Exprs[len(choice.Exprs)-1].Type())
 	}
 	if !hadDefault {
@@ -943,6 +1038,26 @@ func (ast *ASTCond) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTCond) Typecheck(lib *Library, round int) error {
+	for _, choice := range ast.Choices {
+		if choice.Cond != nil {
+			err := choice.Cond.Typecheck(lib, round)
+			if err != nil {
+				return err
+			}
+		}
+		if choice.Func != nil {
+			err := choice.Func.Typecheck(lib, round)
+			if err != nil {
+				return err
+			}
+		}
+		for _, expr := range choice.Exprs {
+			err := expr.Typecheck(lib, round)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -1109,6 +1224,18 @@ func (ast *ASTCase) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTCase) Typecheck(lib *Library, round int) error {
+	err := ast.Expr.Typecheck(lib, round)
+	if err != nil {
+		return err
+	}
+	for _, choice := range ast.Choices {
+		for _, expr := range choice.Exprs {
+			err = expr.Typecheck(lib, round)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -1364,14 +1491,7 @@ func (ast *ASTOr) Bytecode(lib *Library) error {
 }
 
 func (lib *Library) define(loc Locator, name *Identifier, flags Flags) error {
-
 	export, ok := lib.exported[name.Name]
-	if lib.ExportAll || ok {
-		// XXX Defined global symbol.
-	} else {
-		// XXX Define library symbol.
-		// fmt.Printf("XXX define local symbol %v\n", name)
-	}
 	if ok {
 		export.id = name
 	}

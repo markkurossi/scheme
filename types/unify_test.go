@@ -70,21 +70,6 @@ func TestUnify(t *testing.T) {
 				Cdr:  Number,
 			},
 		},
-
-		{
-			a: &Type{
-				Enum:    EnumList,
-				Element: Number,
-			},
-			b: &Type{
-				Enum:    EnumList,
-				Element: InexactFloat,
-			},
-			u: &Type{
-				Enum:    EnumList,
-				Element: Number,
-			},
-		},
 		{
 			a: &Type{
 				Enum:    EnumVector,

@@ -8,7 +8,6 @@ package scheme
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/markkurossi/scheme/types"
 )
@@ -91,11 +90,26 @@ func NewEnv() *Env {
 }
 
 // Copy creates a new copy of the environment that shares the contents
-// of the environment frames and statistics.
+// of all environment frames and statistics.
 func (e *Env) Copy() *Env {
 	frames := make([]*EnvFrame, len(e.Frames))
 	copy(frames, e.Frames)
 
+	return &Env{
+		Stats:  e.Stats,
+		Frames: frames,
+	}
+}
+
+// CopyEnvFrames creates a new copy of the environment sharing TypeEnv
+// frames and statistics.
+func (e *Env) CopyEnvFrames() *Env {
+	var frames []*EnvFrame
+	for _, frame := range e.Frames {
+		if frame.Type == TypeEnv {
+			frames = append(frames, frame)
+		}
+	}
 	return &Env{
 		Stats:  e.Stats,
 		Frames: frames,
@@ -110,7 +124,8 @@ func (e *Env) Print() {
 
 		fmt.Printf("\u2502%v%v:%3d", frame.Type, frame.Usage, i)
 		for k, v := range frame.Bindings {
-			fmt.Printf(" %v=%d.%d(%v)", k, frame.Index, v.Index, v.Disabled)
+			fmt.Printf(" %v=%d.%d(%v) %v",
+				k, frame.Index, v.Index, v.Disabled, v.Type)
 		}
 		fmt.Println()
 	}
@@ -169,7 +184,7 @@ func (e *Env) PopFrame() {
 }
 
 // Define defines the named symbol in the environment.
-func (e *Env) Define(name string) (*EnvBinding, error) {
+func (e *Env) Define(name string, t *types.Type) (*EnvBinding, error) {
 	frame := e.Frames[len(e.Frames)-1]
 
 	_, ok := frame.Bindings[name]
@@ -179,6 +194,7 @@ func (e *Env) Define(name string) (*EnvBinding, error) {
 	b := &EnvBinding{
 		Frame: frame,
 		Index: len(frame.Bindings),
+		Type:  t,
 	}
 	frame.Bindings[name] = b
 	return b, nil
@@ -193,24 +209,4 @@ func (e *Env) Lookup(name string) (*EnvBinding, bool) {
 		}
 	}
 	return nil, false
-}
-
-// Push pushes the frames of the argument environment to the top of
-// this environment.
-func (e *Env) Push(o *Env) {
-	for _, frame := range o.Frames {
-		var names []string
-		for k := range frame.Bindings {
-			names = append(names, k)
-		}
-		sort.Slice(names, func(i, j int) bool {
-			return frame.Bindings[names[i]].Index <
-				frame.Bindings[names[j]].Index
-		})
-
-		e.PushFrame(frame.Type, frame.Usage, len(names))
-		for _, name := range names {
-			e.Define(name)
-		}
-	}
 }

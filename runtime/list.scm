@@ -47,7 +47,7 @@
     (if (for-each (lambda (x) (set! count (+ count 1))) lst)
         count
         ;; XXX (error 'length "not a list" lst)
-        #f)))
+        -1)))
 
 (define (append list . rest)
   (if (null? rest)

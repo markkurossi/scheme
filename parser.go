@@ -520,18 +520,21 @@ func (p *Parser) parseLambda(env *Env, define bool, flags Flags,
 		numArgs++
 	}
 
-	capture := NewEnv()
-	capture.Push(env)
+	capture := env.CopyEnvFrames()
 	capture.PushCaptureFrame(captures, FUArgs, numArgs)
 
 	for _, arg := range args.Fixed {
-		_, err := capture.Define(arg.Name)
+		_, err := capture.Define(arg.Name, types.Unspecified)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if args.Rest != nil {
-		_, err := capture.Define(args.Rest.Name)
+		_, err := capture.Define(args.Rest.Name, &types.Type{
+			Enum: types.EnumPair,
+			Car:  types.Unspecified,
+			Cdr:  types.Any,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -613,7 +616,7 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 		if !ok {
 			return nil, def[0].Errorf("%s: invalid variable: %v", kind, binding)
 		}
-		b, err := letEnv.Define(name.Name)
+		b, err := letEnv.Define(name.Name, types.Unspecified)
 		if err != nil {
 			return nil, err
 		}

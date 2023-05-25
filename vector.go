@@ -57,6 +57,9 @@ func (v Vector) Type() *types.Type {
 			t.Element = types.Unify(t.Element, el.Type())
 		}
 	}
+	if t.Element == nil {
+		t.Element = types.Unspecified
+	}
 	return t
 }
 
@@ -182,8 +185,9 @@ var vectorBuiltins = []Builtin{
 		Name: "vector->list",
 		Args: []string{"vector"},
 		Return: &types.Type{
-			Enum:    types.EnumList,
-			Element: types.Any,
+			Enum: types.EnumPair,
+			Car:  types.Any,
+			Cdr:  types.Any,
 		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			vector, ok := args[0].(Vector)
