@@ -317,6 +317,11 @@ var (
 	Port = &Type{
 		Enum: EnumPort,
 	}
+	Pair = &Type{
+		Enum: EnumPair,
+		Car:  Any,
+		Cdr:  Any,
+	}
 	Nil = Unspecified
 )
 

@@ -497,8 +497,11 @@ func (ast *ASTApply) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTApply) Typecheck(lib *Library, round int) error {
-	// XXX
-	return nil
+	err := ast.Lambda.Typecheck(lib, round)
+	if err != nil {
+		return err
+	}
+	return ast.Args.Typecheck(lib, round)
 }
 
 // Bytecode implements AST.Bytecode.
@@ -708,9 +711,29 @@ func (ast *ASTCallUnary) Type() *types.Type {
 	return t
 }
 
+var inlineUnaryArgTypes = map[Operand]*types.Type{
+	OpPairp: types.Any,
+	OpCar:   types.Pair,
+	OpCdr:   types.Pair,
+	OpNullp: types.Any,
+	OpZerop: types.Any,
+	OpNot:   types.Any,
+}
+
 // Typecheck implements AST.Type.
 func (ast *ASTCallUnary) Typecheck(lib *Library, round int) error {
-	// XXX
+	err := ast.Arg.Typecheck(lib, round)
+	if err != nil {
+		return err
+	}
+	at, ok := inlineUnaryArgTypes[ast.Op]
+	if !ok {
+		panic(fmt.Sprintf("unknown inline unary operand: %v", ast.Op))
+	}
+	t := ast.Arg.Type()
+	if !t.IsKindOf(at) {
+		return ast.From.Errorf("invalid argument %v, expected %v", t, at)
+	}
 	return nil
 }
 
