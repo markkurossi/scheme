@@ -33,4 +33,9 @@
           (append (list-sort proc lt)
                   (list pivot)
                   (list-sort proc ge)))))
+
+  (define (vector-sort proc vect)
+    (if (<= (vector-length vect) 1)
+        vect
+        (list->vector (list-sort proc (vector->list vect)))))
   )

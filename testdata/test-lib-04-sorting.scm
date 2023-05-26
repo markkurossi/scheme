@@ -26,4 +26,10 @@
                              '((2 . 1) (2 . 2) (2 . 3)
                                (3 . 1) (3 . 2) (3 . 3))))
           )
+  (runner 'test "vector-sort"
+          (lambda () (equal? (vector-sort < '#(3 5 2 1)) '#(1 2 3 5)))
+          (lambda () (equal? (vector-sort < '#()) '#()))
+          (lambda () (equal? (vector-sort < '#(3)) '#(3)))
+          (lambda () (equal? (vector-sort < '#(1 2 3 5)) '#(1 2 3 5)))
+          )
   )
