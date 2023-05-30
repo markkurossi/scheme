@@ -132,10 +132,32 @@
         (lambda () (= (+ 3) 3))
         (lambda () (= (+) 0))
         (lambda () (= (+ 1 2 3) 6))
+
+        (lambda () (= (+ 3 4.0) 7.0))
+        (lambda () (= (+ 3.0 4) 7.0))
+
+        (lambda () (= (+ 3 #e4) #e7))
+        (lambda () (= (+ #e3 4) #e7))
+
+        (lambda () (= (+ 3 #e4.0) #e7.0))
+        (lambda () (= (+ #e3.0 4) #e7.0))
+
+        (lambda () (= (+ 3.0 #e4) #e7.0))
+        (lambda () (= (+ #e3 4.0) #e7.0))
+
+        (lambda () (= (+ #e3.0 #e4) #e7.0))
+        (lambda () (= (+ #e3 #e4.0) #e7.0))
+
         (lambda () (inexact? (+ 1 2)))
+        (lambda () (inexact? (+ 1 2.0)))
         (lambda () (exact? (+ 1 #e2)))
+        (lambda () (exact? (+ 1 #e2.0)))
         (lambda () (exact? (+ #e1 2)))
+        (lambda () (exact? (+ #e1 2.0)))
         (lambda () (exact? (+ #e1 #e2)))
+        (lambda () (exact? (+ #e1 #e2.0)))
+        (lambda () (exact? (+ #e1.0 #e2)))
+        (lambda () (exact? (+ #e1.0 #e2.0)))
         )
 (runner 'test "*"
         (lambda () (= (* 4) 4))

@@ -399,9 +399,9 @@ func numSub(z1, z2 Value) (Value, error) {
 
 func numEq(z1, z2 Value) (Value, error) {
 	switch v1 := z1.(type) {
-	case Int, *BigInt:
+	case Int, Float, *BigInt, *BigFloat:
 		switch v2 := z2.(type) {
-		case Int, *BigInt:
+		case Int, Float, *BigInt, *BigFloat:
 			return Boolean(v1.Equal(v2)), nil
 		default:
 			return nil, fmt.Errorf("invalid argument: %v", z2)
@@ -540,7 +540,7 @@ var numberBuiltins = []Builtin{
 		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch args[0].(type) {
-			case *BigInt:
+			case *BigInt, *BigFloat:
 				return Boolean(true), nil
 
 			default:
@@ -554,7 +554,7 @@ var numberBuiltins = []Builtin{
 		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch args[0].(type) {
-			case Int:
+			case Int, Float:
 				return Boolean(true), nil
 
 			default:
