@@ -707,9 +707,8 @@ func (scm *Scheme) PrintStack() {
 		fmt.Printf(" at ")
 		source, line := frame.MapPC(pc)
 		if line > 0 {
-			fmt.Printf("%s:%d, ", source, line)
+			fmt.Printf("%s:%d\n", source, line)
 		}
-		fmt.Printf("pc=%v\n", pc)
 
 		if frame.Next == fp {
 			break
