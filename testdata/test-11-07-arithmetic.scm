@@ -172,10 +172,32 @@
         (lambda () (= (- 3 4) -1))
         (lambda () (= (- 3 4 5) -6))
         (lambda () (= (- 3) -3))
+
+        (lambda () (= (- 3 4.0) -1.0))
+        (lambda () (= (- 3.0 4) -1.0))
+
+        (lambda () (= (- 3 #e4) #e-1))
+        (lambda () (= (- #e3 4) #e-1))
+
+        (lambda () (= (- 3 #e4.0) #e-1.0))
+        (lambda () (= (- #e3.0 4) #e-1.0))
+
+        (lambda () (= (- 3.0 #e4) #e-1.0))
+        (lambda () (= (- #e3 4.0) #e-1.0))
+
+        (lambda () (= (- #e3.0 #e4) #e-1.0))
+        (lambda () (= (- #e3 #e4.0) #e-1.0))
+
         (lambda () (inexact? (- 4 2)))
+        (lambda () (inexact? (- 4 2.0)))
         (lambda () (exact? (- 4 #e2)))
+        (lambda () (exact? (- 4 #e2.0)))
         (lambda () (exact? (- #e4 2)))
+        (lambda () (exact? (- #e4 2.0)))
         (lambda () (exact? (- #e4 #e2)))
+        (lambda () (exact? (- #e4 #e2.0)))
+        (lambda () (exact? (- #e1.0 #e2)))
+        (lambda () (exact? (- #e1.0 #e2.0)))
         )
 (runner 'test "/"
         (lambda () (= (/ 3) 0))

@@ -367,13 +367,44 @@ func numSub(z1, z2 Value) (Value, error) {
 		case Int:
 			return v1 - v2, nil
 
+		case Float:
+			return Float(v1) - v2, nil
+
 		case *BigInt:
 			return &BigInt{
 				I: new(big.Int).Sub(big.NewInt(int64(v1)), v2.I),
 			}, nil
 
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Sub(big.NewFloat(float64(v1)), v2.F),
+			}, nil
+
 		default:
 			return Int(0), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case Float:
+		switch v2 := z2.(type) {
+		case Int:
+			return v1 - Float(v2), nil
+
+		case Float:
+			return v1 - v2, nil
+
+		case *BigInt:
+			return &BigFloat{
+				F: new(big.Float).Sub(big.NewFloat(float64(v1)),
+					new(big.Float).SetInt(v2.I)),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Sub(big.NewFloat(float64(v1)), v2.F),
+			}, nil
+
+		default:
+			return Float(0), fmt.Errorf("invalid number: %v", z2)
 		}
 
 	case *BigInt:
@@ -383,9 +414,46 @@ func numSub(z1, z2 Value) (Value, error) {
 				I: new(big.Int).Sub(v1.I, big.NewInt(int64(v2))),
 			}, nil
 
+		case Float:
+			return &BigFloat{
+				F: new(big.Float).Sub(new(big.Float).SetInt(v1.I),
+					big.NewFloat(float64(v2))),
+			}, nil
+
 		case *BigInt:
 			return &BigInt{
 				I: new(big.Int).Sub(v1.I, v2.I),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Sub(new(big.Float).SetInt(v1.I), v2.F),
+			}, nil
+
+		default:
+			return Int(0), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case *BigFloat:
+		switch v2 := z2.(type) {
+		case Int:
+			return &BigFloat{
+				F: new(big.Float).Sub(v1.F, big.NewFloat(float64(v2))),
+			}, nil
+
+		case Float:
+			return &BigFloat{
+				F: new(big.Float).Sub(v1.F, big.NewFloat(float64(v2))),
+			}, nil
+
+		case *BigInt:
+			return &BigFloat{
+				F: new(big.Float).Sub(v1.F, new(big.Float).SetInt(v2.I)),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Sub(v1.F, v2.F),
 			}, nil
 
 		default:
@@ -478,8 +546,15 @@ func zero(z Value) (Value, error) {
 	case Int:
 		return Boolean(v == 0), nil
 
+	case Float:
+		return Boolean(v == 0.0), nil
+
 	case *BigInt:
 		return Boolean(v.I.BitLen() == 0), nil
+
+	case *BigFloat:
+		f, _ := v.F.Float64()
+		return Boolean(f == 0.0), nil
 
 	default:
 		return Boolean(false), fmt.Errorf("invalid number: %v", z)
@@ -506,7 +581,7 @@ var numberBuiltins = []Builtin{
 		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch args[0].(type) {
-			case Int, *BigInt:
+			case Int, Float, *BigInt, *BigFloat:
 				return Boolean(true), nil
 
 			default:
