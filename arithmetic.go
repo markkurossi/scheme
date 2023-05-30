@@ -18,7 +18,7 @@ import (
 )
 
 // NewNumber creates a new numeric value.
-func NewNumber(base int, value interface{}) Value {
+func NewNumber(value interface{}) Value {
 	switch v := value.(type) {
 	case int:
 		return Int(v)
@@ -26,9 +26,17 @@ func NewNumber(base int, value interface{}) Value {
 	case int64:
 		return Int(v)
 
+	case float64:
+		return Float(v)
+
 	case *big.Int:
 		return &BigInt{
 			I: v,
+		}
+
+	case *big.Float:
+		return &BigFloat{
+			F: v,
 		}
 
 	default:
@@ -43,12 +51,12 @@ func (v Int) String() string {
 	return fmt.Sprintf("%v", int64(v))
 }
 
-// Scheme returns the value as a Scheme string.
+// Scheme implements Value.Scheme.
 func (v Int) Scheme() string {
 	return v.String()
 }
 
-// Eq tests if the argument value is eq? to this value.
+// Eq implements Value.Eq.
 func (v Int) Eq(o Value) bool {
 	ov, ok := o.(Int)
 	if !ok {
@@ -57,14 +65,20 @@ func (v Int) Eq(o Value) bool {
 	return v == ov
 }
 
-// Equal tests if the argument value is equal? to this value.
+// Equal implements Value.Equal.
 func (v Int) Equal(o Value) bool {
 	switch ov := o.(type) {
 	case Int:
 		return v == ov
 
+	case Float:
+		return float64(v) == float64(ov)
+
 	case *BigInt:
 		return ov.I.Cmp(big.NewInt(int64(v))) == 0
+
+	case *BigFloat:
+		return ov.F.Cmp(big.NewFloat(float64(v))) == 0
 
 	default:
 		return false
@@ -76,6 +90,52 @@ func (v Int) Type() *types.Type {
 	return types.InexactInteger
 }
 
+// Float implements inexact floating point numbers.
+type Float float64
+
+func (v Float) String() string {
+	return fmt.Sprintf("%v", float64(v))
+}
+
+// Scheme implements Value.Scheme.
+func (v Float) Scheme() string {
+	return v.String()
+}
+
+// Eq implements Value.Eq.
+func (v Float) Eq(o Value) bool {
+	ov, ok := o.(Float)
+	if !ok {
+		return false
+	}
+	return v == ov
+}
+
+// Equal implements Value.Equal.
+func (v Float) Equal(o Value) bool {
+	switch ov := o.(type) {
+	case Int:
+		return float64(v) == float64(ov)
+
+	case Float:
+		return v == ov
+
+	case *BigInt:
+		return new(big.Float).SetInt(ov.I).Cmp(big.NewFloat(float64(v))) == 0
+
+	case *BigFloat:
+		return ov.F.Cmp(big.NewFloat(float64(v))) == 0
+
+	default:
+		return false
+	}
+}
+
+// Type implements Value.Type.
+func (v Float) Type() *types.Type {
+	return types.InexactFloat
+}
+
 // BigInt implements exact integer numbers.
 type BigInt struct {
 	I *big.Int
@@ -85,12 +145,12 @@ func (v *BigInt) String() string {
 	return v.I.String()
 }
 
-// Scheme returns the value as a Scheme string.
+// Scheme implements Value.Scheme.
 func (v *BigInt) Scheme() string {
 	return v.String()
 }
 
-// Eq tests if the argument value is eq? to this value.
+// Eq implements Value.Eq.
 func (v *BigInt) Eq(o Value) bool {
 	ov, ok := o.(*BigInt)
 	if !ok {
@@ -99,14 +159,20 @@ func (v *BigInt) Eq(o Value) bool {
 	return v.I.Cmp(ov.I) == 0
 }
 
-// Equal tests if the argument value is equal? to this value.
+// Equal implements Value.Equal.
 func (v *BigInt) Equal(o Value) bool {
 	switch ov := o.(type) {
 	case Int:
 		return v.I.Cmp(big.NewInt(int64(ov))) == 0
 
+	case Float:
+		return new(big.Float).SetInt(v.I).Cmp(big.NewFloat(float64(ov))) == 0
+
 	case *BigInt:
 		return v.I.Cmp(ov.I) == 0
+
+	case *BigFloat:
+		return new(big.Float).SetInt(v.I).Cmp(ov.F) == 0
 
 	default:
 		return false
@@ -118,6 +184,54 @@ func (v *BigInt) Type() *types.Type {
 	return types.ExactInteger
 }
 
+// BigFloat implements exact floating point numbers.
+type BigFloat struct {
+	F *big.Float
+}
+
+func (v *BigFloat) String() string {
+	return v.F.String()
+}
+
+// Scheme implements Value.Scheme.
+func (v *BigFloat) Scheme() string {
+	return v.String()
+}
+
+// Eq implements Value.Eq.
+func (v *BigFloat) Eq(o Value) bool {
+	ov, ok := o.(*BigFloat)
+	if !ok {
+		return false
+	}
+	return v.F.Cmp(ov.F) == 0
+}
+
+// Equal implements Value.Equal.
+func (v *BigFloat) Equal(o Value) bool {
+	switch ov := o.(type) {
+	case Int:
+		return v.F.Cmp(big.NewFloat(float64(ov))) == 0
+
+	case Float:
+		return v.F.Cmp(big.NewFloat(float64(ov))) == 0
+
+	case *BigInt:
+		return v.F.Cmp(big.NewFloat(0.0).SetInt(ov.I)) == 0
+
+	case *BigFloat:
+		return v.F.Cmp(ov.F) == 0
+
+	default:
+		return false
+	}
+}
+
+// Type implements Value.Type.
+func (v *BigFloat) Type() *types.Type {
+	return types.ExactFloat
+}
+
 // Int64 returns the number value as int64 integer number. The
 // function returns an error if the argument is not a number.
 func Int64(v Value) (int64, error) {
@@ -125,8 +239,15 @@ func Int64(v Value) (int64, error) {
 	case Int:
 		return int64(val), nil
 
+	case Float:
+		return int64(val), nil
+
 	case *BigInt:
 		return val.I.Int64(), nil
+
+	case *BigFloat:
+		v, _ := val.F.Int64()
+		return v, nil
 
 	default:
 		return 0, fmt.Errorf("invalid number: %v", v)
@@ -140,13 +261,44 @@ func numAdd(z1, z2 Value) (Value, error) {
 		case Int:
 			return v1 + v2, nil
 
+		case Float:
+			return Float(v1) + v2, nil
+
 		case *BigInt:
 			return &BigInt{
 				I: new(big.Int).Add(big.NewInt(int64(v1)), v2.I),
 			}, nil
 
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Add(big.NewFloat(float64(v1)), v2.F),
+			}, nil
+
 		default:
 			return Int(0), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case Float:
+		switch v2 := z2.(type) {
+		case Int:
+			return v1 + Float(v2), nil
+
+		case Float:
+			return v1 + v2, nil
+
+		case *BigInt:
+			return &BigFloat{
+				F: new(big.Float).Add(big.NewFloat(float64(v1)),
+					new(big.Float).SetInt(v2.I)),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Add(big.NewFloat(float64(v1)), v2.F),
+			}, nil
+
+		default:
+			return Float(0), fmt.Errorf("invalid number: %v", z2)
 		}
 
 	case *BigInt:
@@ -156,9 +308,46 @@ func numAdd(z1, z2 Value) (Value, error) {
 				I: new(big.Int).Add(v1.I, big.NewInt(int64(v2))),
 			}, nil
 
+		case Float:
+			return &BigFloat{
+				F: new(big.Float).Add(new(big.Float).SetInt(v1.I),
+					big.NewFloat(float64(v2))),
+			}, nil
+
 		case *BigInt:
 			return &BigInt{
 				I: new(big.Int).Add(v1.I, v2.I),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Add(new(big.Float).SetInt(v1.I), v2.F),
+			}, nil
+
+		default:
+			return Int(0), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case *BigFloat:
+		switch v2 := z2.(type) {
+		case Int:
+			return &BigFloat{
+				F: new(big.Float).Add(v1.F, big.NewFloat(float64(v2))),
+			}, nil
+
+		case Float:
+			return &BigFloat{
+				F: new(big.Float).Add(v1.F, big.NewFloat(float64(v2))),
+			}, nil
+
+		case *BigInt:
+			return &BigFloat{
+				F: new(big.Float).Add(v1.F, new(big.Float).SetInt(v2.I)),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Add(v1.F, v2.F),
 			}, nil
 
 		default:

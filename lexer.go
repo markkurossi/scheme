@@ -561,11 +561,11 @@ func (l *Lexer) Get() (*Token, error) {
 				}
 			} else if isDigit10(n) {
 				l.UnreadRune()
-				val, err := l.parseDigit(10)
+				ival, fval, err := l.parseDigit(10)
 				if err != nil {
 					return nil, err
 				}
-				return l.newNumber(false, r == '-', 0, val)
+				return l.newNumber(false, r == '-', ival, fval)
 			} else {
 				l.UnreadRune()
 			}
@@ -604,30 +604,47 @@ func (l *Lexer) Get() (*Token, error) {
 			}
 			if isDigit10(r) {
 				l.UnreadRune()
-				val, err := l.parseDigit(10)
+				ival, fval, err := l.parseDigit(10)
 				if err != nil {
 					return nil, err
 				}
-				return l.newNumber(false, false, 0, val)
+				return l.newNumber(false, false, ival, fval)
 			}
 			return nil, l.errf("unexpected character: %c", r)
 		}
 	}
 }
 
-func (l *Lexer) newNumber(exact, negative bool, base int, val *big.Int) (
-	*Token, error) {
-
-	if negative {
-		zero := big.NewInt(0)
-		val.Sub(zero, val)
-	}
+func (l *Lexer) newNumber(exact, negative bool, ival *big.Int,
+	fval *big.Float) (*Token, error) {
 
 	token := l.Token(TNumber)
-	if exact {
-		token.Number = NewNumber(base, val)
+
+	if ival != nil {
+		if negative {
+			zero := big.NewInt(0)
+			ival.Sub(zero, ival)
+		}
+		if exact {
+			token.Number = NewNumber(ival)
+		} else {
+			token.Number = NewNumber(ival.Int64())
+		}
 	} else {
-		token.Number = NewNumber(base, val.Int64())
+		if negative {
+			zero := big.NewFloat(0.0)
+			fval.Sub(zero, fval)
+		}
+		if exact {
+			token.Number = NewNumber(fval)
+		} else {
+			f64, accuracy := fval.Float64()
+			if accuracy == big.Exact {
+				token.Number = NewNumber(f64)
+			} else {
+				token.Number = NewNumber(fval)
+			}
+		}
 	}
 	return token, nil
 }
@@ -691,11 +708,11 @@ func (l *Lexer) parseNumber() (*Token, error) {
 			'a' <= r && r <= 'f' ||
 			'A' <= r && r <= 'F' {
 			l.UnreadRune()
-			val, err := l.parseDigit(base)
+			ival, fval, err := l.parseDigit(base)
 			if err != nil {
 				return nil, err
 			}
-			return l.newNumber(exact, negative, 0, val)
+			return l.newNumber(exact, negative, ival, fval)
 		} else {
 			l.UnreadRune()
 			return nil, l.errf("unexpected character: %c", r)
@@ -703,7 +720,7 @@ func (l *Lexer) parseNumber() (*Token, error) {
 	}
 }
 
-func (l *Lexer) parseDigit(base int64) (*big.Int, error) {
+func (l *Lexer) parseDigit(base int64) (*big.Int, *big.Float, error) {
 	result := &big.Int{}
 	baseBig := big.NewInt(base)
 
@@ -715,7 +732,7 @@ func (l *Lexer) parseDigit(base int64) (*big.Int, error) {
 			if err == io.EOF {
 				break
 			}
-			return nil, err
+			return nil, nil, err
 		}
 		var done bool
 		var v int64
@@ -752,9 +769,12 @@ func (l *Lexer) parseDigit(base int64) (*big.Int, error) {
 			}
 
 		default:
-			return nil, l.errf("invalid base %v", base)
+			return nil, nil, l.errf("invalid base %v", base)
 		}
 		if done {
+			if base == 10 && r == '.' {
+				return l.parseFloat(result)
+			}
 			l.UnreadRune()
 			break
 		}
@@ -763,10 +783,35 @@ func (l *Lexer) parseDigit(base int64) (*big.Int, error) {
 		count++
 	}
 	if count == 0 {
-		return nil, l.errf("unexpected EOF")
+		return nil, nil, l.errf("unexpected EOF")
 	}
 
-	return result, nil
+	return result, nil, nil
+}
+
+func (l *Lexer) parseFloat(i *big.Int) (*big.Int, *big.Float, error) {
+	input := fmt.Sprintf("%v.", i)
+	for {
+		r, _, err := l.ReadRune()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, nil, err
+		}
+		if r < '0' || r > '9' {
+			l.UnreadRune()
+			break
+		}
+		input += string(r)
+	}
+
+	result, _, err := big.NewFloat(0.0).Parse(input, 10)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return nil, result, nil
 }
 
 // IsIdentifierInitial tests if the argument rune is a Scheme

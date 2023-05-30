@@ -11,8 +11,6 @@ API gives a clean and high-level abstraction, for example,
 configuration file parsing, data encoding and decoding, and other
 structured data operations.
 
-# TODO
-
 ## Language
 
 ### Types
@@ -47,7 +45,7 @@ Any
   +-- Pair(Type, Type)
 ```
 
-## Misc
+# TODO
 
  - [ ] Shortlist
    - [ ] Top-levels with `(import)`

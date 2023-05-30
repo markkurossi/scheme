@@ -75,56 +75,56 @@ var lexerTests = []struct {
 		i: "#b101",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(2, 5),
+			Number: NewNumber(5),
 		},
 	},
 	{
 		i: "#o077",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(8, 63),
+			Number: NewNumber(63),
 		},
 	},
 	{
 		i: "#d42",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(10, 42),
+			Number: NewNumber(42),
 		},
 	},
 	{
 		i: "#xdeadbeef",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(16, 0xdeadbeef),
+			Number: NewNumber(0xdeadbeef),
 		},
 	},
 	{
 		i: "#e42",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(0, 42),
+			Number: NewNumber(42),
 		},
 	},
 	{
 		i: "#e#x42",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(0, 66),
+			Number: NewNumber(66),
 		},
 	},
 	{
 		i: "#e#x-42",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(0, -66),
+			Number: NewNumber(-66),
 		},
 	},
 	{
 		i: "#e#x+42",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(0, 66),
+			Number: NewNumber(66),
 		},
 	},
 	{

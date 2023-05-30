@@ -24,6 +24,7 @@ var (
 	_ Value = &Vector{}
 	_ Value = Boolean(true)
 	_ Value = Character('@')
+	_ Value = Float(0.0)
 	_ Value = Int(0)
 	_ Value = Keyword(0)
 	_ Value = String("string")

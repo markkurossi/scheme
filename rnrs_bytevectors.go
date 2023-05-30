@@ -112,7 +112,7 @@ var rnrsBytevectorBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("not a bytevector: %v", args[0])
 			}
-			return NewNumber(0, len(v)), nil
+			return NewNumber(len(v)), nil
 		},
 	},
 	{
@@ -231,7 +231,7 @@ var rnrsBytevectorBuiltins = []Builtin{
 				return nil, fmt.Errorf("invalid index: 0 <= %v < %v", k, len(v))
 			}
 
-			return NewNumber(0, int(uint8(v[k]))), nil
+			return NewNumber(int(uint8(v[k]))), nil
 		},
 	},
 	{
@@ -251,7 +251,7 @@ var rnrsBytevectorBuiltins = []Builtin{
 				return nil, fmt.Errorf("invalid index: 0 <= %v < %v", k, len(v))
 			}
 
-			return NewNumber(0, int(int8(v[k]))), nil
+			return NewNumber(int(int8(v[k]))), nil
 		},
 	},
 }

@@ -160,7 +160,7 @@ var characterBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("invalid character %v", args[0])
 			}
-			return NewNumber(0, int64(ch)), nil
+			return NewNumber(int64(ch)), nil
 		},
 	},
 	{

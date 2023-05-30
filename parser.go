@@ -284,14 +284,14 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 		// Vector literals must be quoted like list constants.
 		return nil, loc.Errorf("invalid syntax: %v", v)
 
-	case Bytevector, Boolean, String, Character, Int, *BigInt:
+	case Bytevector, Boolean, String, Character, Int, Float, *BigInt, *BigFloat:
 		return &ASTConstant{
 			From:  loc,
 			Value: v,
 		}, nil
 
 	default:
-		return nil, fmt.Errorf("astValue: unsupported value: %v(%T)", v, v)
+		return nil, fmt.Errorf("parseValue: unsupported value: %v(%T)", v, v)
 	}
 }
 

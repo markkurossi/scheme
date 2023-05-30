@@ -39,7 +39,7 @@ func TestAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("add1 not defined: %v", err)
 	}
-	v, err = scm.Apply(v, []scheme.Value{scheme.NewNumber(0, 41)})
+	v, err = scm.Apply(v, []scheme.Value{scheme.NewNumber(41)})
 	if err != nil {
 		t.Fatalf("scm.Apply: %v", err)
 	}

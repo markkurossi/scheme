@@ -134,7 +134,7 @@ var vectorBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("not a vector: %v", args[0])
 			}
-			return NewNumber(0, len(v)), nil
+			return NewNumber(len(v)), nil
 		},
 	},
 	{
