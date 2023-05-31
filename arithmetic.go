@@ -465,6 +465,216 @@ func numSub(z1, z2 Value) (Value, error) {
 	}
 }
 
+func numMul(z1, z2 Value) (Value, error) {
+	switch v1 := z1.(type) {
+	case Int:
+		switch v2 := z2.(type) {
+		case Int:
+			return v1 * v2, nil
+
+		case Float:
+			return Float(v1) * v2, nil
+
+		case *BigInt:
+			return &BigInt{
+				I: new(big.Int).Mul(big.NewInt(int64(v1)), v2.I),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Mul(big.NewFloat(float64(v1)), v2.F),
+			}, nil
+
+		default:
+			return Int(0), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case Float:
+		switch v2 := z2.(type) {
+		case Int:
+			return v1 * Float(v2), nil
+
+		case Float:
+			return v1 * v2, nil
+
+		case *BigInt:
+			return &BigFloat{
+				F: new(big.Float).Mul(big.NewFloat(float64(v1)),
+					new(big.Float).SetInt(v2.I)),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Mul(big.NewFloat(float64(v1)), v2.F),
+			}, nil
+
+		default:
+			return Float(0), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case *BigInt:
+		switch v2 := z2.(type) {
+		case Int:
+			return &BigInt{
+				I: new(big.Int).Mul(v1.I, big.NewInt(int64(v2))),
+			}, nil
+
+		case Float:
+			return &BigFloat{
+				F: new(big.Float).Mul(new(big.Float).SetInt(v1.I),
+					big.NewFloat(float64(v2))),
+			}, nil
+
+		case *BigInt:
+			return &BigInt{
+				I: new(big.Int).Mul(v1.I, v2.I),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Mul(new(big.Float).SetInt(v1.I), v2.F),
+			}, nil
+
+		default:
+			return Int(0), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case *BigFloat:
+		switch v2 := z2.(type) {
+		case Int:
+			return &BigFloat{
+				F: new(big.Float).Mul(v1.F, big.NewFloat(float64(v2))),
+			}, nil
+
+		case Float:
+			return &BigFloat{
+				F: new(big.Float).Mul(v1.F, big.NewFloat(float64(v2))),
+			}, nil
+
+		case *BigInt:
+			return &BigFloat{
+				F: new(big.Float).Mul(v1.F, new(big.Float).SetInt(v2.I)),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Mul(v1.F, v2.F),
+			}, nil
+
+		default:
+			return Int(0), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	default:
+		return Int(0), fmt.Errorf("invalid number: %v", z1)
+	}
+}
+
+func numDiv(z1, z2 Value) (Value, error) {
+	switch v1 := z1.(type) {
+	case Int:
+		switch v2 := z2.(type) {
+		case Int:
+			return v1 / v2, nil
+
+		case Float:
+			return Float(v1) / v2, nil
+
+		case *BigInt:
+			return &BigInt{
+				I: new(big.Int).Quo(big.NewInt(int64(v1)), v2.I),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Quo(big.NewFloat(float64(v1)), v2.F),
+			}, nil
+
+		default:
+			return Int(0), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case Float:
+		switch v2 := z2.(type) {
+		case Int:
+			return v1 / Float(v2), nil
+
+		case Float:
+			return v1 / v2, nil
+
+		case *BigInt:
+			return &BigFloat{
+				F: new(big.Float).Quo(big.NewFloat(float64(v1)),
+					new(big.Float).SetInt(v2.I)),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Quo(big.NewFloat(float64(v1)), v2.F),
+			}, nil
+
+		default:
+			return Float(0), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case *BigInt:
+		switch v2 := z2.(type) {
+		case Int:
+			return &BigInt{
+				I: new(big.Int).Quo(v1.I, big.NewInt(int64(v2))),
+			}, nil
+
+		case Float:
+			return &BigFloat{
+				F: new(big.Float).Quo(new(big.Float).SetInt(v1.I),
+					big.NewFloat(float64(v2))),
+			}, nil
+
+		case *BigInt:
+			return &BigInt{
+				I: new(big.Int).Quo(v1.I, v2.I),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Quo(new(big.Float).SetInt(v1.I), v2.F),
+			}, nil
+
+		default:
+			return Int(0), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case *BigFloat:
+		switch v2 := z2.(type) {
+		case Int:
+			return &BigFloat{
+				F: new(big.Float).Quo(v1.F, big.NewFloat(float64(v2))),
+			}, nil
+
+		case Float:
+			return &BigFloat{
+				F: new(big.Float).Quo(v1.F, big.NewFloat(float64(v2))),
+			}, nil
+
+		case *BigInt:
+			return &BigFloat{
+				F: new(big.Float).Quo(v1.F, new(big.Float).SetInt(v2.I)),
+			}, nil
+
+		case *BigFloat:
+			return &BigFloat{
+				F: new(big.Float).Quo(v1.F, v2.F),
+			}, nil
+
+		default:
+			return Int(0), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	default:
+		return Int(0), fmt.Errorf("invalid number: %v", z1)
+	}
+}
+
 func numEq(z1, z2 Value) (Value, error) {
 	switch v1 := z1.(type) {
 	case Int, Float, *BigInt, *BigFloat:
@@ -721,12 +931,8 @@ var numberBuiltins = []Builtin{
 			var err error
 
 			switch v := args[0].(type) {
-			case Int:
+			case Int, Float, *BigInt, *BigFloat:
 				sum = v
-
-			case *BigInt:
-				sum = v
-
 			default:
 				return Int(0), fmt.Errorf("invalid number: %v", v)
 			}
@@ -744,40 +950,7 @@ var numberBuiltins = []Builtin{
 		Args:   []string{"z1", "z2"},
 		Return: types.Number,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			switch v1 := args[0].(type) {
-			case Int:
-				switch v2 := args[1].(type) {
-				case Int:
-					return v1 * v2, nil
-
-				case *BigInt:
-					return &BigInt{
-						I: new(big.Int).Mul(big.NewInt(int64(v1)), v2.I),
-					}, nil
-
-				default:
-					return Int(0), fmt.Errorf("invalid number: %v", args[1])
-				}
-
-			case *BigInt:
-				switch v2 := args[1].(type) {
-				case Int:
-					return &BigInt{
-						I: new(big.Int).Mul(v1.I, big.NewInt(int64(v2))),
-					}, nil
-
-				case *BigInt:
-					return &BigInt{
-						I: new(big.Int).Mul(v1.I, v2.I),
-					}, nil
-
-				default:
-					return Int(0), fmt.Errorf("invalid number: %v", args[1])
-				}
-
-			default:
-				return Int(0), fmt.Errorf("invalid number: %v", args[0])
-			}
+			return numMul(args[0], args[1])
 		},
 	},
 	{
@@ -786,24 +959,35 @@ var numberBuiltins = []Builtin{
 		Return: types.Number,
 		Flags:  FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
+			if len(args) == 1 {
+				switch v := args[0].(type) {
+				case Int:
+					return -v, nil
+
+				case Float:
+					return -v, nil
+
+				case *BigInt:
+					return numSub(&BigInt{
+						I: big.NewInt(0),
+					}, v)
+
+				case *BigFloat:
+					return numSub(&BigFloat{
+						F: big.NewFloat(0.0),
+					}, v)
+
+				default:
+					return Int(0), fmt.Errorf("invalid number: %v", v)
+				}
+			}
+
 			var diff Value
 			var err error
 
 			switch v := args[0].(type) {
-			case Int:
-				if len(args) == 1 {
-					return -v, nil
-				}
+			case Int, Float, *BigInt, *BigFloat:
 				diff = v
-
-			case *BigInt:
-				if len(args) == 1 {
-					return numSub(&BigInt{
-						I: big.NewInt(0),
-					}, v)
-				}
-				diff = v
-
 			default:
 				return Int(0), fmt.Errorf("invalid number: %v", v)
 			}
@@ -823,40 +1007,7 @@ var numberBuiltins = []Builtin{
 		Args:   []string{"z1", "z2"},
 		Return: types.Number,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			switch v1 := args[0].(type) {
-			case Int:
-				switch v2 := args[1].(type) {
-				case Int:
-					return v1 / v2, nil
-
-				case *BigInt:
-					return &BigInt{
-						I: new(big.Int).Div(big.NewInt(int64(v1)), v2.I),
-					}, nil
-
-				default:
-					return Int(0), fmt.Errorf("invalid number: %v", args[1])
-				}
-
-			case *BigInt:
-				switch v2 := args[1].(type) {
-				case Int:
-					return &BigInt{
-						I: new(big.Int).Div(v1.I, big.NewInt(int64(v2))),
-					}, nil
-
-				case *BigInt:
-					return &BigInt{
-						I: new(big.Int).Div(v1.I, v2.I),
-					}, nil
-
-				default:
-					return Int(0), fmt.Errorf("invalid number: %v", args[1])
-				}
-
-			default:
-				return Int(0), fmt.Errorf("invalid number: %v", args[0])
-			}
+			return numDiv(args[0], args[1])
 		},
 	},
 	{
@@ -906,9 +1057,17 @@ var numberBuiltins = []Builtin{
 			case Int:
 				return Int(math.Sqrt(float64(v))), nil
 
+			case Float:
+				return Int(math.Sqrt(float64(v))), nil
+
 			case *BigInt:
 				return &BigInt{
 					I: new(big.Int).Sqrt(v.I),
+				}, nil
+
+			case *BigFloat:
+				return &BigFloat{
+					F: new(big.Float).Sqrt(v.F),
 				}, nil
 
 			default:
@@ -991,8 +1150,14 @@ var numberBuiltins = []Builtin{
 			case Int:
 				return String(strconv.FormatInt(int64(v), radix)), nil
 
+			case Float:
+				return String(strconv.FormatFloat(float64(v), 'g', -1, 64)), nil
+
 			case *BigInt:
 				return String(v.I.Text(radix)), nil
+
+			case *BigFloat:
+				return String(v.F.Text('g', -1)), nil
 
 			default:
 				return nil, fmt.Errorf("invalid number: %v", args[0])

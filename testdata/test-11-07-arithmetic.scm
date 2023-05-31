@@ -202,13 +202,40 @@
 (runner 'test "/"
         (lambda () (= (/ 3) 0))
         (lambda () (= (/ 4 2) 2))
+
+        (lambda () (= (/ 4 2.0) 2.0))
+        (lambda () (= (/ 4.0 2) 2.0))
+        (lambda () (= (/ 4.0 2.0) 2.0))
+
         (lambda () (= (/ #e4 2) #e2))
         (lambda () (= (/ 4 #e2) #e2))
         (lambda () (= (/ #e4 #e2) #e2))
+
+        (lambda () (= (/ #e4 2.0) #e2.0))
+        (lambda () (= (/ 4.0 #e2) #e2.0))
+
+        (lambda () (= (/ #e4.0 2) #e2.0))
+        (lambda () (= (/ #e4.0 2.0) #e2.0))
+        (lambda () (= (/ #e4.0 #e2) #e2.0))
+        (lambda () (= (/ #e4.0 #e2.0) #e2.0))
+
+        (lambda () (= (/ 4 #e2.0) #e2.0))
+        (lambda () (= (/ 4.0 #e2.0) #e2.0))
+        (lambda () (= (/ #e4 #e2.0) #e2.0))
+        (lambda () (= (/ #e4.0 #e2.0) #e2.0))
+
         (lambda () (inexact? (/ 4 2)))
+        (lambda () (inexact? (/ 4 2.0)))
         (lambda () (exact? (/ 4 #e2)))
+        (lambda () (exact? (/ 4 #e2.0)))
         (lambda () (exact? (/ #e4 2)))
+        (lambda () (exact? (/ #e4 2.0)))
         (lambda () (exact? (/ #e4 #e2)))
+        (lambda () (exact? (/ #e4 #e2.0)))
+        (lambda () (exact? (/ #e4.0 2)))
+        (lambda () (exact? (/ #e4.0 2.0)))
+        (lambda () (exact? (/ #e4.0 #e2)))
+        (lambda () (exact? (/ #e4.0 #e2.0)))
         )
 
 (runner 'test "mod"
