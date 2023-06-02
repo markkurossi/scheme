@@ -68,7 +68,7 @@
 
 (define (/ z . rest)
   (if (null? rest)
-      (scheme::/ #e1 z)
+      (scheme::/ 1 z)
       (letrec ((iter
                 (lambda (quot rest)
                   (if (null? rest)
