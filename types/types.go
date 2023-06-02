@@ -162,9 +162,14 @@ func Parse(arg string) (*Type, string, error) {
 			Enum: EnumCharacter,
 			Kind: kind,
 		}, name, nil
-	} else if strings.HasPrefix(typeName, "k") || typeName == "int" {
+	} else if typeName == "k" || typeName == "int" {
 		return &Type{
 			Enum: EnumInexactInteger,
+			Kind: kind,
+		}, name, nil
+	} else if typeName == "n" {
+		return &Type{
+			Enum: EnumExactInteger,
 			Kind: kind,
 		}, name, nil
 	} else if strings.HasPrefix(typeName, "list") {

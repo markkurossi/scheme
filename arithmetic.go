@@ -996,7 +996,7 @@ var numberBuiltins = []Builtin{
 	},
 	{
 		Name:   "odd?",
-		Args:   []string{"z"},
+		Args:   []string{"n"},
 		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			bit, err := bit(args[0], 0)
@@ -1008,7 +1008,7 @@ var numberBuiltins = []Builtin{
 	},
 	{
 		Name:   "even?",
-		Args:   []string{"z"},
+		Args:   []string{"n"},
 		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			bit, err := bit(args[0], 0)
@@ -1123,7 +1123,9 @@ var numberBuiltins = []Builtin{
 					return v1 % v2, nil
 
 				case *BigInt:
-					return Int(int64(v1) % v2.I.Int64()), nil
+					return &BigInt{
+						I: new(big.Int).Mod(big.NewInt(int64(v1)), v2.I),
+					}, nil
 
 				default:
 					return Int(0), fmt.Errorf("invalid number: %v", args[1])
@@ -1132,7 +1134,9 @@ var numberBuiltins = []Builtin{
 			case *BigInt:
 				switch v2 := args[1].(type) {
 				case Int:
-					return Int(v1.I.Int64() % int64(v2)), nil
+					return &BigInt{
+						I: new(big.Int).Mod(v1.I, big.NewInt(int64(v2))),
+					}, nil
 
 				case *BigInt:
 					return &BigInt{
@@ -1185,6 +1189,9 @@ var numberBuiltins = []Builtin{
 				switch v2 := args[1].(type) {
 				case Int:
 					return Int(math.Pow(float64(v1), float64(v2))), nil
+
+				case Float:
+					return Float(math.Pow(float64(v1), float64(v2))), nil
 
 				case *BigInt:
 					return Int(math.Pow(float64(v1),
