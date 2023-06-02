@@ -1194,8 +1194,38 @@ var numberBuiltins = []Builtin{
 					return Float(math.Pow(float64(v1), float64(v2))), nil
 
 				case *BigInt:
-					return Int(math.Pow(float64(v1),
-						float64(v2.I.Int64()))), nil
+					return &BigInt{
+						I: new(big.Int).Exp(big.NewInt(int64(v1)), v2.I, nil),
+					}, nil
+
+				case *BigFloat:
+					f2, _ := v2.F.Int(new(big.Int))
+					return &BigInt{
+						I: new(big.Int).Exp(big.NewInt(int64(v1)), f2, nil),
+					}, nil
+
+				default:
+					return Int(0), fmt.Errorf("invalid number: %v", args[1])
+				}
+
+			case Float:
+				switch v2 := args[1].(type) {
+				case Int:
+					return Int(math.Pow(float64(v1), float64(v2))), nil
+
+				case Float:
+					return Float(math.Pow(float64(v1), float64(v2))), nil
+
+				case *BigInt:
+					return &BigInt{
+						I: new(big.Int).Exp(big.NewInt(int64(v1)), v2.I, nil),
+					}, nil
+
+				case *BigFloat:
+					f2, _ := v2.F.Int(new(big.Int))
+					return &BigInt{
+						I: new(big.Int).Exp(big.NewInt(int64(v1)), f2, nil),
+					}, nil
 
 				default:
 					return Int(0), fmt.Errorf("invalid number: %v", args[1])
@@ -1204,12 +1234,53 @@ var numberBuiltins = []Builtin{
 			case *BigInt:
 				switch v2 := args[1].(type) {
 				case Int:
-					return Int(math.Pow(float64(v1.I.Int64()),
-						float64(v2))), nil
+					return &BigInt{
+						I: new(big.Int).Exp(v1.I, big.NewInt(int64(v2)), nil),
+					}, nil
+
+				case Float:
+					return &BigInt{
+						I: new(big.Int).Exp(v1.I, big.NewInt(int64(v2)), nil),
+					}, nil
 
 				case *BigInt:
 					return &BigInt{
 						I: new(big.Int).Exp(v1.I, v2.I, nil),
+					}, nil
+
+				case *BigFloat:
+					f2, _ := v2.F.Int(new(big.Int))
+					return &BigInt{
+						I: new(big.Int).Exp(v1.I, f2, nil),
+					}, nil
+
+				default:
+					return Int(0), fmt.Errorf("invalid number: %v", args[1])
+				}
+
+			case *BigFloat:
+				f1, _ := v1.F.Int(new(big.Int))
+
+				switch v2 := args[1].(type) {
+				case Int:
+					return &BigInt{
+						I: new(big.Int).Exp(f1, big.NewInt(int64(v2)), nil),
+					}, nil
+
+				case Float:
+					return &BigInt{
+						I: new(big.Int).Exp(f1, big.NewInt(int64(v2)), nil),
+					}, nil
+
+				case *BigInt:
+					return &BigInt{
+						I: new(big.Int).Exp(f1, v2.I, nil),
+					}, nil
+
+				case *BigFloat:
+					f2, _ := v2.F.Int(new(big.Int))
+					return &BigInt{
+						I: new(big.Int).Exp(f1, f2, nil),
 					}, nil
 
 				default:
