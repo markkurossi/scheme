@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022, 2023-2023 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
