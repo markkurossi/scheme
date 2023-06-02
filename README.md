@@ -1,10 +1,10 @@
 # R6RS Scheme in Go
 
-This Scheme implementation provides R6RS compliant scheme written in
-Go. The system has a compiler that translates the scheme program into
-a byte code and a virtual machine that executes the code. It will
-implement all necessary Scheme features, including tail calls and
-continuations.
+This Scheme implementation provides mostly R6RS compliant scheme
+written in Go. The system has a compiler that translates the scheme
+program into a byte code and a virtual machine that executes the
+code. It will implement all necessary Scheme features, including tail
+calls and continuations.
 
 The compiler implements a simple API for processing S-expressions. The
 API gives a clean and high-level abstraction, for example,
@@ -12,6 +12,26 @@ configuration file parsing, data encoding and decoding, and other
 structured data operations.
 
 ## Language
+
+The implementation follows the R6RS specification but makes the
+following non-compliant design decisions:
+ - The language is type aware and the compiler uses type inference to
+   decide types for all expressions. The root of the type tree is
+   `any` which is the supertype of all types. Please, see the type
+   tree definition below.
+ - Numeric tower:
+   - Has exact and inexact integer and floating point types. The exact
+     numbers use Go's `big.Int` and `big.Float` types and inexact
+     numbers use `int64` and `float64` respectively
+   - Operations between exact and inexact numbers generate converts to
+     exact values (int64 + big.Int = big.Int), when the R6RS specifies
+     that the result should be inexact.
+ - Global definitions are final and can't be redefined. However, it is
+   possible to set their values if the new values are type-compatible
+   with the variable definition. You can assing values of same type or
+   subtype to a global variable.
+ - The `define-constant` syntax defines constant variables which can't
+   be redefined.
 
 ### Types
 
