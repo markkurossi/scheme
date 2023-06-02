@@ -696,8 +696,33 @@ func numLt(z1, z2 Value) (Value, error) {
 		case Int:
 			return Boolean(v1 < v2), nil
 
+		case Float:
+			return Boolean(Float(v1) < v2), nil
+
 		case *BigInt:
 			return Boolean(big.NewInt(int64(v1)).Cmp(v2.I) == -1), nil
+
+		case *BigFloat:
+			return Boolean(big.NewFloat(float64(v1)).Cmp(v2.F) == -1), nil
+
+		default:
+			return Boolean(false), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case Float:
+		switch v2 := z2.(type) {
+		case Int:
+			return Boolean(v1 < Float(v2)), nil
+
+		case Float:
+			return Boolean(v1 < v2), nil
+
+		case *BigInt:
+			return Boolean(big.NewFloat(float64(v1)).
+				Cmp(new(big.Float).SetInt(v2.I)) == -1), nil
+
+		case *BigFloat:
+			return Boolean(big.NewFloat(float64(v1)).Cmp(v2.F) == -1), nil
 
 		default:
 			return Boolean(false), fmt.Errorf("invalid number: %v", z2)
@@ -708,8 +733,33 @@ func numLt(z1, z2 Value) (Value, error) {
 		case Int:
 			return Boolean(v1.I.Cmp(big.NewInt(int64(v2))) == -1), nil
 
+		case Float:
+			return Boolean(new(big.Float).SetInt(v1.I).
+				Cmp(big.NewFloat(float64(v2))) == -1), nil
+
 		case *BigInt:
 			return Boolean(v1.I.Cmp(v2.I) == -1), nil
+
+		case *BigFloat:
+			return Boolean(new(big.Float).SetInt(v1.I).Cmp(v2.F) == -1), nil
+
+		default:
+			return Boolean(false), fmt.Errorf("invalid number: %v", z2)
+		}
+
+	case *BigFloat:
+		switch v2 := z2.(type) {
+		case Int:
+			return Boolean(v1.F.Cmp(big.NewFloat(float64(v2))) == -1), nil
+
+		case Float:
+			return Boolean(v1.F.Cmp(big.NewFloat(float64(v2))) == -1), nil
+
+		case *BigInt:
+			return Boolean(v1.F.Cmp(new(big.Float).SetInt(v2.I)) == -1), nil
+
+		case *BigFloat:
+			return Boolean(v1.F.Cmp(v2.F) == -1), nil
 
 		default:
 			return Boolean(false), fmt.Errorf("invalid number: %v", z2)

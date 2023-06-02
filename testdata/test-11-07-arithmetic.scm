@@ -32,16 +32,44 @@
         )
 (runner 'test "<"
         (lambda () (< 4 5))
-        (lambda () (not (< 4 3)))
+        (lambda () (< 4 5.0))
+        (lambda () (< 4 #e5))
+        (lambda () (< 4 #e5.0))
+
+        (lambda () (< 4.0 5))
+        (lambda () (< 4.0 5.0))
+        (lambda () (< 4.0 #e5))
+        (lambda () (< 4.0 #e5.0))
+
+        (lambda () (< #e4 5))
+        (lambda () (< #e4 5.0))
         (lambda () (< #e4 #e5))
+        (lambda () (< #e4 #e5.0))
+
+        (lambda () (< #e4.0 5))
+        (lambda () (< #e4.0 5.0))
+        (lambda () (< #e4.0 #e5))
+        (lambda () (< #e4.0 #e5.0))
+
+        (lambda () (not (< 4 3)))
+        (lambda () (not (< 4 3.0)))
+        (lambda () (not (< 4 #e3)))
+        (lambda () (not (< 4 #e3.0)))
+
+        (lambda () (not (< 4.0 3)))
+        (lambda () (not (< 4.0 3.0)))
+        (lambda () (not (< 4.0 #e3)))
+        (lambda () (not (< 4.0 #e3.0)))
+
         (lambda () (not (< #e4 #e4)))
         (lambda () (not (< #e4 #e3)))
-        (lambda () (< 4 #e5))
-        (lambda () (not (< 4 #e4)))
-        (lambda () (not (< 4 #e3)))
-        (lambda () (< #e4 5))
         (lambda () (not (< #e4 4)))
         (lambda () (not (< #e4 3)))
+
+        (lambda () (not (< #e4.0 #e4)))
+        (lambda () (not (< #e4.0 #e3)))
+        (lambda () (not (< #e4.0 4)))
+        (lambda () (not (< #e4.0 3)))
         )
 (runner 'test ">"
         (lambda () (not (> 4 5)))
