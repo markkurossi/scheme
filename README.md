@@ -177,8 +177,8 @@ Any
      - [X] remq
      - [ ] cons*
    - [ ] 4. Sorting `(rnrs sorting (6))`
-     - [ ] list-sort
-     - [ ] vector-sort
+     - [X] list-sort
+     - [X] vector-sort
      - [ ] vector-sort!
    - [ ] 5. Control structures `(rnrs control (6))`
       - [ ] when
