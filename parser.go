@@ -325,6 +325,8 @@ var inlineBinary = map[string]Operand{
 	"cons": OpCons,
 	"+":    OpAdd,
 	"-":    OpSub,
+	"*":    OpMul,
+	"/":    OpDiv,
 	"=":    OpEq,
 	"<":    OpLt,
 	">":    OpGt,

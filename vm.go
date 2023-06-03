@@ -51,6 +51,8 @@ const (
 	OpAddI64
 	OpSub
 	OpSubI64
+	OpMul
+	OpDiv
 	OpEq
 	OpLt
 	OpGt
@@ -91,6 +93,8 @@ var operands = map[Operand]string{
 	OpAddI64:    "+<int64>",
 	OpSub:       "-",
 	OpSubI64:    "-<int64>",
+	OpMul:       "*",
+	OpDiv:       "/",
 	OpEq:        "=",
 	OpLt:        "<",
 	OpGt:        ">",
@@ -549,6 +553,18 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 
 		case OpSubI64:
 			accu = scm.stack[scm.sp-2].(Int) - scm.stack[scm.sp-1].(Int)
+
+		case OpMul:
+			accu, err = numMul(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+			if err != nil {
+				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
+			}
+
+		case OpDiv:
+			accu, err = numDiv(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
+			if err != nil {
+				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
+			}
 
 		case OpEq:
 			accu, err = numEq(scm.stack[scm.sp-2], scm.stack[scm.sp-1])

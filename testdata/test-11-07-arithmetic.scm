@@ -188,6 +188,8 @@
         (lambda () (eq? (+) 0))
         (lambda () (eq? (+ 1 2 3) 6))
 
+        ;; Inlined binary.
+
         (lambda () (eq? (+ 3 4) 7))
         (lambda () (eq? (+ 3 4.0) 7.0))
         (lambda () (eq? (+ 3 #e4) #e7))
@@ -208,6 +210,28 @@
         (lambda () (eq? (+ #e3.0 #e4) #e7.0))
         (lambda () (eq? (+ #e3.0 #e4.0) #e7.0))
 
+        ;; Non-inlined.
+
+        (lambda () (eq? (+ 3 4 1) 8))
+        (lambda () (eq? (+ 3 4.0 1) 8.0))
+        (lambda () (eq? (+ 3 #e4 1) #e8))
+        (lambda () (eq? (+ 3 #e4.0 1) #e8.0))
+
+        (lambda () (eq? (+ 3.0 4 1) 8.0))
+        (lambda () (eq? (+ 3.0 4.0 1) 8.0))
+        (lambda () (eq? (+ 3.0 #e4 1) #e8.0))
+        (lambda () (eq? (+ 3.0 #e4.0 1) #e8.0))
+
+        (lambda () (eq? (+ #e3 4 1) #e8))
+        (lambda () (eq? (+ #e3 4.0 1) #e8.0))
+        (lambda () (eq? (+ #e3 #e4 1) #e8))
+        (lambda () (eq? (+ #e3 #e4.0 1) #e8.0))
+
+        (lambda () (eq? (+ #e3.0 4 1) #e8.0))
+        (lambda () (eq? (+ #e3.0 4.0 1) #e8.0))
+        (lambda () (eq? (+ #e3.0 #e4 1) #e8.0))
+        (lambda () (eq? (+ #e3.0 #e4.0 1) #e8.0))
+
         (lambda () (inexact? (+ 1 2)))
         (lambda () (inexact? (+ 1 2.0)))
         (lambda () (exact? (+ 1 #e2)))
@@ -223,6 +247,8 @@
         (lambda () (eq? (* 4) 4))
         (lambda () (eq? (*) 1))
         (lambda () (eq? (* 1 2 3) 6))
+
+        ;; Inlined binary
 
         (lambda () (eq? (* 2 3) 6))
         (lambda () (eq? (* 2 3.0) 6.0))
@@ -244,6 +270,28 @@
         (lambda () (eq? (* #e2.0 #e3) #e6.0))
         (lambda () (eq? (* #e2.0 #e3.0) #e6.0))
 
+        ;; Non-inlined.
+
+        (lambda () (eq? (* 2 3 1) 6))
+        (lambda () (eq? (* 2 3.0 1) 6.0))
+        (lambda () (eq? (* 2 #e3 1) #e6))
+        (lambda () (eq? (* 2 #e3.0 1) #e6.0))
+
+        (lambda () (eq? (* 2.0 3 1) 6.0))
+        (lambda () (eq? (* 2.0 3.0 1) 6.0))
+        (lambda () (eq? (* 2.0 #e3 1) #e6.0))
+        (lambda () (eq? (* 2.0 #e3.0 1) #e6.0))
+
+        (lambda () (eq? (* #e2 3 1) #e6))
+        (lambda () (eq? (* #e2 3.0 1) #e6.0))
+        (lambda () (eq? (* #e2 #e3 1) #e6))
+        (lambda () (eq? (* #e2 #e3.0 1) #e6.0))
+
+        (lambda () (eq? (* #e2.0 3 1) #e6.0))
+        (lambda () (eq? (* #e2.0 3.0 1) #e6.0))
+        (lambda () (eq? (* #e2.0 #e3 1) #e6.0))
+        (lambda () (eq? (* #e2.0 #e3.0 1) #e6.0))
+
         (lambda () (inexact? (* 2 2)))
         (lambda () (exact? (* 2 #e2)))
         (lambda () (exact? (* #e2 2)))
@@ -253,6 +301,8 @@
         (lambda () (eq? (- 3 4) -1))
         (lambda () (eq? (- 3 4 5) -6))
         (lambda () (eq? (- 3) -3))
+
+        ;; Inlined binary
 
         (lambda () (eq? (- 3 4) -1))
         (lambda () (eq? (- 3 4.0) -1.0))
@@ -274,6 +324,28 @@
         (lambda () (eq? (- #e3.0 #e4) #e-1.0))
         (lambda () (eq? (- #e3.0 #e4.0) #e-1.0))
 
+        ;; Non-inlined.
+
+        (lambda () (eq? (- 3 4 1) -2))
+        (lambda () (eq? (- 3 4.0 1) -2.0))
+        (lambda () (eq? (- 3 #e4 1) #e-2))
+        (lambda () (eq? (- 3 #e4.0 1) #e-2.0))
+
+        (lambda () (eq? (- 3.0 4 1) -2.0))
+        (lambda () (eq? (- 3.0 4.0 1) -2.0))
+        (lambda () (eq? (- 3.0 #e4 1) #e-2.0))
+        (lambda () (eq? (- 3.0 #e4.0 1) #e-2.0))
+
+        (lambda () (eq? (- #e3 4 1) #e-2))
+        (lambda () (eq? (- #e3 4.0 1) #e-2.0))
+        (lambda () (eq? (- #e3 #e4 1) #e-2))
+        (lambda () (eq? (- #e3 #e4.0 1) #e-2.0))
+
+        (lambda () (eq? (- #e3.0 4 1) #e-2.0))
+        (lambda () (eq? (- #e3.0 4.0 1) #e-2.0))
+        (lambda () (eq? (- #e3.0 #e4 1) #e-2.0))
+        (lambda () (eq? (- #e3.0 #e4.0 1) #e-2.0))
+
         (lambda () (inexact? (- 4 2)))
         (lambda () (inexact? (- 4 2.0)))
         (lambda () (exact? (- 4 #e2)))
@@ -287,6 +359,8 @@
         )
 (runner 'test "/"
         (lambda () (eq? (/ 3) 0))
+
+        ;; Inlined binary.
 
         (lambda () (eq? (/ 4 2) 2))
         (lambda () (eq? (/ 4 2.0) 2.0))
@@ -307,6 +381,28 @@
         (lambda () (eq? (/ #e4.0 2.0) #e2.0))
         (lambda () (eq? (/ #e4.0 #e2) #e2.0))
         (lambda () (eq? (/ #e4.0 #e2.0) #e2.0))
+
+        ;; Non-inlined.
+
+        (lambda () (eq? (/ 4 2 1) 2))
+        (lambda () (eq? (/ 4 2.0 1) 2.0))
+        (lambda () (eq? (/ 4 #e2 1) #e2))
+        (lambda () (eq? (/ 4 #e2.0 1) #e2.0))
+
+        (lambda () (eq? (/ 4.0 2 1) 2.0))
+        (lambda () (eq? (/ 4.0 2.0 1) 2.0))
+        (lambda () (eq? (/ 4.0 #e2 1) #e2.0))
+        (lambda () (eq? (/ 4.0 #e2.0 1) #e2.0))
+
+        (lambda () (eq? (/ #e4 2 1) #e2))
+        (lambda () (eq? (/ #e4 2.0 1) #e2.0))
+        (lambda () (eq? (/ #e4 #e2 1) #e2))
+        (lambda () (eq? (/ #e4 #e2.0 1) #e2.0))
+
+        (lambda () (eq? (/ #e4.0 2 1) #e2.0))
+        (lambda () (eq? (/ #e4.0 2.0 1) #e2.0))
+        (lambda () (eq? (/ #e4.0 #e2 1) #e2.0))
+        (lambda () (eq? (/ #e4.0 #e2.0 1) #e2.0))
 
         (lambda () (inexact? (/ 4 2)))
         (lambda () (inexact? (/ 4 2.0)))

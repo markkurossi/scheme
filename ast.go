@@ -573,6 +573,8 @@ var inlineCallTypes = map[Operand]*types.Type{
 	},
 	OpAdd: types.Number,
 	OpSub: types.Number,
+	OpMul: types.Number,
+	OpDiv: types.Number,
 	OpEq:  types.Boolean,
 	OpLt:  types.Boolean,
 	OpGt:  types.Boolean,

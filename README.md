@@ -32,6 +32,10 @@ following non-compliant design decisions:
    subtype to a global variable.
  - The `define-constant` syntax defines constant variables which can't
    be redefined.
+ - Several unary (`pair?`, `null?`, `zero?`, `car`, `cdr`, `not`) and
+   binary (`cons`, `+`, `-`, `*`, `/`, `=`, `<`, `>`, `<=`, `>=`)
+   functions are inlined and implemented as VM bytecode operands.
+
 
 ### Types
 
