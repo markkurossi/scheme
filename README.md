@@ -34,10 +34,14 @@ following non-compliant design decisions:
    be redefined.
  - Several unary (`pair?`, `null?`, `zero?`, `car`, `cdr`, `not`) and
    binary (`cons`, `+`, `-`, `*`, `/`, `=`, `<`, `>`, `<=`, `>=`)
-   functions are inlined and implemented as VM bytecode operands.
-
+   functions are inlined and implemented as VM bytecode operands. The
+   runtime also implements the funtions as procedures so it is
+   possible to `apply` them to arguments.
 
 ### Types
+
+The compiler uses type inference to resolve types for all
+expressions. The type hierarchy is as follows:
 
 ```
 Any
@@ -129,7 +133,7 @@ Any
      - [ ] asin
      - [ ] acos
      - [ ] atan
-     - [X] sqrt
+     - [x] sqrt
      - [ ] exact-integer-sqrt
      - [ ] make-rectangular
      - [ ] make-polar
@@ -137,8 +141,8 @@ Any
      - [ ] imag-part
      - [ ] magnitude
      - [ ] angle
-     - [ ] number->string
-     - [ ] string->number
+     - [x] number->string
+     - [x] string->number
    - [ ] 11.16. Iteration
      - [ ] Named let
    - [ ] 11.17. Quasiquotation
