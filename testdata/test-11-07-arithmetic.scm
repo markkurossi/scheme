@@ -232,6 +232,30 @@
         (lambda () (eq? (+ #e3.0 #e4 1) #e8.0))
         (lambda () (eq? (+ #e3.0 #e4.0 1) #e8.0))
 
+        ;; Apply binary.
+
+        (lambda () (eq? (apply + '(3 4)) 7))
+        (lambda () (eq? (apply + '(3 4.0)) 7.0))
+        (lambda () (eq? (apply + '(3 #e4)) #e7))
+        (lambda () (eq? (apply + '(3 #e4.0)) #e7.0))
+
+        (lambda () (eq? (apply + '(3.0 4)) 7.0))
+        (lambda () (eq? (apply + '(3.0 4.0)) 7.0))
+        (lambda () (eq? (apply + '(3.0 #e4)) #e7.0))
+        (lambda () (eq? (apply + '(3.0 #e4.0)) #e7.0))
+
+        (lambda () (eq? (apply + '(#e3 4)) #e7))
+        (lambda () (eq? (apply + '(#e3 4.0)) #e7.0))
+        (lambda () (eq? (apply + '(#e3 #e4)) #e7))
+        (lambda () (eq? (apply + '(#e3 #e4.0)) #e7.0))
+
+        (lambda () (eq? (apply + '(#e3.0 4)) #e7.0))
+        (lambda () (eq? (apply + '(#e3.0 4.0)) #e7.0))
+        (lambda () (eq? (apply + '(#e3.0 #e4)) #e7.0))
+        (lambda () (eq? (apply + '(#e3.0 #e4.0)) #e7.0))
+
+        ;; Result type checks.
+
         (lambda () (inexact? (+ 1 2)))
         (lambda () (inexact? (+ 1 2.0)))
         (lambda () (exact? (+ 1 #e2)))
@@ -292,6 +316,30 @@
         (lambda () (eq? (* #e2.0 #e3 1) #e6.0))
         (lambda () (eq? (* #e2.0 #e3.0 1) #e6.0))
 
+        ;; Apply binary
+
+        (lambda () (eq? (apply * '(2 3)) 6))
+        (lambda () (eq? (apply * '(2 3.0)) 6.0))
+        (lambda () (eq? (apply * '(2 #e3)) #e6))
+        (lambda () (eq? (apply * '(2 #e3.0)) #e6.0))
+
+        (lambda () (eq? (apply * '(2.0 3)) 6.0))
+        (lambda () (eq? (apply * '(2.0 3.0)) 6.0))
+        (lambda () (eq? (apply * '(2.0 #e3)) #e6.0))
+        (lambda () (eq? (apply * '(2.0 #e3.0)) #e6.0))
+
+        (lambda () (eq? (apply * '(#e2 3)) #e6))
+        (lambda () (eq? (apply * '(#e2 3.0)) #e6.0))
+        (lambda () (eq? (apply * '(#e2 #e3)) #e6))
+        (lambda () (eq? (apply * '(#e2 #e3.0)) #e6.0))
+
+        (lambda () (eq? (apply * '(#e2.0 3)) #e6.0))
+        (lambda () (eq? (apply * '(#e2.0 3.0)) #e6.0))
+        (lambda () (eq? (apply * '(#e2.0 #e3)) #e6.0))
+        (lambda () (eq? (apply * '(#e2.0 #e3.0)) #e6.0))
+
+        ;; Result type checks.
+
         (lambda () (inexact? (* 2 2)))
         (lambda () (exact? (* 2 #e2)))
         (lambda () (exact? (* #e2 2)))
@@ -345,6 +393,30 @@
         (lambda () (eq? (- #e3.0 4.0 1) #e-2.0))
         (lambda () (eq? (- #e3.0 #e4 1) #e-2.0))
         (lambda () (eq? (- #e3.0 #e4.0 1) #e-2.0))
+
+        ;; Apply binary
+
+        (lambda () (eq? (apply - '(3 4)) -1))
+        (lambda () (eq? (apply - '(3 4.0)) -1.0))
+        (lambda () (eq? (apply - '(3 #e4)) #e-1))
+        (lambda () (eq? (apply - '(3 #e4.0)) #e-1.0))
+
+        (lambda () (eq? (apply - '(3.0 4)) -1.0))
+        (lambda () (eq? (apply - '(3.0 4.0)) -1.0))
+        (lambda () (eq? (apply - '(3.0 #e4)) #e-1.0))
+        (lambda () (eq? (apply - '(3.0 #e4.0)) #e-1.0))
+
+        (lambda () (eq? (apply - '(#e3 4)) #e-1))
+        (lambda () (eq? (apply - '(#e3 4.0)) #e-1.0))
+        (lambda () (eq? (apply - '(#e3 #e4)) #e-1))
+        (lambda () (eq? (apply - '(#e3 #e4.0)) #e-1.0))
+
+        (lambda () (eq? (apply - '(#e3.0 4)) #e-1.0))
+        (lambda () (eq? (apply - '(#e3.0 4.0)) #e-1.0))
+        (lambda () (eq? (apply - '(#e3.0 #e4)) #e-1.0))
+        (lambda () (eq? (apply - '(#e3.0 #e4.0)) #e-1.0))
+
+        ;; Resul type checks.
 
         (lambda () (inexact? (- 4 2)))
         (lambda () (inexact? (- 4 2.0)))
@@ -403,6 +475,30 @@
         (lambda () (eq? (/ #e4.0 2.0 1) #e2.0))
         (lambda () (eq? (/ #e4.0 #e2 1) #e2.0))
         (lambda () (eq? (/ #e4.0 #e2.0 1) #e2.0))
+
+        ;; Apply binary.
+
+        (lambda () (eq? (apply / '(4 2)) 2))
+        (lambda () (eq? (apply / '(4 2.0)) 2.0))
+        (lambda () (eq? (apply / '(4 #e2)) #e2))
+        (lambda () (eq? (apply / '(4 #e2.0)) #e2.0))
+
+        (lambda () (eq? (apply / '(4.0 2)) 2.0))
+        (lambda () (eq? (apply / '(4.0 2.0)) 2.0))
+        (lambda () (eq? (apply / '(4.0 #e2)) #e2.0))
+        (lambda () (eq? (apply / '(4.0 #e2.0)) #e2.0))
+
+        (lambda () (eq? (apply / '(#e4 2)) #e2))
+        (lambda () (eq? (apply / '(#e4 2.0)) #e2.0))
+        (lambda () (eq? (apply / '(#e4 #e2)) #e2))
+        (lambda () (eq? (apply / '(#e4 #e2.0)) #e2.0))
+
+        (lambda () (eq? (apply / '(#e4.0 2)) #e2.0))
+        (lambda () (eq? (apply / '(#e4.0 2.0)) #e2.0))
+        (lambda () (eq? (apply / '(#e4.0 #e2)) #e2.0))
+        (lambda () (eq? (apply / '(#e4.0 #e2.0)) #e2.0))
+
+        ;; Result type checks.
 
         (lambda () (inexact? (/ 4 2)))
         (lambda () (inexact? (/ 4 2.0)))
