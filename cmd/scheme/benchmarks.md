@@ -13,6 +13,7 @@ Python benchmarks are run with Python 3.7.
 | Inline +/-       |  1.282 |        |          |  .2854 |          |        |
 | Lambda{,Impl}    |  1.151 |        |          |  .3180 |          |        |
 | Inline <=        |  0.270 | 29.730 |          | 1.3555 |          | 1.1971 |
+| sub{1,2}         |  0.233 | 24.023 |          | 1.5708 |          | 1.4815 |
 
 ## test.scm
 

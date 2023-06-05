@@ -9,6 +9,7 @@ package scheme
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/markkurossi/scheme/types"
@@ -49,8 +50,10 @@ const (
 	OpNot
 	OpAdd
 	OpAddI64
+	OpAddConst
 	OpSub
 	OpSubI64
+	OpSubConst
 	OpMul
 	OpDiv
 	OpEq
@@ -91,8 +94,10 @@ var operands = map[Operand]string{
 	OpNot:       "not",
 	OpAdd:       "+",
 	OpAddI64:    "+<int64>",
+	OpAddConst:  "+const",
 	OpSub:       "-",
 	OpSubI64:    "-<int64>",
+	OpSubConst:  "-const",
 	OpMul:       "*",
 	OpDiv:       "/",
 	OpEq:        "=",
@@ -142,7 +147,7 @@ func (i Instr) String() string {
 	case OpLambda:
 		return fmt.Sprintf("\t%s\tl%v:%v", i.Op, i.I, i.J)
 
-	case OpLocal, OpLocalSet:
+	case OpLocal, OpLocalSet, OpAddConst, OpSubConst:
 		return fmt.Sprintf("\t%s\t%v", i.Op, i.I)
 
 	case OpEnv, OpEnvSet:
@@ -545,6 +550,28 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		case OpAddI64:
 			accu = scm.stack[scm.sp-2].(Int) + scm.stack[scm.sp-1].(Int)
 
+		case OpAddConst:
+			switch av := accu.(type) {
+			case Int:
+				accu = av + Int(instr.I)
+
+			case Float:
+				accu = av + Float(instr.I)
+
+			case *BigInt:
+				accu = &BigInt{
+					I: new(big.Int).Add(av.I, big.NewInt(int64(instr.I))),
+				}
+
+			case *BigFloat:
+				accu = &BigFloat{
+					F: new(big.Float).Add(av.F, big.NewFloat(float64(instr.I))),
+				}
+
+			default:
+				return nil, scm.Breakf("%s: invalid number %v", instr.Op, accu)
+			}
+
 		case OpSub:
 			accu, err = numSub(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
@@ -553,6 +580,28 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 
 		case OpSubI64:
 			accu = scm.stack[scm.sp-2].(Int) - scm.stack[scm.sp-1].(Int)
+
+		case OpSubConst:
+			switch av := accu.(type) {
+			case Int:
+				accu = av - Int(instr.I)
+
+			case Float:
+				accu = av - Float(instr.I)
+
+			case *BigInt:
+				accu = &BigInt{
+					I: new(big.Int).Sub(av.I, big.NewInt(int64(instr.I))),
+				}
+
+			case *BigFloat:
+				accu = &BigFloat{
+					F: new(big.Float).Sub(av.F, big.NewFloat(float64(instr.I))),
+				}
+
+			default:
+				return nil, scm.Breakf("%s: invalid number %v", instr.Op, accu)
+			}
 
 		case OpMul:
 			accu, err = numMul(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
