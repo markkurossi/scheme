@@ -429,6 +429,15 @@
         (lambda () (exact? (- #e1.0 #e2)))
         (lambda () (exact? (- #e1.0 #e2.0)))
         )
+
+(let ((val 42))
+  (runner 'test "-const"
+          (lambda () (eq? (- 42 1) 41))
+          (lambda () (eq? (- (+ 40 2) 1) 41))
+          (lambda () (eq? (- (+ val 0) 1) 41))
+          )
+  )
+
 (runner 'test "/"
         (lambda () (eq? (/ 3) 0))
 

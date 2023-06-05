@@ -205,11 +205,12 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 		// Function call.
 
 		// Unary inline functions.
-		ok, inlineOp := p.inlineUnary(env, list)
+		ok, inlineOp, inlineI := p.inlineUnary(env, list)
 		if ok {
 			ast := &ASTCallUnary{
 				From: list[0],
 				Op:   inlineOp,
+				I:    inlineI,
 			}
 			arg, err := p.parseValue(env, list[1], list[1].Car(), false,
 				captures)
@@ -304,21 +305,39 @@ var inlineUnary = map[string]Operand{
 	"not":   OpNot,
 }
 
-func (p *Parser) inlineUnary(env *Env, list []Pair) (bool, Operand) {
+var inlineUnaryBinary = map[string]Operand{
+	"+": OpAddConst,
+	"-": OpSubConst,
+}
 
-	if len(list) != 2 {
-		return false, 0
-	}
+func (p *Parser) inlineUnary(env *Env, list []Pair) (bool, Operand, int) {
 	id, ok := list[0].Car().(*Identifier)
 	if !ok {
-		return false, 0
-	}
-	op, ok := inlineUnary[id.Name]
-	if !ok {
-		return false, 0
+		return false, 0, 0
 	}
 
-	return true, op
+	switch len(list) {
+	case 2:
+		op, ok := inlineUnary[id.Name]
+		if !ok {
+			return false, 0, 0
+		}
+		return true, op, 0
+
+	case 3:
+		op, ok := inlineUnaryBinary[id.Name]
+		if !ok {
+			return false, 0, 0
+		}
+		iv, ok := list[2].Car().(Int)
+		if !ok {
+			return false, 0, 0
+		}
+		return true, op, int(iv)
+
+	default:
+		return false, 0, 0
+	}
 }
 
 var inlineBinary = map[string]Operand{

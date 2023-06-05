@@ -649,13 +649,6 @@ func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 
 // Bytecode implements AST.Bytecode.
 func (ast *ASTCall) Bytecode(lib *Library) error {
-	ok, err := ast.specialArithmeticBytecode(lib)
-	if err != nil {
-		return err
-	}
-	if ok {
-		return nil
-	}
 	if !ast.Inline {
 		err := ast.Func.Bytecode(lib)
 		if err != nil {
@@ -687,44 +680,11 @@ func (ast *ASTCall) Bytecode(lib *Library) error {
 	return nil
 }
 
-func (ast *ASTCall) specialArithmeticBytecode(lib *Library) (bool, error) {
-	if !ast.Inline || len(ast.Args) != 2 {
-		return false, nil
-	}
-
-	var op Operand
-
-	switch ast.InlineOp {
-	case OpSub:
-		op = OpSubConst
-	case OpAdd:
-		op = OpAddConst
-	default:
-		return false, nil
-	}
-
-	c, ok := ast.Args[1].(*ASTConstant)
-	if !ok {
-		return false, nil
-	}
-	iv, ok := c.Value.(Int)
-	if !ok || iv < 1 || iv > 2 {
-		return false, nil
-	}
-
-	err := ast.Args[0].Bytecode(lib)
-	if err != nil {
-		return false, err
-	}
-	lib.addInstr(ast.From, op, nil, int(iv))
-
-	return true, nil
-}
-
 // ASTCallUnary implements inlined unary function calls.
 type ASTCallUnary struct {
 	From Locator
 	Op   Operand
+	I    int
 	Arg  AST
 }
 
@@ -743,12 +703,14 @@ func (ast *ASTCallUnary) Equal(o AST) bool {
 }
 
 var inlineUnaryTypes = map[Operand]*types.Type{
-	OpPairp: types.Boolean,
-	OpCar:   types.Unspecified,
-	OpCdr:   types.Unspecified,
-	OpNullp: types.Boolean,
-	OpZerop: types.Boolean,
-	OpNot:   types.Boolean,
+	OpPairp:    types.Boolean,
+	OpCar:      types.Unspecified,
+	OpCdr:      types.Unspecified,
+	OpNullp:    types.Boolean,
+	OpZerop:    types.Boolean,
+	OpNot:      types.Boolean,
+	OpAddConst: types.Number,
+	OpSubConst: types.Number,
 }
 
 // Type implements AST.Type.
@@ -761,12 +723,14 @@ func (ast *ASTCallUnary) Type() *types.Type {
 }
 
 var inlineUnaryArgTypes = map[Operand]*types.Type{
-	OpPairp: types.Any,
-	OpCar:   types.Pair,
-	OpCdr:   types.Pair,
-	OpNullp: types.Any,
-	OpZerop: types.Any,
-	OpNot:   types.Any,
+	OpPairp:    types.Any,
+	OpCar:      types.Pair,
+	OpCdr:      types.Pair,
+	OpNullp:    types.Any,
+	OpZerop:    types.Any,
+	OpNot:      types.Any,
+	OpAddConst: types.Number,
+	OpSubConst: types.Number,
 }
 
 // Typecheck implements AST.Type.
@@ -792,7 +756,7 @@ func (ast *ASTCallUnary) Bytecode(lib *Library) error {
 	if err != nil {
 		return err
 	}
-	lib.addInstr(ast.From, ast.Op, nil, 0)
+	lib.addInstr(ast.From, ast.Op, nil, ast.I)
 
 	return nil
 }
