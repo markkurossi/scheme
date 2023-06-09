@@ -226,14 +226,7 @@ func (ast *ASTSet) Bytecode(lib *Library) error {
 	}
 
 	if ast.Binding != nil {
-		if ast.Binding.Frame.Type == TypeStack {
-			lib.addInstr(ast.From, OpLocalSet, nil,
-				ast.Binding.Frame.Index+ast.Binding.Index)
-		} else {
-			instr := lib.addInstr(ast.From, OpEnvSet, nil,
-				ast.Binding.Frame.Index)
-			instr.J = ast.Binding.Index
-		}
+		lib.setBinding(ast.From, ast.Binding)
 	} else {
 		instr := lib.addInstr(ast.From, OpGlobalSet, nil, 0)
 		instr.Sym = lib.scm.Intern(ast.Name)
@@ -332,14 +325,7 @@ func (ast *ASTLet) Bytecode(lib *Library) error {
 		if err != nil {
 			return err
 		}
-		if binding.Binding.Frame.Type == TypeStack {
-			lib.addInstr(binding.From, OpLocalSet, nil,
-				binding.Binding.Frame.Index+binding.Binding.Index)
-		} else {
-			instr := lib.addInstr(binding.From, OpEnvSet, nil,
-				binding.Binding.Frame.Index)
-			instr.J = binding.Binding.Index
-		}
+		lib.setBinding(binding.From, binding.Binding)
 	}
 
 	for _, item := range ast.Body {
@@ -649,17 +635,30 @@ func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 
 // Bytecode implements AST.Bytecode.
 func (ast *ASTCall) Bytecode(lib *Library) error {
+	var self *lambdaCompilation
+	const calltAsJump bool = false
+
 	if !ast.Inline {
+		id, ok := ast.Func.(*ASTIdentifier)
+		if ok && id.Binding != nil && lib.current != nil &&
+			lib.current.Self == id.Binding.Init {
+			self = lib.current
+		}
+
 		err := ast.Func.Bytecode(lib)
 		if err != nil {
 			return nil
 		}
 		// Create call frame.
-		lib.addInstr(ast.From, OpPushF, nil, 0)
+		if !(calltAsJump && self != nil && ast.Tail) {
+			lib.addInstr(ast.From, OpPushF, nil, 0)
+		}
 	}
 
 	// Push argument scope.
-	lib.addInstr(ast.From, OpPushS, nil, len(ast.Args))
+	if len(ast.Args) > 0 {
+		lib.addInstr(ast.From, OpPushS, nil, len(ast.Args))
+	}
 
 	// Evaluate arguments.
 	for idx, arg := range ast.Args {
@@ -673,6 +672,17 @@ func (ast *ASTCall) Bytecode(lib *Library) error {
 	if ast.Inline {
 		lib.addInstr(ast.From, ast.InlineOp, nil, 0)
 		lib.addInstr(ast.From, OpPopS, nil, len(ast.Args))
+	} else if calltAsJump && self != nil && ast.Tail {
+		if false {
+			fmt.Printf(" - jmp %v\n", self.Label)
+			for idx, b := range self.ArgBindings {
+				fmt.Printf("   - %v: %d.%d(%v) %v\n",
+					idx, b.Frame.Index, b.Index, b.Disabled, b.Type)
+			}
+			self.Env.Print()
+		}
+		instr := lib.addInstr(nil, OpJmp, nil, 0)
+		instr.J = self.Label.I
 	} else {
 		lib.addCall(nil, len(ast.Args), ast.Tail)
 	}
@@ -711,6 +721,7 @@ var inlineUnaryTypes = map[Operand]*types.Type{
 	OpNot:      types.Boolean,
 	OpAddConst: types.Number,
 	OpSubConst: types.Number,
+	OpMulConst: types.Number,
 }
 
 // Type implements AST.Type.
@@ -731,6 +742,7 @@ var inlineUnaryArgTypes = map[Operand]*types.Type{
 	OpNot:      types.Any,
 	OpAddConst: types.Number,
 	OpSubConst: types.Number,
+	OpMulConst: types.Number,
 }
 
 // Typecheck implements AST.Type.
@@ -763,14 +775,15 @@ func (ast *ASTCallUnary) Bytecode(lib *Library) error {
 
 // ASTLambda implements lambda syntax.
 type ASTLambda struct {
-	From     Locator
-	Name     *Identifier
-	Args     Args
-	Body     []AST
-	Env      *Env
-	Captures bool
-	Define   bool
-	Flags    Flags
+	From        Locator
+	Name        *Identifier
+	Args        Args
+	ArgBindings []*EnvBinding
+	Body        []AST
+	Env         *Env
+	Captures    bool
+	Define      bool
+	Flags       Flags
 }
 
 // Locator implements AST.Locator.
@@ -848,11 +861,13 @@ func (ast *ASTLambda) Typecheck(lib *Library, round int) error {
 func (ast *ASTLambda) Bytecode(lib *Library) error {
 	lib.addInstr(ast.From, OpLambda, nil, len(lib.lambdas))
 	lib.lambdas = append(lib.lambdas, &lambdaCompilation{
-		Name:     ast.Name,
-		Args:     ast.Args,
-		Body:     ast.Body,
-		Env:      ast.Env,
-		Captures: ast.Captures,
+		Self:        ast,
+		Name:        ast.Name,
+		Args:        ast.Args,
+		ArgBindings: ast.ArgBindings,
+		Body:        ast.Body,
+		Env:         ast.Env,
+		Captures:    ast.Captures,
 	})
 	if ast.Define {
 		err := lib.define(ast.From, ast.Name, ast.Flags)
@@ -1120,7 +1135,8 @@ func (ast *ASTCond) Bytecode(lib *Library) error {
 
 			// Set argument.
 			lib.addInstr(choice.From, OpLocal, nil, choice.FuncValueFrame.Index)
-			lib.addInstr(choice.From, OpLocalSet, nil, choice.FuncArgsFrame.Index)
+			lib.addInstr(choice.From, OpLocalSet, nil,
+				choice.FuncArgsFrame.Index)
 
 			lib.addCall(nil, 1, ast.Tail)
 			if !ast.Tail {

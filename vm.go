@@ -55,6 +55,7 @@ const (
 	OpSubI64
 	OpSubConst
 	OpMul
+	OpMulConst
 	OpDiv
 	OpEq
 	OpLt
@@ -99,6 +100,7 @@ var operands = map[Operand]string{
 	OpSubI64:    "-<int64>",
 	OpSubConst:  "-const",
 	OpMul:       "*",
+	OpMulConst:  "*const",
 	OpDiv:       "/",
 	OpEq:        "=",
 	OpLt:        "<",
@@ -147,7 +149,7 @@ func (i Instr) String() string {
 	case OpLambda:
 		return fmt.Sprintf("\t%s\tl%v:%v", i.Op, i.I, i.J)
 
-	case OpLocal, OpLocalSet, OpAddConst, OpSubConst:
+	case OpLocal, OpLocalSet, OpAddConst, OpSubConst, OpMulConst:
 		return fmt.Sprintf("\t%s\t%v", i.Op, i.I)
 
 	case OpEnv, OpEnvSet:
@@ -607,6 +609,28 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			accu, err = numMul(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
 				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
+			}
+
+		case OpMulConst:
+			switch av := accu.(type) {
+			case Int:
+				accu = av * Int(instr.I)
+
+			case Float:
+				accu = av * Float(instr.I)
+
+			case *BigInt:
+				accu = &BigInt{
+					I: new(big.Int).Mul(av.I, big.NewInt(int64(instr.I))),
+				}
+
+			case *BigFloat:
+				accu = &BigFloat{
+					F: new(big.Float).Mul(av.F, big.NewFloat(float64(instr.I))),
+				}
+
+			default:
+				return nil, scm.Breakf("%s: invalid number %v", instr.Op, accu)
 			}
 
 		case OpDiv:

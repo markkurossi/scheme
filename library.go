@@ -31,6 +31,7 @@ type Library struct {
 	exported    map[string]*export
 	typeBacklog []AST
 	recheck     bool
+	current     *lambdaCompilation
 }
 
 func (lib *Library) addToTypeBacklog(ast AST) {
@@ -174,12 +175,13 @@ func (lib *Library) Compile() (Value, error) {
 	for i := 0; i < len(lib.lambdas); i++ {
 		lambda := lib.lambdas[i]
 		pcmapStart := len(lib.PCMap)
+		lib.current = lambda
 
 		// Lambda body starts after the label.
 		ofs := len(lib.Init)
 		lambda.Start = ofs + 1
+		lambda.Label = lib.addInstr(nil, OpLabel, nil, lambda.Start)
 
-		lib.addInstr(nil, OpLabel, nil, lambda.Start)
 		for _, ast := range lambda.Body {
 			err := ast.Bytecode(lib)
 			if err != nil {
@@ -194,6 +196,7 @@ func (lib *Library) Compile() (Value, error) {
 			pcmap[i].PC -= lambda.Start
 		}
 		pcmaps = append(pcmaps, pcmap)
+		lib.current = nil
 	}
 
 	// Collect label offsets
@@ -324,13 +327,25 @@ func (lib *Library) newLabel() *Instr {
 	}
 }
 
+func (lib *Library) setBinding(from Locator, b *EnvBinding) {
+	if b.Frame.Type == TypeStack {
+		lib.addInstr(from, OpLocalSet, nil, b.Frame.Index+b.Index)
+	} else {
+		instr := lib.addInstr(from, OpEnvSet, nil, b.Frame.Index)
+		instr.J = b.Index
+	}
+}
+
 type lambdaCompilation struct {
-	Start    int
-	End      int
-	Name     *Identifier
-	Args     Args
-	Body     []AST
-	Env      *Env
-	MaxStack int
-	Captures bool
+	Start       int
+	Label       *Instr
+	End         int
+	Self        AST
+	Name        *Identifier
+	Args        Args
+	ArgBindings []*EnvBinding
+	Body        []AST
+	Env         *Env
+	MaxStack    int
+	Captures    bool
 }

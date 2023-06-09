@@ -15,13 +15,10 @@ Python benchmarks are run with Python 3.7.
 | Inline <=        |  0.270 |          | 1.3555 | 29.730 |          | 1.1971 |
 | {+,-}const       |  0.220 |          | 1.6636 | 24.023 |          | 1.4815 |
 
-## test.scm
+## leibniz.scm
 
-| Optimization     | (fib 33) | Comments           |
-|:-----------------|---------:|--------------------|
-| Base             |    4.147 |                    |
-| Stack+Env        |    1.975 |                    |
-| Inline not/null? |    1.431 |                    |
-| Inline +/-       |    1.194 |                    |
-| Lambda{,Impl}    |    1.193 |                    |
-| Inline <=        |    1.045 | fibo.scm is faster |
+| Optimization | Scheme | Python | Py/Scm |
+|:-------------|-------:|--------|--------|
+| Base         | 23.194 | 6.224  | 3.7265 |
+| *const       | 20.364 |        | 3.2719 |
+| No pushs 0   | 19.997 |        | 3.2129 |

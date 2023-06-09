@@ -232,6 +232,10 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 			ast.Inline = true
 			ast.InlineOp = inlineOp
 		}
+		if tail && length == 1 && false {
+			fmt.Printf("parseValue: call, tail=%v\n", tail)
+			env.Print()
+		}
 
 		// Environment for the lambda body when its arguments are
 		// evaluated.
@@ -308,6 +312,7 @@ var inlineUnary = map[string]Operand{
 var inlineUnaryBinary = map[string]Operand{
 	"+": OpAddConst,
 	"-": OpSubConst,
+	"*": OpMulConst,
 }
 
 func (p *Parser) inlineUnary(env *Env, list []Pair) (bool, Operand, int) {
@@ -544,14 +549,17 @@ func (p *Parser) parseLambda(env *Env, define bool, flags Flags,
 	capture := env.CopyEnvFrames()
 	capture.PushCaptureFrame(captures, FUArgs, numArgs)
 
+	var argBindings []*EnvBinding
+
 	for _, arg := range args.Fixed {
-		_, err := capture.Define(arg.Name, types.Unspecified)
+		b, err := capture.Define(arg.Name, types.Unspecified)
 		if err != nil {
 			return nil, err
 		}
+		argBindings = append(argBindings, b)
 	}
 	if args.Rest != nil {
-		_, err := capture.Define(args.Rest.Name, &types.Type{
+		b, err := capture.Define(args.Rest.Name, &types.Type{
 			Enum: types.EnumPair,
 			Car:  types.Unspecified,
 			Cdr:  types.Any,
@@ -559,16 +567,18 @@ func (p *Parser) parseLambda(env *Env, define bool, flags Flags,
 		if err != nil {
 			return nil, err
 		}
+		argBindings = append(argBindings, b)
 	}
 
 	ast := &ASTLambda{
-		From:     list[0],
-		Name:     name,
-		Args:     args,
-		Env:      capture,
-		Captures: captures,
-		Define:   define,
-		Flags:    flags,
+		From:        list[0],
+		Name:        name,
+		Args:        args,
+		ArgBindings: argBindings,
+		Env:         capture,
+		Captures:    captures,
+		Define:      define,
+		Flags:       flags,
 	}
 
 	for i := 2; i < len(list); i++ {
@@ -672,8 +682,11 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 			Init:    initAst,
 		})
 
-		if kind == KwLetStar {
+		switch kind {
+		case KwLetStar:
 			letBindings[idx].Disabled = false
+		case KwLetrec:
+			letBindings[idx].Init = initAst
 		}
 	}
 
