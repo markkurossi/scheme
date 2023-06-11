@@ -69,3 +69,43 @@ func Unify(a *Type, b *Type) *Type {
 		panic(fmt.Sprintf("unknown Enum: %d", e))
 	}
 }
+
+// Coerce does type coercion for the numeric argument types. For other
+// than numeric types, the function does Unify.
+func Coerce(a *Type, b *Type) *Type {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	if !a.IsKindOf(Number) || !b.IsKindOf(Number) {
+		return Unify(a, b)
+	}
+	if a.Enum == b.Enum {
+		return a
+	}
+	switch a.Enum {
+	case EnumInexactInteger:
+		return b
+
+	case EnumInexactFloat:
+		switch b.Enum {
+		case EnumInexactInteger:
+			return InexactFloat
+		default:
+			return ExactFloat
+		}
+
+	case EnumExactInteger:
+		switch b.Enum {
+		case EnumInexactInteger:
+			return ExactInteger
+		default:
+			return ExactFloat
+		}
+
+	default:
+		return ExactFloat
+	}
+}

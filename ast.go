@@ -575,6 +575,17 @@ func (ast *ASTCall) Type() *types.Type {
 		if !ok {
 			panic(fmt.Sprintf("unknown inline operand: %v", ast.InlineOp))
 		}
+		if t.IsKindOf(types.Number) {
+			if len(ast.Args) == 0 {
+				return t
+			}
+			// Arithmetics result type depends on the argument type
+			// conversions.
+			t = nil
+			for _, arg := range ast.Args {
+				t = types.Coerce(t, arg.Type())
+			}
+		}
 		return t
 	}
 	t := ast.Func.Type()
@@ -586,12 +597,6 @@ func (ast *ASTCall) Type() *types.Type {
 
 // Typecheck implements AST.Type.
 func (ast *ASTCall) Typecheck(lib *Library, round int) error {
-	for _, arg := range ast.Args {
-		err := arg.Typecheck(lib, round)
-		if err != nil {
-			return err
-		}
-	}
 	var ft *types.Type
 	if ast.Inline {
 		sym := lib.scm.Intern(ast.InlineOp.String())
@@ -730,7 +735,16 @@ func (ast *ASTCallUnary) Type() *types.Type {
 	if !ok {
 		panic(fmt.Sprintf("unknown inline unary operand: %v", ast.Op))
 	}
-	return t
+	if !t.IsA(types.Number) {
+		return t
+	}
+	argType := ast.Arg.Type()
+	if argType.IsA(types.Unspecified) {
+		// XXX fmt.Printf("ASTCallUnary: argType=%v\n", argType)
+		return types.InexactInteger
+	}
+
+	return types.Coerce(argType, types.InexactInteger)
 }
 
 var inlineUnaryArgTypes = map[Operand]*types.Type{
