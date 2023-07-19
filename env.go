@@ -80,7 +80,6 @@ type EnvBinding struct {
 	Disabled bool
 	Index    int
 	Type     *types.Type
-	Init     AST
 }
 
 // NewEnv creates a new empty environment.

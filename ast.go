@@ -80,7 +80,7 @@ func (ast *ASTSequence) Type() *types.Type {
 	return ast.Items[len(ast.Items)-1].Type()
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTSequence) Typecheck(lib *Library, round int) error {
 	for _, item := range ast.Items {
 		err := item.Typecheck(lib, round)
@@ -131,7 +131,7 @@ func (ast *ASTDefine) Type() *types.Type {
 	return ast.Value.Type()
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTDefine) Typecheck(lib *Library, round int) error {
 	err := ast.Value.Typecheck(lib, round)
 	if err != nil {
@@ -199,7 +199,7 @@ func (ast *ASTSet) Type() *types.Type {
 	return ast.Value.Type()
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTSet) Typecheck(lib *Library, round int) error {
 	vtype := ast.Value.Type()
 
@@ -287,7 +287,7 @@ func (ast *ASTLet) Type() *types.Type {
 	return ast.Body[len(ast.Body)-1].Type()
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTLet) Typecheck(lib *Library, round int) error {
 	for _, b := range ast.Bindings {
 		err := b.Init.Typecheck(lib, round)
@@ -387,7 +387,7 @@ func (ast *ASTIf) Type() *types.Type {
 	return types.Unify(ast.True.Type(), ast.False.Type())
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTIf) Typecheck(lib *Library, round int) error {
 	err := ast.Cond.Typecheck(lib, round)
 	if err != nil {
@@ -481,7 +481,7 @@ func (ast *ASTApply) Type() *types.Type {
 	return t.Return
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTApply) Typecheck(lib *Library, round int) error {
 	err := ast.Lambda.Typecheck(lib, round)
 	if err != nil {
@@ -570,6 +570,12 @@ var inlineCallTypes = map[Operand]*types.Type{
 
 // Type implements AST.Type.
 func (ast *ASTCall) Type() *types.Type {
+	var inputs []*types.Type
+	for _, arg := range ast.Args {
+		inputs = append(inputs, arg.Type())
+	}
+	//fmt.Printf("ASTCall: inputs=%v: Inline=%v, Func=%T\n",
+	// inputs, ast.Inline, ast.Func)
 	if ast.Inline {
 		t, ok := inlineCallTypes[ast.InlineOp]
 		if !ok {
@@ -588,14 +594,16 @@ func (ast *ASTCall) Type() *types.Type {
 		}
 		return t
 	}
+	// fmt.Printf(" - ASTCall.Type: Func=%T\n", ast.Func)
 	t := ast.Func.Type()
 	if t.Enum != types.EnumLambda {
 		return types.Unspecified
 	}
+	// XXX Bind arguments with input types and resolve return.
 	return t.Return
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 	var ft *types.Type
 	if ast.Inline {
@@ -646,7 +654,7 @@ func (ast *ASTCall) Bytecode(lib *Library) error {
 	if !ast.Inline {
 		id, ok := ast.Func.(*ASTIdentifier)
 		if ok && id.Binding != nil && lib.current != nil &&
-			lib.current.Self == id.Binding.Init {
+			lib.current.Self == id.Init {
 			self = lib.current
 		}
 
@@ -759,7 +767,7 @@ var inlineUnaryArgTypes = map[Operand]*types.Type{
 	OpMulConst: types.Number,
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTCallUnary) Typecheck(lib *Library, round int) error {
 	err := ast.Arg.Typecheck(lib, round)
 	if err != nil {
@@ -840,7 +848,7 @@ func (ast *ASTLambda) Type() *types.Type {
 	return t
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTLambda) Typecheck(lib *Library, round int) error {
 	for _, body := range ast.Body {
 		err := body.Typecheck(lib, round)
@@ -921,7 +929,7 @@ func (ast *ASTConstant) Type() *types.Type {
 	return ast.Value.Type()
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTConstant) Typecheck(lib *Library, round int) error {
 	return nil
 }
@@ -938,6 +946,7 @@ type ASTIdentifier struct {
 	Name    string
 	Binding *EnvBinding
 	Global  *Identifier
+	Init    AST
 }
 
 // Locator implements AST.Locator.
@@ -971,7 +980,7 @@ func (ast *ASTIdentifier) Type() *types.Type {
 	return ast.Global.GlobalType
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTIdentifier) Typecheck(lib *Library, round int) error {
 	return nil
 }
@@ -1072,7 +1081,7 @@ func (ast *ASTCond) Type() *types.Type {
 	return t
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTCond) Typecheck(lib *Library, round int) error {
 	for _, choice := range ast.Choices {
 		if choice.Cond != nil {
@@ -1259,7 +1268,7 @@ func (ast *ASTCase) Type() *types.Type {
 	return t
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTCase) Typecheck(lib *Library, round int) error {
 	err := ast.Expr.Typecheck(lib, round)
 	if err != nil {
@@ -1408,7 +1417,7 @@ func (ast *ASTAnd) Type() *types.Type {
 	return t
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTAnd) Typecheck(lib *Library, round int) error {
 	for _, expr := range ast.Exprs {
 		err := expr.Typecheck(lib, round)
@@ -1488,7 +1497,7 @@ func (ast *ASTOr) Type() *types.Type {
 	return t
 }
 
-// Typecheck implements AST.Type.
+// Typecheck implements AST.Typecheck.
 func (ast *ASTOr) Typecheck(lib *Library, round int) error {
 	for _, expr := range ast.Exprs {
 		err := expr.Typecheck(lib, round)

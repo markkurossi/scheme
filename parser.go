@@ -685,8 +685,6 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 		switch kind {
 		case KwLetStar:
 			letBindings[idx].Disabled = false
-		case KwLetrec:
-			letBindings[idx].Init = initAst
 		}
 	}
 
