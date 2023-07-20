@@ -220,12 +220,14 @@ func (lib *Library) Compile() (Value, error) {
 				name = def.Name.Name
 			}
 
+			ctx := make(types.Ctx)
+
 			instr.I = def.Start
 			instr.J = def.End
 			instr.V = &LambdaImpl{
 				Name:     name,
 				Args:     def.Args,
-				Return:   def.Body[len(def.Body)-1].Type(),
+				Return:   def.Body[len(def.Body)-1].Type(ctx),
 				Captures: def.Captures,
 				Source:   lib.Source,
 				Code:     lib.Init[def.Start:def.End],

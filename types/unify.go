@@ -79,6 +79,9 @@ func Coerce(a *Type, b *Type) *Type {
 	if b == nil {
 		return a
 	}
+	if a.Enum == EnumUnspecified || b.Enum == EnumUnspecified {
+		return Unspecified
+	}
 	if !a.IsKindOf(Number) || !b.IsKindOf(Number) {
 		return Unify(a, b)
 	}

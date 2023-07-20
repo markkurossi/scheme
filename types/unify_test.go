@@ -95,3 +95,21 @@ func TestUnify(t *testing.T) {
 		}
 	}
 }
+
+func TestCoerce(t *testing.T) {
+	tests := []struct {
+		a *Type
+		b *Type
+		c *Type
+	}{
+		{Unspecified, InexactInteger, Unspecified},
+	}
+
+	for idx, test := range tests {
+		c := Coerce(test.a, test.b)
+		if !c.IsA(test.c) {
+			t.Errorf("TestCoerce-%v: Coerce(%v, %v)=%v, expected %v",
+				idx, test.a, test.b, c, test.c)
+		}
+	}
+}

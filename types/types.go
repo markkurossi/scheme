@@ -234,15 +234,24 @@ func Parse(arg string) (*Type, string, error) {
 
 // Type defines Scheme types.
 type Type struct {
-	Enum    Enum
-	Kind    Kind
-	Args    []*Type
-	Rest    *Type
-	Return  *Type
-	Car     *Type
-	Cdr     *Type
-	Element *Type
+	Enum         Enum
+	Kind         Kind
+	Args         []*Type
+	Rest         *Type
+	Return       *Type
+	Car          *Type
+	Cdr          *Type
+	Element      *Type
+	Parametrizer Parametrizer
 }
+
+// Parametrizer implements type parametrization.
+type Parametrizer interface {
+	Parametrize(ctx Ctx, params []*Type) *Type
+}
+
+// Ctx defines context for type parametrization.
+type Ctx map[interface{}]bool
 
 func (t *Type) String() string {
 	result := t.Enum.String()
