@@ -596,35 +596,26 @@ func inlineParametrizerUnspecified(params []*types.Type) *types.Type {
 
 // Type implements AST.Type.
 func (ast *ASTCall) Type(ctx types.Ctx) *types.Type {
-	// fmt.Printf("ASTCall:\n")
 	var params []*types.Type
 	for _, arg := range ast.Args {
 		params = append(params, arg.Type(ctx))
 	}
-	// fmt.Printf(" => params=%v\n", params)
 
 	if ast.Inline {
-		// fmt.Printf(" - inline=%v\n", ast.InlineOp)
 		parametrizer, ok := inlineCallTypes[ast.InlineOp]
 		if !ok {
 			panic(fmt.Sprintf("unknown inline operand: %v", ast.InlineOp))
 		}
-		parametrized := parametrizer(params)
-		// fmt.Printf("  => %v\n", parametrized)
-		return parametrized
+		return parametrizer(params)
 	}
-	// fmt.Printf(" - lambda=%T\n", ast.Func)
 	t := ast.Func.Type(ctx)
 	if t.Enum != types.EnumLambda {
 		return types.Unspecified
 	}
-	// fmt.Printf(" - ASTCall.Type: Func=%T, t=%v\n", ast.Func, t)
 	if t.Parametrizer == nil {
 		return t.Return
 	}
-	parametrized := t.Parametrizer.Parametrize(ctx, params)
-	// fmt.Printf("   => %v\n", parametrized)
-	return parametrized
+	return t.Parametrizer.Parametrize(ctx, params)
 }
 
 // Typecheck implements AST.Typecheck.
@@ -883,20 +874,32 @@ func (ast *ASTLambda) Parametrize(ctx types.Ctx,
 		ctx[ast] = false
 	}()
 
-	switch tail := ast.Body[len(ast.Body)-1].(type) {
-	case *ASTCall:
-		if tail.Inline {
-			return tail.Type(ctx)
-		}
-		t := tail.Func.Type(ctx)
-		if t.Enum != types.EnumLambda {
-			return types.Unspecified
-		}
-		return t.Return
-
-	default:
-		return tail.Type(ctx)
+	// Bind argument types.
+	if len(params) < ast.Args.Min || len(params) > ast.Args.Max {
+		return types.Unspecified
 	}
+	for i := 0; i < len(ast.Args.Fixed); i++ {
+		ast.ArgBindings[i].Type = params[i]
+	}
+	if len(params) > len(ast.Args.Fixed) {
+		// Rest.
+		var rt *types.Type
+		for i := len(ast.Args.Fixed); i < len(params); i++ {
+			rt = types.Unify(rt, params[i])
+		}
+		ast.ArgBindings[len(ast.Args.Fixed)].Type = &types.Type{
+			Enum: types.EnumPair,
+			Car:  rt,
+			Cdr:  types.Unspecified,
+		}
+	}
+
+	result := types.Unspecified
+	for _, a := range ast.Body {
+		result = a.Type(ctx)
+	}
+
+	return result
 }
 
 // Typecheck implements AST.Typecheck.
@@ -999,6 +1002,10 @@ type ASTIdentifier struct {
 	Binding *EnvBinding
 	Global  *Identifier
 	Init    AST
+}
+
+func (ast *ASTIdentifier) String() string {
+	return ast.Name
 }
 
 // Locator implements AST.Locator.
