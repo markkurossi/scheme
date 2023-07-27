@@ -26,16 +26,11 @@ type Library struct {
 	Init      Code
 	PCMap     PCMap
 
-	lambdas     []*lambdaCompilation
-	nextLabel   int
-	exported    map[string]*export
-	typeBacklog []AST
-	recheck     bool
-	current     *lambdaCompilation
-}
-
-func (lib *Library) addToTypeBacklog(ast AST) {
-	lib.typeBacklog = append(lib.typeBacklog, ast)
+	lambdas   []*lambdaCompilation
+	nextLabel int
+	exported  map[string]*export
+	recheck   bool
+	current   *lambdaCompilation
 }
 
 // Scheme implements Value.Scheme.
