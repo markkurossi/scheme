@@ -163,7 +163,7 @@ loop:
 
 		default:
 			str.WriteString(" . ")
-			str.WriteString(fmt.Sprintf("%v", cdr))
+			str.WriteString(cdr.Scheme())
 			break loop
 		}
 	}
