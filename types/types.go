@@ -172,6 +172,11 @@ func Parse(arg string) (*Type, string, error) {
 			Enum: EnumExactInteger,
 			Kind: kind,
 		}, name, nil
+	} else if typeName == "f" {
+		return &Type{
+			Enum: EnumExactFloat,
+			Kind: kind,
+		}, name, nil
 	} else if strings.HasPrefix(typeName, "list") {
 		return &Type{
 			Enum: EnumPair,

@@ -916,6 +916,20 @@ var numberBuiltins = []Builtin{
 			}
 		},
 	},
+	{
+		Name:   "float?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			switch args[0].(type) {
+			case Float, *BigFloat:
+				return Boolean(true), nil
+
+			default:
+				return Boolean(false), nil
+			}
+		},
+	},
 	// XXX real-valued?
 	// XXX rational-valued?
 	// XXX integer-valued?
@@ -1397,6 +1411,45 @@ var numberBuiltins = []Builtin{
 
 			default:
 				return Boolean(false), nil
+			}
+		},
+	},
+	{
+		Name:   "integer->float",
+		Args:   []string{"n"},
+		Return: types.ExactFloat,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			switch v := args[0].(type) {
+			case Int:
+				return Float(v), nil
+
+			case *BigInt:
+				return &BigFloat{
+					F: big.NewFloat(0.0).SetInt(v.I),
+				}, nil
+
+			default:
+				return Float(0), fmt.Errorf("invalid integer: %v", v)
+			}
+		},
+	},
+	{
+		Name:   "float->integer",
+		Args:   []string{"f"},
+		Return: types.ExactFloat,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			switch v := args[0].(type) {
+			case Float:
+				return Int(v), nil
+
+			case *BigFloat:
+				i, _ := v.F.Int(nil)
+				return &BigInt{
+					I: i,
+				}, nil
+
+			default:
+				return Float(0), fmt.Errorf("invalid integer: %v", v)
 			}
 		},
 	},

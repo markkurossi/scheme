@@ -16,6 +16,14 @@
         (lambda () (integer? -1))
         (lambda () (integer? #e42))
         )
+(runner 'test "float?"
+        (lambda () (float? 1.0))
+        (lambda () (float? -1.0))
+        (lambda () (float? #e42.0))
+        (lambda () (not (float? 1)))
+        (lambda () (not (float? -1)))
+        (lambda () (not (float? #e42)))
+        )
 (runner 'test "exact?"
         (lambda () (exact? #e1))
         (lambda () (not (exact? 1)))
@@ -554,6 +562,15 @@
         (lambda () (eq? (string->number "100") 100))
         (lambda () (eq? (string->number "100" 16) 256))
         (lambda () (eq? (string->number "#t") #f))
+        )
+
+(runner 'test "integer->float"
+        (lambda () (eq? (integer->float 1) 1.0))
+        (lambda () (eq? (integer->float #e1) #e1.0))
+        )
+(runner 'test "float->integer"
+        (lambda () (eq? (float->integer 1.2) 1))
+        (lambda () (eq? (float->integer #e1.2) #e1))
         )
 
 (letrec ((fact
