@@ -1415,8 +1415,8 @@ var numberBuiltins = []Builtin{
 		},
 	},
 	{
-		Name:   "integer->float",
-		Args:   []string{"n"},
+		Name:   "number->float",
+		Args:   []string{"x"},
 		Return: types.ExactFloat,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v := args[0].(type) {
@@ -1428,17 +1428,23 @@ var numberBuiltins = []Builtin{
 					F: big.NewFloat(0.0).SetInt(v.I),
 				}, nil
 
+			case Float, *BigFloat:
+				return v, nil
+
 			default:
-				return Float(0), fmt.Errorf("invalid integer: %v", v)
+				return Float(0), fmt.Errorf("invalid number: %v", v)
 			}
 		},
 	},
 	{
-		Name:   "float->integer",
-		Args:   []string{"f"},
+		Name:   "number->integer",
+		Args:   []string{"x"},
 		Return: types.ExactFloat,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v := args[0].(type) {
+			case Int, *BigInt:
+				return v, nil
+
 			case Float:
 				return Int(v), nil
 

@@ -564,13 +564,13 @@
         (lambda () (eq? (string->number "#t") #f))
         )
 
-(runner 'test "integer->float"
-        (lambda () (eq? (integer->float 1) 1.0))
-        (lambda () (eq? (integer->float #e1) #e1.0))
+(runner 'test "number->float"
+        (lambda () (eq? (number->float 1) 1.0))
+        (lambda () (eq? (number->float #e1) #e1.0))
         )
-(runner 'test "float->integer"
-        (lambda () (eq? (float->integer 1.2) 1))
-        (lambda () (eq? (float->integer #e1.2) #e1))
+(runner 'test "number->integer"
+        (lambda () (eq? (number->integer 1.2) 1))
+        (lambda () (eq? (number->integer #e1.2) #e1))
         )
 
 (letrec ((fact
