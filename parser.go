@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -66,6 +66,8 @@ func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 
 		// Check libraries.
 		if first {
+			first = false
+
 			pair, ok := v.(Pair)
 			if ok && isNamedIdentifier(pair.Car(), "library") {
 				list, ok := ListPairs(v)
@@ -97,14 +99,23 @@ func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 					return nil, err
 				}
 				break
-			} else {
-				// Not a library source.
-				library.ExportAll = true
-				library.Name = NewPair(&Identifier{
-					Name: "main",
-				}, nil)
 			}
-			first = false
+
+			// Not a library source.
+			library.ExportAll = true
+			library.Name = NewPair(&Identifier{
+				Name: "main",
+			}, nil)
+
+			// Check for top-level imports.
+			if ok && isNamedIdentifier(pair.Car(), "import") {
+				_, ok := ListPairs(v)
+				if !ok {
+					return nil, pair.Errorf("expected (import ...)")
+				}
+				library.Imports, _ = Cdr(pair, true)
+				continue
+			}
 		}
 
 		ast, err := p.parseValue(env, Point{}, v, false, true)

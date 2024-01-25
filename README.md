@@ -76,7 +76,7 @@ Any
 # TODO
 
  - [ ] Shortlist
-   - [ ] Top-levels with `(import)`
+   - [x] Top-levels with `(import)`
    - [ ] Library local symbols
  - [ ] API
    - [ ] Marshal / unmarshal
