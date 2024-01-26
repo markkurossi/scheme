@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2023 Markku Rossi
+;;; Copyright (c) 2023-2024 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -145,6 +145,10 @@
                                        (scheme::->scheme (integer->char arg)))
                                       (else
                                        (scheme::->scheme arg))))
+                                   chars args))
+                      ((#\v)
+                       (format-arg right-align padding width
+                                   any->string
                                    chars args))
                       ((#\x)
                        (format-arg right-align padding width
