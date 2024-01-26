@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -594,6 +594,14 @@ func inlineParametrizerUnspecified(params []*types.Type) *types.Type {
 	return types.Unspecified
 }
 
+func inlineParametrizerCastNumber(params []*types.Type) *types.Type {
+	return types.Number
+}
+
+func inlineParametrizerCastSymbol(params []*types.Type) *types.Type {
+	return types.Symbol
+}
+
 // Type implements AST.Type.
 func (ast *ASTCall) Type(ctx types.Ctx) *types.Type {
 	var params []*types.Type
@@ -742,15 +750,17 @@ func (ast *ASTCallUnary) Equal(o AST) bool {
 }
 
 var inlineUnaryTypes = map[Operand]inlineParametrizer{
-	OpPairp:    inlineParametrizerBoolean,
-	OpNullp:    inlineParametrizerBoolean,
-	OpZerop:    inlineParametrizerBoolean,
-	OpNot:      inlineParametrizerBoolean,
-	OpCar:      inlineParametrizerUnspecified,
-	OpCdr:      inlineParametrizerUnspecified,
-	OpAddConst: inlineParametrizerNumber,
-	OpSubConst: inlineParametrizerNumber,
-	OpMulConst: inlineParametrizerNumber,
+	OpPairp:      inlineParametrizerBoolean,
+	OpNullp:      inlineParametrizerBoolean,
+	OpZerop:      inlineParametrizerBoolean,
+	OpNot:        inlineParametrizerBoolean,
+	OpCar:        inlineParametrizerUnspecified,
+	OpCdr:        inlineParametrizerUnspecified,
+	OpAddConst:   inlineParametrizerNumber,
+	OpSubConst:   inlineParametrizerNumber,
+	OpMulConst:   inlineParametrizerNumber,
+	OpCastNumber: inlineParametrizerCastNumber,
+	OpCastSymbol: inlineParametrizerCastSymbol,
 }
 
 // Type implements AST.Type.
@@ -768,15 +778,17 @@ func (ast *ASTCallUnary) Type(ctx types.Ctx) *types.Type {
 }
 
 var inlineUnaryArgTypes = map[Operand]*types.Type{
-	OpPairp:    types.Any,
-	OpCar:      types.Pair,
-	OpCdr:      types.Pair,
-	OpNullp:    types.Any,
-	OpZerop:    types.Any,
-	OpNot:      types.Any,
-	OpAddConst: types.Number,
-	OpSubConst: types.Number,
-	OpMulConst: types.Number,
+	OpPairp:      types.Any,
+	OpCar:        types.Pair,
+	OpCdr:        types.Pair,
+	OpNullp:      types.Any,
+	OpZerop:      types.Any,
+	OpNot:        types.Any,
+	OpAddConst:   types.Number,
+	OpSubConst:   types.Number,
+	OpMulConst:   types.Number,
+	OpCastNumber: types.Any,
+	OpCastSymbol: types.Any,
 }
 
 // Typecheck implements AST.Typecheck.

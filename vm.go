@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -62,51 +62,55 @@ const (
 	OpGt
 	OpLe
 	OpGe
+	OpCastNumber
+	OpCastSymbol
 )
 
 var operands = map[Operand]string{
-	OpConst:     "const",
-	OpDefine:    "define",
-	OpLambda:    "lambda",
-	OpLabel:     "label",
-	OpLocal:     "local",
-	OpEnv:       "env",
-	OpGlobal:    "global",
-	OpLocalSet:  "local!",
-	OpEnvSet:    "env!",
-	OpGlobalSet: "global!",
-	OpPushF:     "pushf",
-	OpPushS:     "pushs",
-	OpPushE:     "pushe",
-	OpPopS:      "pops",
-	OpPopE:      "pope",
-	OpPushA:     "pusha",
-	OpCall:      "call",
-	OpIf:        "if",
-	OpIfNot:     "ifnot",
-	OpJmp:       "jmp",
-	OpReturn:    "return",
-	OpPairp:     "pair?",
-	OpCons:      "cons",
-	OpCar:       "car",
-	OpCdr:       "cdr",
-	OpNullp:     "null?",
-	OpZerop:     "zero?",
-	OpNot:       "not",
-	OpAdd:       "+",
-	OpAddI64:    "+<int64>",
-	OpAddConst:  "+const",
-	OpSub:       "-",
-	OpSubI64:    "-<int64>",
-	OpSubConst:  "-const",
-	OpMul:       "*",
-	OpMulConst:  "*const",
-	OpDiv:       "/",
-	OpEq:        "=",
-	OpLt:        "<",
-	OpGt:        ">",
-	OpLe:        "<=",
-	OpGe:        ">=",
+	OpConst:      "const",
+	OpDefine:     "define",
+	OpLambda:     "lambda",
+	OpLabel:      "label",
+	OpLocal:      "local",
+	OpEnv:        "env",
+	OpGlobal:     "global",
+	OpLocalSet:   "local!",
+	OpEnvSet:     "env!",
+	OpGlobalSet:  "global!",
+	OpPushF:      "pushf",
+	OpPushS:      "pushs",
+	OpPushE:      "pushe",
+	OpPopS:       "pops",
+	OpPopE:       "pope",
+	OpPushA:      "pusha",
+	OpCall:       "call",
+	OpIf:         "if",
+	OpIfNot:      "ifnot",
+	OpJmp:        "jmp",
+	OpReturn:     "return",
+	OpPairp:      "pair?",
+	OpCons:       "cons",
+	OpCar:        "car",
+	OpCdr:        "cdr",
+	OpNullp:      "null?",
+	OpZerop:      "zero?",
+	OpNot:        "not",
+	OpAdd:        "+",
+	OpAddI64:     "+<int64>",
+	OpAddConst:   "+const",
+	OpSub:        "-",
+	OpSubI64:     "-<int64>",
+	OpSubConst:   "-const",
+	OpMul:        "*",
+	OpMulConst:   "*const",
+	OpDiv:        "/",
+	OpEq:         "=",
+	OpLt:         "<",
+	OpGt:         ">",
+	OpLe:         "<=",
+	OpGe:         ">=",
+	OpCastNumber: "number!",
+	OpCastSymbol: "symbol!",
 }
 
 func (op Operand) String() string {
@@ -670,6 +674,18 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
 			}
 			accu = Boolean(!IsTrue(accu))
+
+		case OpCastNumber:
+			if accu == nil || !accu.Type().IsKindOf(types.Number) {
+				return nil, scm.Breakf("%s: cannot cast %v", instr.Op,
+					ToScheme(accu))
+			}
+
+		case OpCastSymbol:
+			if accu == nil || !accu.Type().IsA(types.Symbol) {
+				return nil, scm.Breakf("%s: cannot cast %v", instr.Op,
+					ToScheme(accu))
+			}
 
 		default:
 			return nil, scm.Breakf("%s: not implemented", instr.Op)
