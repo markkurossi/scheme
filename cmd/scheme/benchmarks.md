@@ -19,6 +19,6 @@ Python benchmarks are run with Python 3.7.
 
 | Optimization | Scheme | Python | Py/Scm |
 |:-------------|-------:|--------|--------|
-| Base         | 23.194 | 6.224  | 3.7265 |
-| *const       | 20.364 |        | 3.2719 |
-| No pushs 0   | 19.997 |        | 3.2129 |
+| Base         | 23.194 | 6.224  | 0.2683 |
+| *const       | 20.364 |        | 0.3056 |
+| No pushs 0   | 19.997 |        | 0.3112 |
