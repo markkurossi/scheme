@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -123,7 +123,7 @@ var debugBuiltins = []Builtin{
 	{
 		Name:   "type",
 		Args:   []string{"obj"},
-		Return: types.Any,
+		Return: types.Nil,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			if args[0] == nil {
 				scm.Stdout.Println("nil")
