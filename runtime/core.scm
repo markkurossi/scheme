@@ -117,7 +117,7 @@
   (cond
    ((null? obj) "'()")
    ((boolean? obj) (if obj "true" "false"))
-   ((number? obj) (number->string (number! obj)))
+   ((number? obj) (number->string obj))
    ((char? obj) (list->string (list obj)))
    ((string? obj) obj)
    ((symbol? obj) (symbol->string (symbol! obj)))
