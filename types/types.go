@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -20,6 +20,7 @@ type Enum int
 const (
 	EnumUnspecified Enum = iota
 	EnumAny
+	EnumNil
 	EnumBoolean
 	EnumString
 	EnumCharacter
@@ -39,6 +40,7 @@ const (
 var enumNames = map[Enum]string{
 	EnumUnspecified:    "?",
 	EnumAny:            "any",
+	EnumNil:            "nil",
 	EnumBoolean:        "bool",
 	EnumString:         "string",
 	EnumCharacter:      "char",
@@ -69,7 +71,7 @@ func (e Enum) Super() Enum {
 	case EnumUnspecified:
 		return EnumUnspecified
 
-	case EnumAny, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
+	case EnumAny, EnumNil, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
 		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair, EnumVector:
 		return EnumAny
 
@@ -140,7 +142,12 @@ func Parse(arg string) (*Type, string, error) {
 		typeName = name
 	}
 
-	if strings.HasPrefix(typeName, "bool") {
+	if typeName == "nil" {
+		return &Type{
+			Enum: EnumNil,
+			Kind: kind,
+		}, name, nil
+	} else if strings.HasPrefix(typeName, "bool") {
 		return &Type{
 			Enum: EnumBoolean,
 			Kind: kind,
@@ -303,6 +310,9 @@ var (
 	Any = &Type{
 		Enum: EnumAny,
 	}
+	Nil = &Type{
+		Enum: EnumNil,
+	}
 	Boolean = &Type{
 		Enum: EnumBoolean,
 	}
@@ -341,7 +351,6 @@ var (
 		Car:  Any,
 		Cdr:  Any,
 	}
-	Nil = Unspecified
 )
 
 // IsA tests if type is the same as the argument type.
@@ -383,6 +392,9 @@ func (t *Type) IsA(o *Type) bool {
 // IsKindOf tests if type is kind of the argument type.
 func (t *Type) IsKindOf(o *Type) bool {
 	if t.Enum == EnumUnspecified || o.Enum == EnumUnspecified {
+		return true
+	}
+	if o.Enum == EnumPair && t.Enum == EnumNil {
 		return true
 	}
 
