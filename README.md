@@ -46,6 +46,8 @@ expressions. The type hierarchy is as follows:
 ```
 Any
   |
+  +-- Nil
+  |
   +-- Boolean
   |
   +-- String
