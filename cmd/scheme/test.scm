@@ -1,5 +1,12 @@
 (import (go format))
 
-(display (format "%d + %d = %d" 1 2 (+ 1 2))) (newline)
+(pragma (verbose-typecheck #t))
 
-(display (format "%v" "foo")) (newline)
+(define (foo l base)
+  (number->string l base))
+
+(define x (lambda () 42))
+(define y (lambda () "foo"))
+
+(foo (type 1) 10)
+;;(foo y)
