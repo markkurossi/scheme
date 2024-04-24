@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -38,10 +38,16 @@ func (p *SexprParser) To() Point {
 func (p *SexprParser) SetTo(point Point) {
 }
 
-// Errorf returns an error with the location information.
+// Errorf implements Locator.Errorf.
 func (p *SexprParser) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 	return fmt.Errorf("%s: %s", p.From(), msg)
+}
+
+// Infof implements Locator.Infof.
+func (p *SexprParser) Infof(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	fmt.Printf("%s: %s", p.From(), msg)
 }
 
 // Next parses the next value.

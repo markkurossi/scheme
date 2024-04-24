@@ -139,6 +139,9 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 		}
 		length := len(list)
 
+		if isKeyword(v.Car(), KwPragma) {
+			return p.parsePragma(env, list)
+		}
 		if isKeyword(v.Car(), KwDefine) {
 			return p.parseDefine(env, list, 0, captures)
 		}
@@ -386,6 +389,21 @@ func (p *Parser) inlineBinary(env *Env, list []Pair) (bool, Operand) {
 	}
 
 	return true, op
+}
+
+func (p *Parser) parsePragma(env *Env, list []Pair) (AST, error) {
+	ast := &ASTPragma{
+		From: list[0],
+	}
+	for i := 1; i < len(list); i++ {
+		l := list[i]
+		values, ok := ListValues(l.Car())
+		if !ok {
+			return nil, l.Errorf("invalid pragma: %v", l)
+		}
+		ast.Directives = append(ast.Directives, values)
+	}
+	return ast, nil
 }
 
 func (p *Parser) parseDefine(env *Env, list []Pair, flags Flags,

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -112,6 +112,7 @@ const (
 	KwDelay
 	KwQuasiquote
 	KwSchemeApply
+	KwPragma
 )
 
 var keywords = map[Keyword]string{
@@ -137,6 +138,7 @@ var keywords = map[Keyword]string{
 	KwDelay:           "delay",
 	KwQuasiquote:      "quasiquote",
 	KwSchemeApply:     "scheme::apply",
+	KwPragma:          "pragma",
 }
 
 var keywordNames map[string]Keyword
@@ -169,10 +171,16 @@ func (p Point) To() Point {
 func (p Point) SetTo(point Point) {
 }
 
-// Errorf returns an error with the location information.
+// Errorf implements Locator.Errorf.
 func (p Point) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 	return fmt.Errorf("%s: %s", p, msg)
+}
+
+// Infof implements Locator.Info.
+func (p Point) Infof(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	fmt.Printf("%s: %s", p, msg)
 }
 
 // Locator interface a source location.
@@ -180,7 +188,10 @@ type Locator interface {
 	From() Point
 	To() Point
 	SetTo(p Point)
+	// Errorf returns an error with the location information.
 	Errorf(format string, a ...interface{}) error
+	// Infof prints information with the location information.
+	Infof(format string, a ...interface{})
 }
 
 var (

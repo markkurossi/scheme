@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -33,6 +33,8 @@ type Scheme struct {
 	verbose bool
 
 	hasRuntime bool
+
+	pragmaVerboseTypecheck bool
 
 	pc      int
 	sp      int

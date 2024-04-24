@@ -37,6 +37,7 @@ var (
 	_ AST = &ASTCase{}
 	_ AST = &ASTAnd{}
 	_ AST = &ASTOr{}
+	_ AST = &ASTPragma{}
 )
 
 // ASTSequence implements a (begin ...) sequence.
@@ -530,6 +531,19 @@ type ASTCall struct {
 	Tail     bool
 }
 
+func (ast *ASTCall) String() string {
+	str := "("
+	if ast.Inline {
+		str += ast.InlineOp.String()
+	} else {
+		str += fmt.Sprintf("%v", ast.Func)
+	}
+	for _, arg := range ast.Args {
+		str += fmt.Sprintf(" %v", arg)
+	}
+	return str + ")"
+}
+
 // Locator implements AST.Locator.
 func (ast *ASTCall) Locator() Locator {
 	return ast.From
@@ -655,8 +669,48 @@ func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 	}
 	if len(ast.Args) > ft.MaxArgs() {
 		return ast.From.Errorf("too many arguments: got %v, max %v",
-			len(ast.Args), ft.MinArgs())
+			len(ast.Args), ft.MaxArgs())
 	}
+	if lib.scm.pragmaVerboseTypecheck {
+		var argOfs []int
+		sig := fmt.Sprintf("(%v", ast.Func)
+		for _, arg := range ft.Args {
+			sig += " "
+			argOfs = append(argOfs, len(sig))
+			sig += fmt.Sprintf("%v", arg)
+		}
+		sig += ")"
+
+		ast.From.Infof("typecheck: calling (%s", ast.Func)
+		for _, arg := range ast.Args {
+			fmt.Printf(" %v", arg)
+		}
+		fmt.Println(")")
+
+		var prefix string
+		var prefixes []string
+		for idx, arg := range ast.Args {
+			for len(prefix) < argOfs[idx] {
+				prefix += " "
+			}
+			prefixes = append(prefixes, prefix)
+			fmt.Printf("%s%s\n", prefix, arg)
+			prefix += "|"
+		}
+		fmt.Println(prefix)
+		fmt.Println(sig)
+		fmt.Println(prefix)
+
+		for i := len(ast.Args) - 1; i >= 0; i-- {
+			arg := ast.Args[i]
+			at := arg.Type(ctx)
+			if i < len(ft.Args) {
+				fmt.Printf("%s%v IsKindOf %v: %v\n", prefixes[i], at,
+					ft.Args[i], at.IsKindOf(ft.Args[i]))
+			}
+		}
+	}
+
 	// Check argument types.
 	for idx, arg := range ast.Args {
 		at := arg.Type(ctx)
@@ -972,6 +1026,10 @@ func (ast *ASTLambda) Bytecode(lib *Library) error {
 type ASTConstant struct {
 	From  Locator
 	Value Value
+}
+
+func (ast *ASTConstant) String() string {
+	return ToString(ast.Value)
 }
 
 // Locator implements AST.Locator.
@@ -1604,6 +1662,62 @@ func (ast *ASTOr) Bytecode(lib *Library) error {
 
 	lib.addLabel(labelEnd)
 
+	return nil
+}
+
+// ASTPragma implements compiler pragmas.
+type ASTPragma struct {
+	From       Locator
+	Directives [][]Value
+}
+
+// Locator implements AST.Locator.
+func (ast *ASTPragma) Locator() Locator {
+	return ast.From
+}
+
+// Equal implements AST.Equal.
+func (ast *ASTPragma) Equal(o AST) bool {
+	return false
+}
+
+// Type implements AST.Type.
+func (ast *ASTPragma) Type(ctx types.Ctx) *types.Type {
+	return types.Unspecified
+}
+
+// Typecheck implements AST.Typecheck.
+func (ast *ASTPragma) Typecheck(lib *Library, round int) error {
+	if round > 0 {
+		return nil
+	}
+	for _, d := range ast.Directives {
+		if len(d) != 2 {
+			return ast.From.Errorf("invalid directive: %v", d)
+		}
+		id, ok := d[0].(*Identifier)
+		if !ok {
+			return ast.From.Errorf(
+				"invalid directive '%v': expected identifier", d[0])
+		}
+		switch id.Name {
+		case "verbose-typecheck":
+			v, ok := d[1].(Boolean)
+			if !ok {
+				return ast.From.Errorf("pragma %s: invalid argument: %v",
+					id, d[1])
+			}
+			lib.scm.pragmaVerboseTypecheck = bool(v)
+
+		default:
+			return ast.From.Errorf("unknown pragma '%s'", id.Name)
+		}
+	}
+	return nil
+}
+
+// Bytecode implements AST.Bytecode.
+func (ast *ASTPragma) Bytecode(lib *Library) error {
 	return nil
 }
 
