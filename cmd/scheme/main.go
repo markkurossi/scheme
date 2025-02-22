@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022, 2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -30,8 +30,6 @@ func main() {
 	memprofile := flag.String("memprofile", "",
 		"write memory profile to `file`")
 	flag.Parse()
-
-	fmt.Printf("Go Scheme Version 0.0\n")
 
 	if len(*cpuprofile) > 0 {
 		f, err := os.Create(*cpuprofile)
@@ -65,6 +63,7 @@ func main() {
 		}
 	}
 	if *replp || len(flag.Args()) == 0 {
+		fmt.Printf("Go Scheme Version 0.0\n")
 		repl(scm)
 	} else if len(*memprofile) > 0 {
 		f, err := os.Create(*memprofile)
