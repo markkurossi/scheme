@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -7,7 +7,6 @@
 package scheme
 
 import (
-	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -57,7 +56,7 @@ func TestParser(t *testing.T) {
 				t.Fatalf("Parser.Next failed: %v", err)
 			}
 			if !v.Equal(test.o) {
-				fmt.Printf("unexpected value %v, exptected %v\n", v, test.o)
+				t.Logf("unexpected value %v, exptected %v\n", v, test.o)
 			}
 		}
 	}

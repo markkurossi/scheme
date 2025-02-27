@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -13,8 +13,9 @@ import (
 )
 
 var typecheckTests = []struct {
-	name string
-	data string
+	name  string
+	data  string
+	fails bool
 }{
 	{
 		name: "non-lambda function",
@@ -32,6 +33,7 @@ var typecheckTests = []struct {
 (define (foo)
   (bar 1 2))
 `,
+		fails: infer,
 	},
 	{
 		name: "forward-reference argument count",
@@ -41,6 +43,7 @@ var typecheckTests = []struct {
 (define (bar a)
   (+ a 1))
 `,
+		fails: infer,
 	},
 	{
 		name: "redefine symbol",
@@ -50,6 +53,7 @@ var typecheckTests = []struct {
 (define (foo a)
   (+ a 1))
 `,
+		fails: infer,
 	},
 	{
 		name: "set invalid value",
@@ -57,6 +61,7 @@ var typecheckTests = []struct {
 (define num #e10)
 (set! num #t)
 `,
+		fails: infer,
 	},
 	{
 		name: "invalid fixed argument type",
@@ -108,9 +113,15 @@ func TestTypecheck(t *testing.T) {
 		}
 		scm.Params.Quiet = true
 
+		log := NewPort(&logger{
+			t: t,
+		})
+		scm.Stdout = log
+		scm.Stderr = log
+
 		_, err = scm.Eval(fmt.Sprintf("test-%d", idx),
 			strings.NewReader(test.data))
-		if err == nil {
+		if test.fails == (err != nil) {
 			t.Errorf("test-%d: error %s not detected", idx, test.name)
 		}
 	}

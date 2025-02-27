@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2024 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -746,11 +746,11 @@ func (scm *Scheme) VMWarningf(format string, a ...interface{}) {
 
 	source, line, err := scm.Location()
 	if err != nil || line == 0 || len(source) == 0 {
-		fmt.Printf("warning: %v\n", msg)
+		scm.Stderr.Printf("warning: %v\n", msg)
 	} else if line == 0 {
-		fmt.Printf("%s: warning: %v\n", source, msg)
+		scm.Stderr.Printf("%s: warning: %v\n", source, msg)
 	} else {
-		fmt.Printf("%s:%v: %s\n", source, line, msg)
+		scm.Stderr.Printf("%s:%v: %s\n", source, line, msg)
 	}
 }
 
