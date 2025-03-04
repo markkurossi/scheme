@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2024 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -118,7 +118,17 @@ func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 			}
 		}
 
-		ast, err := p.parseValue(env, Point{}, v, false, true)
+		var from Point
+		locator, ok := v.(Locator)
+		if ok {
+			from = locator.From()
+		} else {
+			id, ok := v.(*Identifier)
+			if ok {
+				from = id.Point
+			}
+		}
+		ast, err := p.parseValue(env, from, v, false, true)
 		if err != nil {
 			return nil, err
 		}
