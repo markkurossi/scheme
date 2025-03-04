@@ -15,6 +15,20 @@ type logger struct {
 	line []byte
 }
 
+func newTestScheme(t *testing.T) *Scheme {
+	scm, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	log := NewPort(&logger{
+		t: t,
+	})
+	scm.Stdout = log
+	scm.Stderr = log
+
+	return scm
+}
+
 // Write implements io.Writer.
 func (l *logger) Write(p []byte) (n int, err error) {
 	for _, b := range p {
@@ -30,15 +44,7 @@ func (l *logger) Write(p []byte) (n int, err error) {
 }
 
 func TestTestsuite(t *testing.T) {
-	scm, err := New()
-	if err != nil {
-		t.Fatalf("failed to create scheme: %v", err)
-	}
-	log := NewPort(&logger{
-		t: t,
-	})
-	scm.Stdout = log
-	scm.Stderr = log
+	scm := newTestScheme(t)
 
 	v, err := scm.EvalFile("testdata/test.scm")
 	if err != nil {
