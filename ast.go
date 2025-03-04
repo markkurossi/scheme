@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023-2024 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -17,6 +17,7 @@ type AST interface {
 	Locator() Locator
 	Equal(o AST) bool
 	Type(ctx types.Ctx) *types.Type
+	Infer(env *InferEnv) (InferSubst, *types.Type, error)
 	Typecheck(lib *Library, round int) error
 	Bytecode(lib *Library) error
 }

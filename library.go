@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -145,14 +145,23 @@ func (code Code) Print(w io.Writer) {
 	}
 }
 
+const infer = false
+
 // Compile compiles the library into bytecode.
 func (lib *Library) Compile() (Value, error) {
-	lib.recheck = true
-	for round := 0; lib.recheck; round++ {
-		lib.recheck = false
-		err := lib.Body.Typecheck(lib, round)
+	if infer {
+		_, _, err := lib.Body.Infer(NewInferEnv(lib.scm))
 		if err != nil {
 			return nil, err
+		}
+	} else {
+		lib.recheck = true
+		for round := 0; lib.recheck; round++ {
+			lib.recheck = false
+			err := lib.Body.Typecheck(lib, round)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
