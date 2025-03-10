@@ -256,6 +256,16 @@ type ASTLetBinding struct {
 	Init    AST
 }
 
+// Name returns the variable name of the let binding.
+func (b *ASTLetBinding) Name() string {
+	for k, v := range b.Binding.Frame.Bindings {
+		if v == b.Binding {
+			return k
+		}
+	}
+	panic(fmt.Sprintf("let binding's name not found"))
+}
+
 // Locator implements AST.Locator.
 func (ast *ASTLet) Locator() Locator {
 	return ast.From

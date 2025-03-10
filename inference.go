@@ -18,6 +18,7 @@ type InferEnv struct {
 	bindings map[string]*types.Type
 }
 
+// NewInferEnv creates a new inference environment.
 func NewInferEnv(scm *Scheme) *InferEnv {
 	return &InferEnv{
 		scm:      scm,
@@ -25,6 +26,7 @@ func NewInferEnv(scm *Scheme) *InferEnv {
 	}
 }
 
+// Lookup find the name's type from the environment.
 func (env *InferEnv) Lookup(name string) *types.Type {
 	t, ok := env.bindings[name]
 	if ok {
@@ -33,7 +35,12 @@ func (env *InferEnv) Lookup(name string) *types.Type {
 	return env.scm.Intern(name).GlobalType
 }
 
-// Subst implements type substitutions.
+// Generalize generalizes the type into a type scheme.
+func (env *InferEnv) Generalize(t *types.Type) *types.Type {
+	return t
+}
+
+// InferSubst implements type substitutions.
 type InferSubst map[int]*types.Type
 
 // Apply applies substitution for the type and returns the result
@@ -53,6 +60,16 @@ func (s InferSubst) Apply(t *types.Type) *types.Type {
 	return t
 }
 
+// ApplyEnv applies substitutions for the environment and returns a
+// new environment.
+func (s InferSubst) ApplyEnv(env *InferEnv) *InferEnv {
+	result := NewInferEnv(env.scm)
+	for k, v := range env.bindings {
+		result.bindings[k] = s.Apply(v)
+	}
+	return result
+}
+
 // Compose composes type substitutions s and s2.
 func (s InferSubst) Compose(s2 InferSubst) InferSubst {
 	result := make(InferSubst)
@@ -63,16 +80,6 @@ func (s InferSubst) Compose(s2 InferSubst) InferSubst {
 		if _, ok := result[id]; !ok {
 			result[id] = t
 		}
-	}
-	return result
-}
-
-// ApplyEnv applies substitutions for the environment and returns a
-// new environment.
-func (s InferSubst) ApplyEnv(env *InferEnv) *InferEnv {
-	result := NewInferEnv(env.scm)
-	for k, v := range env.bindings {
-		result.bindings[k] = s.Apply(v)
 	}
 	return result
 }
@@ -120,7 +127,36 @@ func (ast *ASTSet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTLet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	return nil, nil, fmt.Errorf("ASTLet.Infer not implemented yet")
+
+	bodyEnv := NewInferEnv(env.scm)
+	var subst InferSubst
+	var err error
+
+	for _, b := range ast.Bindings {
+		var type1 *types.Type
+		subst, type1, err = b.Init.Infer(env)
+		if err != nil {
+			return nil, nil, err
+		}
+		env1 := subst.ApplyEnv(env)
+
+		t := env1.Generalize(type1)
+
+		bodyEnv.bindings[b.Name()] = t
+		bodyEnv = subst.ApplyEnv(bodyEnv)
+	}
+
+	var bodyType *types.Type
+
+	for _, body := range ast.Body {
+		var s InferSubst
+		s, bodyType, err = body.Infer(bodyEnv)
+		if err != nil {
+			return nil, nil, err
+		}
+		subst = subst.Compose(s)
+	}
+	return subst, bodyType, nil
 }
 
 // Infer implements AST.Infer.
