@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/markkurossi/scheme/pp"
 	"github.com/markkurossi/scheme/types"
 )
 
@@ -143,6 +144,18 @@ func (code Code) Print(w io.Writer) {
 	for idx, c := range code {
 		fmt.Fprintf(w, "%v\t%s\n", idx, c)
 	}
+}
+
+func (lib *Library) PrettyPrint(w pp.Writer) error {
+	_, _, err := lib.Body.Infer(NewInferEnv(lib.scm))
+	if err != nil {
+		return err
+	}
+	w.Header()
+	lib.Body.PP(w)
+	w.Trailer()
+
+	return w.Error()
 }
 
 const infer = false

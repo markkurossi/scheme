@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/markkurossi/scheme"
+	"github.com/markkurossi/scheme/pp"
 	"github.com/peterh/liner"
 )
 
@@ -29,6 +30,7 @@ func main() {
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
 	memprofile := flag.String("memprofile", "",
 		"write memory profile to `file`")
+	pp := flag.String("pp", "", "pretty-print scheme")
 	flag.Parse()
 
 	if len(*cpuprofile) > 0 {
@@ -55,6 +57,8 @@ func main() {
 	for _, arg := range flag.Args() {
 		if *bc {
 			err = bytecode(scm, arg)
+		} else if len(*pp) > 0 {
+			err = prettyPrint(scm, *pp, arg)
 		} else {
 			_, err = scm.EvalFile(arg)
 		}
@@ -113,6 +117,43 @@ func bytecode(scm *scheme.Scheme, file string) error {
 
 	lambda.Impl.Code.Print(out)
 	return nil
+}
+
+func prettyPrint(scm *scheme.Scheme, format string, file string) error {
+	in, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	var outName string
+	if strings.HasSuffix(file, ".scm") {
+		outName = file[:len(file)-4]
+	} else {
+		outName = file
+	}
+	outName += "." + format
+	out, err := os.Create(outName)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	var w pp.Writer
+	switch format {
+	case "html":
+		w = pp.NewHTML(out, file)
+	default:
+		return fmt.Errorf("unknown pretty-print format '%s'", format)
+	}
+
+	c := scheme.NewParser(scm)
+
+	library, err := c.Parse(file, in)
+	if err != nil {
+		return err
+	}
+	return library.PrettyPrint(w)
 }
 
 func repl(scm *scheme.Scheme) {

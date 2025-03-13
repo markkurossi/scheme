@@ -9,6 +9,7 @@ package scheme
 import (
 	"fmt"
 
+	"github.com/markkurossi/scheme/pp"
 	"github.com/markkurossi/scheme/types"
 )
 
@@ -20,6 +21,7 @@ type AST interface {
 	Infer(env *InferEnv) (InferSubst, *types.Type, error)
 	Typecheck(lib *Library, round int) error
 	Bytecode(lib *Library) error
+	PP(w pp.Writer)
 }
 
 var (
