@@ -146,6 +146,7 @@ func (code Code) Print(w io.Writer) {
 	}
 }
 
+// PrettyPrint formats the library Scheme code into the pp.Writer.
 func (lib *Library) PrettyPrint(w pp.Writer) error {
 	_, _, err := lib.Body.Infer(NewInferEnv(lib.scm))
 	if err != nil {

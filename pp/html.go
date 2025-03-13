@@ -12,7 +12,7 @@ import (
 	"io"
 )
 
-// HMTL implements HTML pretty-printing.
+// HTML implements HTML pretty-printing.
 type HTML struct {
 	err    error
 	w      io.Writer
@@ -21,6 +21,7 @@ type HTML struct {
 	Name   string
 }
 
+// NewHTML creates a new HTML pretty-print writer.
 func NewHTML(w io.Writer, name string) *HTML {
 	return &HTML{
 		w:    w,
