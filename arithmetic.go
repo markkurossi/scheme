@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -147,7 +147,7 @@ func (v *BigInt) String() string {
 
 // Scheme implements Value.Scheme.
 func (v *BigInt) Scheme() string {
-	return v.String()
+	return "#e" + v.String()
 }
 
 // Eq implements Value.Eq.
