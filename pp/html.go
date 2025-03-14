@@ -48,7 +48,6 @@ func (w *HTML) Header() {
       }
       .type {
           font-size: 70%%;
-          font-weight: bold;
           vertical-align: top;
           border-radius: 5px;
           color: rgb(34, 136, 51);
