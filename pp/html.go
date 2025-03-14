@@ -112,9 +112,8 @@ func (w *HTML) Keyword(keyword string) {
 		html.EscapeString(keyword)))
 }
 
-// Typed implements Writer.Typed.
-func (w *HTML) Typed(value, t string) {
-	w.output(html.EscapeString(value))
+// Type implements Writer.Type.
+func (w *HTML) Type(t string) {
 	if len(t) == 0 {
 		return
 	}

@@ -146,17 +146,15 @@ func (ast *ASTLet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		bodyEnv = subst.ApplyEnv(bodyEnv)
 	}
 
-	var bodyType *types.Type
-
 	for _, body := range ast.Body {
 		var s InferSubst
-		s, bodyType, err = body.Infer(bodyEnv)
+		s, ast.t, err = body.Infer(bodyEnv)
 		if err != nil {
 			return nil, nil, err
 		}
 		subst = subst.Compose(s)
 	}
-	return subst, bodyType, nil
+	return subst, ast.t, nil
 }
 
 // Infer implements AST.Infer.
@@ -197,12 +195,12 @@ func (ast *ASTConstant) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 // Infer implements AST.Infer.
 func (ast *ASTIdentifier) Infer(env *InferEnv) (
 	InferSubst, *types.Type, error) {
-	t := env.Lookup(ast.Name)
-	if t.IsA(types.Unspecified) {
+	ast.t = env.Lookup(ast.Name)
+	if ast.t.IsA(types.Unspecified) {
 		fmt.Printf("ASTIdentifier: %s\n", ast.From)
 		return nil, nil, ast.From.Errorf("undefined symbol '%s'", ast.Name)
 	}
-	return make(InferSubst), t, nil
+	return make(InferSubst), ast.t, nil
 }
 
 // Infer implements AST.Infer.

@@ -17,6 +17,7 @@ import (
 type AST interface {
 	Locator() Locator
 	Equal(o AST) bool
+	Type() *types.Type
 	TypeXXX(ctx types.Ctx) *types.Type
 	Infer(env *InferEnv) (InferSubst, *types.Type, error)
 	Typecheck(lib *Library, round int) error
@@ -76,6 +77,11 @@ func (ast *ASTSequence) Equal(o AST) bool {
 	return true
 }
 
+// Type implements AST.Type.
+func (ast *ASTSequence) Type() *types.Type {
+	return types.Unspecified
+}
+
 // TypeXXX implements AST.TypeXXX.
 func (ast *ASTSequence) TypeXXX(ctx types.Ctx) *types.Type {
 	if len(ast.Items) == 0 {
@@ -128,6 +134,11 @@ func (ast *ASTDefine) Equal(o AST) bool {
 	return ast.Name.Name == oast.Name.Name &&
 		ast.Flags == oast.Flags &&
 		ast.Value.Equal(oast.Value)
+}
+
+// Type implements AST.Type.
+func (ast *ASTDefine) Type() *types.Type {
+	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -199,6 +210,11 @@ func (ast *ASTSet) Equal(o AST) bool {
 	return ast.Name == oast.Name && ast.Value.Equal(oast.Value)
 }
 
+// Type implements AST.Type.
+func (ast *ASTSet) Type() *types.Type {
+	return types.Unspecified
+}
+
 // TypeXXX implements AST.TypeXXX.
 func (ast *ASTSet) TypeXXX(ctx types.Ctx) *types.Type {
 	return ast.Value.TypeXXX(ctx)
@@ -249,6 +265,7 @@ type ASTLet struct {
 	Tail     bool
 	Bindings []*ASTLetBinding
 	Body     []AST
+	t        *types.Type
 }
 
 // ASTLetBinding implements a let binding.
@@ -296,6 +313,14 @@ func (ast *ASTLet) Equal(o AST) bool {
 		}
 	}
 	return true
+}
+
+// Type implements AST.Type.
+func (ast *ASTLet) Type() *types.Type {
+	if ast.t == nil {
+		return types.Unspecified
+	}
+	return ast.t
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -397,6 +422,11 @@ func (ast *ASTIf) Equal(o AST) bool {
 	return true
 }
 
+// Type implements AST.Type.
+func (ast *ASTIf) Type() *types.Type {
+	return types.Unspecified
+}
+
 // TypeXXX implements AST.TypeXXX.
 func (ast *ASTIf) TypeXXX(ctx types.Ctx) *types.Type {
 	if ast.False == nil {
@@ -488,6 +518,11 @@ func (ast *ASTApply) Equal(o AST) bool {
 	return ast.Lambda.Equal(oast.Lambda) &&
 		ast.Args.Equal(oast.Args) &&
 		ast.Tail == oast.Tail
+}
+
+// Type implements AST.Type.
+func (ast *ASTApply) Type() *types.Type {
+	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -627,6 +662,11 @@ func inlineParametrizerCastNumber(params []*types.Type) *types.Type {
 
 func inlineParametrizerCastSymbol(params []*types.Type) *types.Type {
 	return types.Symbol
+}
+
+// Type implements AST.Type.
+func (ast *ASTCall) Type() *types.Type {
+	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -830,6 +870,11 @@ var inlineUnaryTypes = map[Operand]inlineParametrizer{
 	OpCastSymbol: inlineParametrizerCastSymbol,
 }
 
+// Type implements AST.Type.
+func (ast *ASTCallUnary) Type() *types.Type {
+	return types.Unspecified
+}
+
 // TypeXXX implements AST.TypeXXX.
 func (ast *ASTCallUnary) TypeXXX(ctx types.Ctx) *types.Type {
 	params := []*types.Type{
@@ -923,6 +968,11 @@ func (ast *ASTLambda) Equal(o AST) bool {
 		}
 	}
 	return ast.Captures == oast.Captures && ast.Flags == oast.Flags
+}
+
+// Type implements AST.Type.
+func (ast *ASTLambda) Type() *types.Type {
+	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -1059,6 +1109,14 @@ func (ast *ASTConstant) Equal(o AST) bool {
 	return ast.Value.Equal(oast.Value)
 }
 
+// Type implements AST.Type.
+func (ast *ASTConstant) Type() *types.Type {
+	if ast.Value == nil {
+		return types.Unspecified
+	}
+	return ast.Value.Type()
+}
+
 // TypeXXX implements AST.TypeXXX.
 func (ast *ASTConstant) TypeXXX(ctx types.Ctx) *types.Type {
 	if ast.Value == nil {
@@ -1085,6 +1143,7 @@ type ASTIdentifier struct {
 	Binding *EnvBinding
 	Global  *Identifier
 	Init    AST
+	t       *types.Type
 }
 
 func (ast *ASTIdentifier) String() string {
@@ -1112,6 +1171,14 @@ func (ast *ASTIdentifier) Equal(o AST) bool {
 		return false
 	}
 	return true
+}
+
+// Type implements AST.Type.
+func (ast *ASTIdentifier) Type() *types.Type {
+	if ast.t == nil {
+		return types.Unspecified
+	}
+	return ast.t
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -1196,6 +1263,11 @@ func (ast *ASTCond) Equal(o AST) bool {
 		}
 	}
 	return ast.Tail == oast.Tail && ast.Captures == oast.Captures
+}
+
+// Type implements AST.Type.
+func (ast *ASTCond) Type() *types.Type {
+	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -1390,6 +1462,11 @@ func (ast *ASTCase) Equal(o AST) bool {
 		ast.Captures == oast.Captures
 }
 
+// Type implements AST.Type.
+func (ast *ASTCase) Type() *types.Type {
+	return types.Unspecified
+}
+
 // TypeXXX implements AST.TypeXXX.
 func (ast *ASTCase) TypeXXX(ctx types.Ctx) *types.Type {
 	var t *types.Type
@@ -1547,6 +1624,11 @@ func (ast *ASTAnd) Equal(o AST) bool {
 	return true
 }
 
+// Type implements AST.Type.
+func (ast *ASTAnd) Type() *types.Type {
+	return types.Unspecified
+}
+
 // TypeXXX implements AST.TypeXXX.
 func (ast *ASTAnd) TypeXXX(ctx types.Ctx) *types.Type {
 	if len(ast.Exprs) == 0 {
@@ -1623,6 +1705,11 @@ func (ast *ASTOr) Equal(o AST) bool {
 	return true
 }
 
+// Type implements AST.Type.
+func (ast *ASTOr) Type() *types.Type {
+	return types.Unspecified
+}
+
 // TypeXXX implements AST.TypeXXX.
 func (ast *ASTOr) TypeXXX(ctx types.Ctx) *types.Type {
 	if len(ast.Exprs) == 0 {
@@ -1692,6 +1779,11 @@ func (ast *ASTPragma) Locator() Locator {
 // Equal implements AST.Equal.
 func (ast *ASTPragma) Equal(o AST) bool {
 	return false
+}
+
+// Type implements AST.Type.
+func (ast *ASTPragma) Type() *types.Type {
+	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.

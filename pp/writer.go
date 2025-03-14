@@ -31,8 +31,8 @@ type Writer interface {
 	// Keyword prints a Scheme keyword.
 	Keyword(keyword string)
 
-	// Typed prints a type value.
-	Typed(value, t string)
+	// Type prints a type.
+	Type(t string)
 
 	// Error returns an error if any of the methods failed during the
 	// pretty-printing.

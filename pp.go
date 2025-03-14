@@ -64,7 +64,9 @@ func (ast *ASTLet) PP(w pp.Writer) {
 	for idx, b := range ast.Body {
 		b.PP(w)
 		if idx+1 >= len(ast.Body) {
-			w.Println(")")
+			w.Printf(")")
+			w.Type(ast.Type().String())
+			w.Println()
 		} else {
 			w.Println()
 		}
@@ -94,16 +96,14 @@ func (ast *ASTLambda) PP(w pp.Writer) {
 
 // PP implements AST.PP.
 func (ast *ASTConstant) PP(w pp.Writer) {
-	var t string
-	if ast.Value != nil {
-		t = ast.Value.Type().String()
-	}
-	w.Typed(ToScheme(ast.Value), t)
+	w.Printf("%s", ToScheme(ast.Value))
+	w.Type(ast.Type().String())
 }
 
 // PP implements AST.PP.
 func (ast *ASTIdentifier) PP(w pp.Writer) {
-	w.Typed(ast.Name, "?")
+	w.Printf("%s", ast.Name)
+	w.Type(ast.Type().String())
 }
 
 // PP implements AST.PP.
