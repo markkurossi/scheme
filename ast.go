@@ -17,7 +17,7 @@ import (
 type AST interface {
 	Locator() Locator
 	Equal(o AST) bool
-	Type(ctx types.Ctx) *types.Type
+	TypeXXX(ctx types.Ctx) *types.Type
 	Infer(env *InferEnv) (InferSubst, *types.Type, error)
 	Typecheck(lib *Library, round int) error
 	Bytecode(lib *Library) error
@@ -76,12 +76,12 @@ func (ast *ASTSequence) Equal(o AST) bool {
 	return true
 }
 
-// Type implements AST.Type.
-func (ast *ASTSequence) Type(ctx types.Ctx) *types.Type {
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTSequence) TypeXXX(ctx types.Ctx) *types.Type {
 	if len(ast.Items) == 0 {
 		return types.Unspecified
 	}
-	return ast.Items[len(ast.Items)-1].Type(ctx)
+	return ast.Items[len(ast.Items)-1].TypeXXX(ctx)
 }
 
 // Typecheck implements AST.Typecheck.
@@ -130,9 +130,9 @@ func (ast *ASTDefine) Equal(o AST) bool {
 		ast.Value.Equal(oast.Value)
 }
 
-// Type implements AST.Type.
-func (ast *ASTDefine) Type(ctx types.Ctx) *types.Type {
-	return ast.Value.Type(ctx)
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTDefine) TypeXXX(ctx types.Ctx) *types.Type {
+	return ast.Value.TypeXXX(ctx)
 }
 
 // Typecheck implements AST.Typecheck.
@@ -144,7 +144,7 @@ func (ast *ASTDefine) Typecheck(lib *Library, round int) error {
 
 	sym := lib.scm.Intern(ast.Name.Name)
 	ctx := make(types.Ctx)
-	nt := ast.Value.Type(ctx)
+	nt := ast.Value.TypeXXX(ctx)
 
 	if round == 0 {
 		if !sym.GlobalType.IsA(types.Unspecified) {
@@ -199,15 +199,15 @@ func (ast *ASTSet) Equal(o AST) bool {
 	return ast.Name == oast.Name && ast.Value.Equal(oast.Value)
 }
 
-// Type implements AST.Type.
-func (ast *ASTSet) Type(ctx types.Ctx) *types.Type {
-	return ast.Value.Type(ctx)
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTSet) TypeXXX(ctx types.Ctx) *types.Type {
+	return ast.Value.TypeXXX(ctx)
 }
 
 // Typecheck implements AST.Typecheck.
 func (ast *ASTSet) Typecheck(lib *Library, round int) error {
 	ctx := make(types.Ctx)
-	vtype := ast.Value.Type(ctx)
+	vtype := ast.Value.TypeXXX(ctx)
 
 	if ast.Binding != nil {
 		// let-variables can be assigned with different value types.
@@ -298,9 +298,9 @@ func (ast *ASTLet) Equal(o AST) bool {
 	return true
 }
 
-// Type implements AST.Type.
-func (ast *ASTLet) Type(ctx types.Ctx) *types.Type {
-	return ast.Body[len(ast.Body)-1].Type(ctx)
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTLet) TypeXXX(ctx types.Ctx) *types.Type {
+	return ast.Body[len(ast.Body)-1].TypeXXX(ctx)
 }
 
 // Typecheck implements AST.Typecheck.
@@ -312,7 +312,7 @@ func (ast *ASTLet) Typecheck(lib *Library, round int) error {
 		if err != nil {
 			return err
 		}
-		nt := b.Init.Type(ctx)
+		nt := b.Init.TypeXXX(ctx)
 		if round == 0 {
 			b.Binding.Type = nt
 			if ast.Kind == KwLetrec {
@@ -397,12 +397,12 @@ func (ast *ASTIf) Equal(o AST) bool {
 	return true
 }
 
-// Type implements AST.Type.
-func (ast *ASTIf) Type(ctx types.Ctx) *types.Type {
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTIf) TypeXXX(ctx types.Ctx) *types.Type {
 	if ast.False == nil {
-		return types.Unify(ast.Cond.Type(ctx), ast.True.Type(ctx))
+		return types.Unify(ast.Cond.TypeXXX(ctx), ast.True.TypeXXX(ctx))
 	}
-	return types.Unify(ast.True.Type(ctx), ast.False.Type(ctx))
+	return types.Unify(ast.True.TypeXXX(ctx), ast.False.TypeXXX(ctx))
 }
 
 // Typecheck implements AST.Typecheck.
@@ -490,9 +490,9 @@ func (ast *ASTApply) Equal(o AST) bool {
 		ast.Tail == oast.Tail
 }
 
-// Type implements AST.Type.
-func (ast *ASTApply) Type(ctx types.Ctx) *types.Type {
-	t := ast.Lambda.Type(ctx)
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTApply) TypeXXX(ctx types.Ctx) *types.Type {
+	t := ast.Lambda.TypeXXX(ctx)
 	if t.Enum != types.EnumLambda {
 		return types.Unspecified
 	}
@@ -629,11 +629,11 @@ func inlineParametrizerCastSymbol(params []*types.Type) *types.Type {
 	return types.Symbol
 }
 
-// Type implements AST.Type.
-func (ast *ASTCall) Type(ctx types.Ctx) *types.Type {
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTCall) TypeXXX(ctx types.Ctx) *types.Type {
 	var params []*types.Type
 	for _, arg := range ast.Args {
-		params = append(params, arg.Type(ctx))
+		params = append(params, arg.TypeXXX(ctx))
 	}
 
 	if ast.Inline {
@@ -643,7 +643,7 @@ func (ast *ASTCall) Type(ctx types.Ctx) *types.Type {
 		}
 		return parametrizer(params)
 	}
-	t := ast.Func.Type(ctx)
+	t := ast.Func.TypeXXX(ctx)
 	if t.Enum != types.EnumLambda {
 		return types.Unspecified
 	}
@@ -668,7 +668,7 @@ func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 		if err != nil {
 			return err
 		}
-		ft = ast.Func.Type(ctx)
+		ft = ast.Func.TypeXXX(ctx)
 	}
 	if ft.IsA(types.Unspecified) || ft.IsA(types.Any) {
 		return nil
@@ -716,7 +716,7 @@ func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 
 		for i := len(ast.Args) - 1; i >= 0; i-- {
 			arg := ast.Args[i]
-			at := arg.Type(ctx)
+			at := arg.TypeXXX(ctx)
 			if i < len(ft.Args) {
 				fmt.Printf("%s%v IsKindOf %v: %v\n", prefixes[i], at,
 					ft.Args[i], at.IsKindOf(ft.Args[i]))
@@ -726,7 +726,7 @@ func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 
 	// Check argument types.
 	for idx, arg := range ast.Args {
-		at := arg.Type(ctx)
+		at := arg.TypeXXX(ctx)
 		if idx < len(ft.Args) {
 			if !at.IsKindOf(ft.Args[idx]) {
 				return arg.Locator().Errorf("invalid argument %v, expected %v",
@@ -830,10 +830,10 @@ var inlineUnaryTypes = map[Operand]inlineParametrizer{
 	OpCastSymbol: inlineParametrizerCastSymbol,
 }
 
-// Type implements AST.Type.
-func (ast *ASTCallUnary) Type(ctx types.Ctx) *types.Type {
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTCallUnary) TypeXXX(ctx types.Ctx) *types.Type {
 	params := []*types.Type{
-		ast.Arg.Type(ctx),
+		ast.Arg.TypeXXX(ctx),
 		types.InexactInteger,
 	}
 
@@ -869,7 +869,7 @@ func (ast *ASTCallUnary) Typecheck(lib *Library, round int) error {
 	if !ok {
 		panic(fmt.Sprintf("unknown inline unary operand: %v", ast.Op))
 	}
-	t := ast.Arg.Type(ctx)
+	t := ast.Arg.TypeXXX(ctx)
 	if !t.IsKindOf(at) {
 		return ast.From.Errorf("invalid argument %v, expected %v", t, at)
 	}
@@ -925,11 +925,11 @@ func (ast *ASTLambda) Equal(o AST) bool {
 	return ast.Captures == oast.Captures && ast.Flags == oast.Flags
 }
 
-// Type implements AST.Type.
-func (ast *ASTLambda) Type(ctx types.Ctx) *types.Type {
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTLambda) TypeXXX(ctx types.Ctx) *types.Type {
 	t := &types.Type{
 		Enum:         types.EnumLambda,
-		Return:       ast.Body[len(ast.Body)-1].Type(ctx),
+		Return:       ast.Body[len(ast.Body)-1].TypeXXX(ctx),
 		Parametrizer: ast,
 	}
 	for _, arg := range ast.Args.Fixed {
@@ -975,7 +975,7 @@ func (ast *ASTLambda) Parametrize(ctx types.Ctx,
 
 	result := types.Unspecified
 	for _, a := range ast.Body {
-		result = a.Type(ctx)
+		result = a.TypeXXX(ctx)
 	}
 
 	return result
@@ -995,7 +995,7 @@ func (ast *ASTLambda) Typecheck(lib *Library, round int) error {
 
 	ctx := make(types.Ctx)
 	sym := lib.scm.Intern(ast.Name.Name)
-	nt := ast.Type(ctx)
+	nt := ast.TypeXXX(ctx)
 
 	if round == 0 {
 		if !sym.GlobalType.IsA(types.Unspecified) {
@@ -1059,8 +1059,8 @@ func (ast *ASTConstant) Equal(o AST) bool {
 	return ast.Value.Equal(oast.Value)
 }
 
-// Type implements AST.Type.
-func (ast *ASTConstant) Type(ctx types.Ctx) *types.Type {
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTConstant) TypeXXX(ctx types.Ctx) *types.Type {
 	if ast.Value == nil {
 		return types.Nil
 	}
@@ -1114,8 +1114,8 @@ func (ast *ASTIdentifier) Equal(o AST) bool {
 	return true
 }
 
-// Type implements AST.Type.
-func (ast *ASTIdentifier) Type(ctx types.Ctx) *types.Type {
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTIdentifier) TypeXXX(ctx types.Ctx) *types.Type {
 	if ast.Binding != nil {
 		return ast.Binding.Type
 	}
@@ -1198,8 +1198,8 @@ func (ast *ASTCond) Equal(o AST) bool {
 	return ast.Tail == oast.Tail && ast.Captures == oast.Captures
 }
 
-// Type implements AST.Type.
-func (ast *ASTCond) Type(ctx types.Ctx) *types.Type {
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTCond) TypeXXX(ctx types.Ctx) *types.Type {
 	var t *types.Type
 	var hadDefault bool
 
@@ -1211,9 +1211,9 @@ func (ast *ASTCond) Type(ctx types.Ctx) *types.Type {
 			if hadDefault {
 				return types.Boolean
 			}
-			return choice.Cond.Type(ctx)
+			return choice.Cond.TypeXXX(ctx)
 		}
-		t = types.Unify(t, choice.Exprs[len(choice.Exprs)-1].Type(ctx))
+		t = types.Unify(t, choice.Exprs[len(choice.Exprs)-1].TypeXXX(ctx))
 	}
 	if !hadDefault {
 		// No default so value of the last cond (false) is one valid
@@ -1390,8 +1390,8 @@ func (ast *ASTCase) Equal(o AST) bool {
 		ast.Captures == oast.Captures
 }
 
-// Type implements AST.Type.
-func (ast *ASTCase) Type(ctx types.Ctx) *types.Type {
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTCase) TypeXXX(ctx types.Ctx) *types.Type {
 	var t *types.Type
 	var hadDefault bool
 
@@ -1400,7 +1400,7 @@ func (ast *ASTCase) Type(ctx types.Ctx) *types.Type {
 		if len(choice.Datums) == 0 {
 			hadDefault = true
 		}
-		t = types.Unify(t, choice.Exprs[len(choice.Exprs)-1].Type(ctx))
+		t = types.Unify(t, choice.Exprs[len(choice.Exprs)-1].TypeXXX(ctx))
 	}
 	if !hadDefault {
 		// No default so value of the last eqv? (false) is one valid
@@ -1547,14 +1547,14 @@ func (ast *ASTAnd) Equal(o AST) bool {
 	return true
 }
 
-// Type implements AST.Type.
-func (ast *ASTAnd) Type(ctx types.Ctx) *types.Type {
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTAnd) TypeXXX(ctx types.Ctx) *types.Type {
 	if len(ast.Exprs) == 0 {
 		return types.Boolean
 	}
 	var t *types.Type
 	for _, expr := range ast.Exprs {
-		t = types.Unify(t, expr.Type(ctx))
+		t = types.Unify(t, expr.TypeXXX(ctx))
 	}
 	return t
 }
@@ -1623,14 +1623,14 @@ func (ast *ASTOr) Equal(o AST) bool {
 	return true
 }
 
-// Type implements AST.Type.
-func (ast *ASTOr) Type(ctx types.Ctx) *types.Type {
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTOr) TypeXXX(ctx types.Ctx) *types.Type {
 	if len(ast.Exprs) == 0 {
 		return types.Boolean
 	}
 	var t *types.Type
 	for _, expr := range ast.Exprs {
-		t = types.Unify(t, expr.Type(ctx))
+		t = types.Unify(t, expr.TypeXXX(ctx))
 		if t != nil && !t.IsA(types.Boolean) {
 			// The first non-boolean value is the value of or.
 			return t
@@ -1694,8 +1694,8 @@ func (ast *ASTPragma) Equal(o AST) bool {
 	return false
 }
 
-// Type implements AST.Type.
-func (ast *ASTPragma) Type(ctx types.Ctx) *types.Type {
+// TypeXXX implements AST.TypeXXX.
+func (ast *ASTPragma) TypeXXX(ctx types.Ctx) *types.Type {
 	return types.Unspecified
 }
 

@@ -245,7 +245,7 @@ func (lib *Library) Compile() (Value, error) {
 			instr.V = &LambdaImpl{
 				Name:     name,
 				Args:     def.Args,
-				Return:   def.Body[len(def.Body)-1].Type(ctx),
+				Return:   def.Body[len(def.Body)-1].TypeXXX(ctx),
 				Captures: def.Captures,
 				Source:   lib.Source,
 				Code:     lib.Init[def.Start:def.End],
