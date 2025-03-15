@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023-2024 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -52,7 +52,7 @@ var enumNames = map[Enum]string{
 	EnumExactFloat:     "#efloat",
 	EnumInexactFloat:   "float",
 	EnumPort:           "port",
-	EnumLambda:         "lambda",
+	EnumLambda:         "\u03bb",
 	EnumPair:           "pair",
 	EnumVector:         "vector",
 }
