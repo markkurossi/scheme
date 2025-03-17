@@ -12,13 +12,25 @@ import (
 
 // PP implements AST.PP.
 func (ast *ASTSequence) PP(w pp.Writer) {
-	for _, item := range ast.Items {
+	for idx, item := range ast.Items {
+		if idx > 0 {
+			w.Println()
+		}
 		item.PP(w)
+		w.Println()
 	}
 }
 
 // PP implements AST.PP.
 func (ast *ASTDefine) PP(w pp.Writer) {
+	w.Printf("(")
+	w.Keyword("define")
+	w.Printf(" ")
+	w.Name(ast.Name.String())
+	w.Printf(" ")
+	ast.Value.PP(w)
+	w.Printf(")")
+	w.Type(ast.Type().String())
 }
 
 // PP implements AST.PP.
@@ -27,6 +39,9 @@ func (ast *ASTSet) PP(w pp.Writer) {
 
 // PP implements AST.PP.
 func (ast *ASTLet) PP(w pp.Writer) {
+	w.Push()
+	defer w.Pop()
+
 	w.Printf("(")
 	w.Keyword(ast.Kind.String())
 	w.Printf(" (")
@@ -66,9 +81,6 @@ func (ast *ASTLet) PP(w pp.Writer) {
 		if idx+1 >= len(ast.Body) {
 			w.Printf(")")
 			w.Type(ast.Type().String())
-			w.Println()
-		} else {
-			w.Println()
 		}
 	}
 	w.Indent(-2)
@@ -92,6 +104,40 @@ func (ast *ASTCallUnary) PP(w pp.Writer) {
 
 // PP implements AST.PP.
 func (ast *ASTLambda) PP(w pp.Writer) {
+	w.Push()
+	defer w.Pop()
+
+	w.Printf("(")
+	if ast.Define {
+		w.Keyword("define")
+		w.Printf(" (")
+		w.Name(ast.Name.String())
+		w.Printf(" ")
+	} else {
+		w.Keyword("lambda")
+		w.Printf(" (")
+	}
+	for idx, arg := range ast.Args.Fixed {
+		if idx > 0 {
+			w.Printf(" ")
+		}
+		w.Printf("%s", arg.Name)
+	}
+	if ast.Args.Rest != nil {
+		w.Printf(" . %s", ast.Args.Rest.Name)
+	}
+	w.Println(")")
+	w.Indent(2)
+	for idx, b := range ast.Body {
+		b.PP(w)
+		if idx+1 >= len(ast.Body) {
+			w.Printf(")")
+			w.Type(ast.Type().String())
+		} else {
+			w.Println()
+		}
+	}
+	w.Indent(-2)
 }
 
 // PP implements AST.PP.

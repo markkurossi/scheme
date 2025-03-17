@@ -17,6 +17,13 @@ type Writer interface {
 	// of the pretty-print.
 	Trailer()
 
+	// Push pushes the current column as new left margin.
+	Push()
+
+	// Pop removes the current left margin and sets the previous left
+	// margin as the current one.
+	Pop()
+
 	// Indent adjust the line indentation with n columns.
 	Indent(n int)
 
@@ -30,6 +37,9 @@ type Writer interface {
 
 	// Keyword prints a Scheme keyword.
 	Keyword(keyword string)
+
+	// Name prints a Scheme name.
+	Name(name string)
 
 	// Type prints a type.
 	Type(t string)

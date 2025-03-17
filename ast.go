@@ -118,6 +118,7 @@ type ASTDefine struct {
 	Name  *Identifier
 	Flags Flags
 	Value AST
+	t     *types.Type
 }
 
 // Locator implements AST.Locator.
@@ -138,7 +139,10 @@ func (ast *ASTDefine) Equal(o AST) bool {
 
 // Type implements AST.Type.
 func (ast *ASTDefine) Type() *types.Type {
-	return types.Unspecified
+	if ast.t == nil {
+		return types.Unspecified
+	}
+	return ast.t
 }
 
 // TypeXXX implements AST.TypeXXX.

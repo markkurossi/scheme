@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"strings"
 )
 
 // HTML implements HTML pretty-printing.
@@ -17,16 +18,17 @@ type HTML struct {
 	err    error
 	w      io.Writer
 	indent int
-	bol    bool
-	Name   string
+	col    int
+	name   string
+	stack  []int
 }
 
 // NewHTML creates a new HTML pretty-print writer.
 func NewHTML(w io.Writer, name string) *HTML {
 	return &HTML{
-		w:    w,
-		bol:  true,
-		Name: name,
+		w:     w,
+		name:  name,
+		stack: []int{0},
 	}
 }
 
@@ -35,7 +37,7 @@ func (w *HTML) Header() {
 	if w.err != nil {
 		return
 	}
-	name := html.EscapeString(w.Name)
+	name := html.EscapeString(w.name)
 	_, w.err = fmt.Fprintf(w.w, `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -46,6 +48,10 @@ func (w *HTML) Header() {
           white-space: pre;
           font-family: monospace;
       }
+      .name {
+          color: rgb(68, 119, 170);
+          font-weight: bold;
+      }
       .type {
           font-size: 70%%;
           vertical-align: top;
@@ -55,7 +61,6 @@ func (w *HTML) Header() {
       }
       .keyword {
           color: rgb(170, 51, 119);
-          font-weight: bold;
       }
     </style>
   </head>
@@ -75,6 +80,19 @@ func (w *HTML) Trailer() {
   </body>
 </html>
 `)
+}
+
+// Push implements Writer.Push.
+func (w *HTML) Push() {
+	w.stack = append(w.stack, w.col)
+}
+
+// Pop implements Writer.Pop.
+func (w *HTML) Pop() {
+	if len(w.stack) < 2 {
+		panic("stack underflow")
+	}
+	w.stack = w.stack[:len(w.stack)-1]
 }
 
 // Indent implements Writer.Indent.
@@ -103,12 +121,27 @@ func (w *HTML) Println(a ...any) {
 func (w *HTML) Printf(format string, a ...any) {
 	str := fmt.Sprintf(format, a...)
 	w.output(html.EscapeString(str))
+
+	l := len(str)
+	idx := strings.LastIndexByte(str, '\n')
+	if idx < 0 {
+		idx = 0
+	}
+	w.col += l - idx
 }
 
 // Keyword implements Writer.Keyword.
 func (w *HTML) Keyword(keyword string) {
 	w.output(fmt.Sprintf(`<span class="keyword">%s</span>`,
 		html.EscapeString(keyword)))
+	w.col += len(keyword)
+}
+
+// Name implements Writer.Name.
+func (w *HTML) Name(name string) {
+	w.output(fmt.Sprintf(`<span class="name">%s</span>`,
+		html.EscapeString(name)))
+	w.col += len(name)
 }
 
 // Type implements Writer.Type.
@@ -117,6 +150,7 @@ func (w *HTML) Type(t string) {
 		return
 	}
 	w.output(fmt.Sprintf(`<span class="type">%s</span>`, html.EscapeString(t)))
+	w.col += len(t)
 }
 
 // Error implements Writer.Error.
@@ -131,17 +165,19 @@ func (w *HTML) output(str string) {
 	if len(str) == 0 {
 		return
 	}
-	if w.bol {
-		w.bol = false
-		for i := 0; i < w.indent; i++ {
+	if w.col == 0 {
+		stackCol := w.stack[len(w.stack)-1]
+		for i := 0; i < stackCol+w.indent; i++ {
 			_, w.err = w.w.Write([]byte{' '})
 			if w.err != nil {
 				return
 			}
+			w.col++
 		}
 	}
-	_, w.err = fmt.Fprint(w.w, str)
+	bytes := []byte(str)
+	_, w.err = w.w.Write(bytes)
 	if str[len(str)-1] == '\n' {
-		w.bol = true
+		w.col = 0
 	}
 }
