@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -7,6 +7,7 @@
 package types
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -201,4 +202,12 @@ func TestIsKindOf(t *testing.T) {
 	if !vector.IsKindOf(vector1) {
 		t.Errorf("!%v.IsKindOf(%v)", vector, vector1)
 	}
+}
+
+func TestTypeVar(t *testing.T) {
+	typeVar := &Type{
+		Enum:    EnumTypeVar,
+		TypeVar: 42,
+	}
+	fmt.Printf("TypeVar: %v\n", typeVar)
 }

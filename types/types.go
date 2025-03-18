@@ -35,6 +35,7 @@ const (
 	EnumLambda
 	EnumPair
 	EnumVector
+	EnumTypeVar
 )
 
 var enumNames = map[Enum]string{
@@ -55,6 +56,7 @@ var enumNames = map[Enum]string{
 	EnumLambda:         "\u03bb",
 	EnumPair:           "pair",
 	EnumVector:         "vector",
+	EnumTypeVar:        "t",
 }
 
 func (e Enum) String() string {
@@ -72,7 +74,8 @@ func (e Enum) Super() Enum {
 		return EnumUnspecified
 
 	case EnumAny, EnumNil, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
-		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair, EnumVector:
+		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair,
+		EnumVector, EnumTypeVar:
 		return EnumAny
 
 	case EnumExactInteger, EnumExactFloat:
@@ -255,6 +258,7 @@ type Type struct {
 	Cdr          *Type
 	Element      *Type
 	Parametrizer Parametrizer
+	TypeVar      int
 }
 
 // Parametrizer implements type parametrization.
@@ -273,7 +277,7 @@ func (t *Type) String() string {
 		result += "("
 		for idx, arg := range t.Args {
 			if idx > 0 {
-				result += ","
+				result += " "
 			}
 			result += arg.String()
 		}
@@ -284,10 +288,13 @@ func (t *Type) String() string {
 		result = result + ")" + t.Return.String()
 
 	case EnumPair:
-		result = result + "(" + t.Car.String() + "," + t.Cdr.String() + ")"
+		result = result + "(" + t.Car.String() + " " + t.Cdr.String() + ")"
 
 	case EnumVector:
 		result = result + "(" + t.Element.String() + ")"
+
+	case EnumTypeVar:
+		result = fmt.Sprintf("%s%v", result, t.TypeVar)
 
 	default:
 	}
@@ -383,6 +390,9 @@ func (t *Type) IsA(o *Type) bool {
 
 	case EnumVector:
 		return t.Element.IsA(o.Element)
+
+	case EnumTypeVar:
+		return t.TypeVar == o.TypeVar
 
 	default:
 		return true

@@ -14,6 +14,43 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
+var instantiateTests = []struct {
+	scheme *InferScheme
+	result *types.Type
+}{
+	{
+		scheme: &InferScheme{
+			Type: types.InexactInteger,
+		},
+		result: types.InexactInteger,
+	},
+	{},
+}
+
+func TestInstantiate(t *testing.T) {
+	scm := newTestScheme(t)
+
+	scheme := &InferScheme{
+		Type: types.InexactInteger,
+	}
+	got := scheme.Instantiate(scm)
+	if !got.IsA(types.InexactInteger) {
+		t.Errorf("expected %v, got %v\n", types.InexactInteger, got)
+	}
+
+	tv := scm.newTypeVar()
+	scheme = &InferScheme{
+		Variables: []*types.Type{tv},
+		Type:      tv,
+	}
+	got = scheme.Instantiate(scm)
+	if got.IsA(tv) {
+		t.Errorf("TypeVar %v not substituted\n", tv)
+	} else {
+		t.Logf("instantiate: %v => %v\n", scheme, got)
+	}
+}
+
 var inferenceTests = []struct {
 	d string
 	t *types.Type

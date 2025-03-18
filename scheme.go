@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2024 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -35,6 +35,7 @@ type Scheme struct {
 	hasRuntime bool
 
 	pragmaVerboseTypecheck bool
+	nextTypeVar            int
 
 	pc      int
 	sp      int

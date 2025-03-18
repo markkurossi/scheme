@@ -44,8 +44,22 @@ var (
 	_ AST = &ASTPragma{}
 )
 
+// Typed implements AST type information.
+type Typed struct {
+	t *types.Type
+}
+
+// Type implements AST.Type.
+func (t *Typed) Type() *types.Type {
+	if t.t == nil {
+		return types.Unspecified
+	}
+	return t.t
+}
+
 // ASTSequence implements a (begin ...) sequence.
 type ASTSequence struct {
+	Typed
 	From  Locator
 	Items []AST
 }
@@ -75,11 +89,6 @@ func (ast *ASTSequence) Equal(o AST) bool {
 		}
 	}
 	return true
-}
-
-// Type implements AST.Type.
-func (ast *ASTSequence) Type() *types.Type {
-	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -114,11 +123,11 @@ func (ast *ASTSequence) Bytecode(lib *Library) error {
 
 // ASTDefine implements (define name value).
 type ASTDefine struct {
+	Typed
 	From  Locator
 	Name  *Identifier
 	Flags Flags
 	Value AST
-	t     *types.Type
 }
 
 // Locator implements AST.Locator.
@@ -135,14 +144,6 @@ func (ast *ASTDefine) Equal(o AST) bool {
 	return ast.Name.Name == oast.Name.Name &&
 		ast.Flags == oast.Flags &&
 		ast.Value.Equal(oast.Value)
-}
-
-// Type implements AST.Type.
-func (ast *ASTDefine) Type() *types.Type {
-	if ast.t == nil {
-		return types.Unspecified
-	}
-	return ast.t
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -188,6 +189,7 @@ func (ast *ASTDefine) Bytecode(lib *Library) error {
 
 // ASTSet implements (set name value).
 type ASTSet struct {
+	Typed
 	From    Locator
 	Name    string
 	Binding *EnvBinding
@@ -212,11 +214,6 @@ func (ast *ASTSet) Equal(o AST) bool {
 		return false
 	}
 	return ast.Name == oast.Name && ast.Value.Equal(oast.Value)
-}
-
-// Type implements AST.Type.
-func (ast *ASTSet) Type() *types.Type {
-	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -263,13 +260,13 @@ func (ast *ASTSet) Bytecode(lib *Library) error {
 
 // ASTLet implements let syntaxes.
 type ASTLet struct {
+	Typed
 	From     Locator
 	Kind     Keyword
 	Captures bool
 	Tail     bool
 	Bindings []*ASTLetBinding
 	Body     []AST
-	t        *types.Type
 }
 
 // ASTLetBinding implements a let binding.
@@ -317,14 +314,6 @@ func (ast *ASTLet) Equal(o AST) bool {
 		}
 	}
 	return true
-}
-
-// Type implements AST.Type.
-func (ast *ASTLet) Type() *types.Type {
-	if ast.t == nil {
-		return types.Unspecified
-	}
-	return ast.t
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -938,6 +927,7 @@ func (ast *ASTCallUnary) Bytecode(lib *Library) error {
 
 // ASTLambda implements lambda syntax.
 type ASTLambda struct {
+	Typed
 	From        Locator
 	Name        *Identifier
 	Args        Args
@@ -972,11 +962,6 @@ func (ast *ASTLambda) Equal(o AST) bool {
 		}
 	}
 	return ast.Captures == oast.Captures && ast.Flags == oast.Flags
-}
-
-// Type implements AST.Type.
-func (ast *ASTLambda) Type() *types.Type {
-	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -1142,12 +1127,12 @@ func (ast *ASTConstant) Bytecode(lib *Library) error {
 
 // ASTIdentifier implements identifer references.
 type ASTIdentifier struct {
+	Typed
 	From    Locator
 	Name    string
 	Binding *EnvBinding
 	Global  *Identifier
 	Init    AST
-	t       *types.Type
 }
 
 func (ast *ASTIdentifier) String() string {
@@ -1175,14 +1160,6 @@ func (ast *ASTIdentifier) Equal(o AST) bool {
 		return false
 	}
 	return true
-}
-
-// Type implements AST.Type.
-func (ast *ASTIdentifier) Type() *types.Type {
-	if ast.t == nil {
-		return types.Unspecified
-	}
-	return ast.t
 }
 
 // TypeXXX implements AST.TypeXXX.

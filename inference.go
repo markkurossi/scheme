@@ -12,52 +12,116 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
+func (scm *Scheme) newTypeVar() *types.Type {
+	i := scm.nextTypeVar
+	scm.nextTypeVar++
+
+	return &types.Type{
+		Enum:    types.EnumTypeVar,
+		TypeVar: i,
+	}
+}
+
+// InferScheme implements a type with list of type variables.
+type InferScheme struct {
+	Variables []*types.Type
+	Type      *types.Type
+}
+
+func (scheme *InferScheme) String() string {
+	return fmt.Sprintf("Scheme(%v, %v)", scheme.Variables, scheme.Type)
+}
+
+// Instantiate creates a type of a type scheme.
+func (scheme *InferScheme) Instantiate(scm *Scheme) *types.Type {
+	// Replace all scheme.Variables with fresh TypeVar.
+	result := scheme
+	for _, v := range scheme.Variables {
+		if v.Enum != types.EnumTypeVar {
+			panic(fmt.Sprintf("invalid type variable: %v", v))
+		}
+		subst := make(InferSubst)
+		subst[v.TypeVar] = &InferScheme{
+			Type: scm.newTypeVar(),
+		}
+		result = subst.Apply(result)
+	}
+	return result.Type
+}
+
 // InferEnv implements type environment for Infer.
 type InferEnv struct {
 	scm      *Scheme
-	bindings map[string]*types.Type
+	bindings map[string]*InferScheme
 }
 
 // NewInferEnv creates a new inference environment.
 func NewInferEnv(scm *Scheme) *InferEnv {
 	return &InferEnv{
 		scm:      scm,
-		bindings: make(map[string]*types.Type),
+		bindings: make(map[string]*InferScheme),
 	}
+}
+
+// Copy creates a copy of the inference environment.
+func (env *InferEnv) Copy() *InferEnv {
+	result := NewInferEnv(env.scm)
+
+	// XXX should we clone InferScheme too?
+
+	for k, v := range env.bindings {
+		result.bindings[k] = v
+	}
+	return result
 }
 
 // Lookup find the name's type from the environment.
 func (env *InferEnv) Lookup(name string) *types.Type {
 	t, ok := env.bindings[name]
 	if ok {
-		return t
+		return t.Instantiate(env.scm)
 	}
 	return env.scm.Intern(name).GlobalType
 }
 
 // Generalize generalizes the type into a type scheme.
-func (env *InferEnv) Generalize(t *types.Type) *types.Type {
-	return t
+func (env *InferEnv) Generalize(t *types.Type) *InferScheme {
+	return &InferScheme{
+		Type: t,
+	}
 }
 
 // InferSubst implements type substitutions.
-type InferSubst map[int]*types.Type
+type InferSubst map[int]*InferScheme
 
 // Apply applies substitution for the type and returns the result
 // type.
-func (s InferSubst) Apply(t *types.Type) *types.Type {
-	// switch t := t.(type) {
-	// case TypeVar:
-	// 	if replacement, ok := s[t.id]; ok {
-	// 		return replacement
-	// 	}
-	// 	return t
-	// case TypeArrow:
-	// 	return TypeArrow{s.Apply(t.left), s.Apply(t.right)}
-	// default:
-	// 	return t
-	// }
-	return t
+func (s InferSubst) Apply(t *InferScheme) *InferScheme {
+	// Replace any variable that appears in the scheme's variable
+	// list.
+	result := &InferScheme{
+		Type: t.Type,
+	}
+
+	for _, v := range t.Variables {
+		if v.Enum != types.EnumTypeVar {
+			panic(fmt.Sprintf("InferSubst.Apply: invalid type variable %v", v))
+		}
+		replacement, ok := s[v.TypeVar]
+		if !ok {
+			continue
+		}
+		switch result.Type.Enum {
+		case types.EnumLambda:
+			panic("InferSubst.Apply: Lambda not implemented yet")
+		case types.EnumTypeVar:
+			if v.IsA(result.Type) {
+				result.Type = replacement.Type
+			}
+		}
+	}
+
+	return result
 }
 
 // ApplyEnv applies substitutions for the environment and returns a
@@ -87,17 +151,16 @@ func (s InferSubst) Compose(s2 InferSubst) InferSubst {
 // Infer implements AST.Infer.
 func (ast *ASTSequence) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	var subst InferSubst
-	var t *types.Type
 	var err error
 
 	for _, item := range ast.Items {
-		subst, t, err = item.Infer(env)
+		subst, ast.t, err = item.Infer(env)
 		if err != nil {
 			return nil, nil, err
 		}
 		env = subst.ApplyEnv(env)
 	}
-	return subst, t, nil
+	return subst, ast.t, nil
 }
 
 // Infer implements AST.Infer.
@@ -116,6 +179,7 @@ func (ast *ASTDefine) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	}
 
 	sym.GlobalType = t
+	ast.t = t
 
 	return make(InferSubst), t, nil
 }
@@ -180,7 +244,49 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 
 // Infer implements AST.Infer.
 func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	return nil, nil, fmt.Errorf("ASTLambda.Infer not implemented yet")
+	env = env.Copy()
+
+	var args []*InferScheme
+	for _, arg := range ast.Args.Fixed {
+		scheme := env.Generalize(env.scm.newTypeVar())
+		args = append(args, scheme)
+		env.bindings[arg.Name] = scheme
+	}
+	if ast.Args.Rest != nil {
+		scheme := env.Generalize(env.scm.newTypeVar())
+		args = append(args, scheme)
+		env.bindings[ast.Args.Rest.Name] = scheme
+	}
+
+	var subst InferSubst
+	var t *types.Type
+	var err error
+
+	for _, item := range ast.Body {
+		subst, t, err = item.Infer(env)
+		if err != nil {
+			return nil, nil, err
+		}
+		env = subst.ApplyEnv(env)
+	}
+
+	// Apply substitution to argument types.
+	for idx, arg := range args {
+		args[idx] = subst.Apply(arg)
+	}
+
+	ast.t = &types.Type{
+		Enum:   types.EnumLambda,
+		Return: t,
+	}
+	for i := 0; i < len(ast.Args.Fixed); i++ {
+		ast.t.Args = append(ast.t.Args, args[i].Type)
+	}
+	if ast.Args.Rest != nil {
+		ast.t.Rest = args[len(ast.Args.Fixed)].Type
+	}
+
+	return subst, ast.t, nil
 }
 
 // Infer implements AST.Infer.
@@ -197,7 +303,6 @@ func (ast *ASTIdentifier) Infer(env *InferEnv) (
 	InferSubst, *types.Type, error) {
 	ast.t = env.Lookup(ast.Name)
 	if ast.t.IsA(types.Unspecified) {
-		fmt.Printf("ASTIdentifier: %s\n", ast.From)
 		return nil, nil, ast.From.Errorf("undefined symbol '%s'", ast.Name)
 	}
 	return make(InferSubst), ast.t, nil
