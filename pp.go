@@ -96,6 +96,16 @@ func (ast *ASTApply) PP(w pp.Writer) {
 
 // PP implements AST.PP.
 func (ast *ASTCall) PP(w pp.Writer) {
+	w.Printf("(")
+	if ast.Inline {
+		w.Printf("%s", ast.InlineOp)
+	}
+	for _, arg := range ast.Args {
+		w.Printf(" ")
+		arg.PP(w)
+	}
+	w.Printf(")")
+	w.Type(ast.Type().String())
 }
 
 // PP implements AST.PP.
