@@ -17,6 +17,7 @@ import (
 type AST interface {
 	Locator() Locator
 	Equal(o AST) bool
+	SetType(t *types.Type)
 	Type() *types.Type
 	TypeXXX(ctx types.Ctx) *types.Type
 	Infer(env *InferEnv) (InferSubst, *types.Type, error)
@@ -47,6 +48,11 @@ var (
 // Typed implements AST type information.
 type Typed struct {
 	t *types.Type
+}
+
+// SetType implements AST.SetType.
+func (t *Typed) SetType(typ *types.Type) {
+	t.t = typ
 }
 
 // Type implements AST.Type.
@@ -379,6 +385,7 @@ func (ast *ASTLet) Bytecode(lib *Library) error {
 
 // ASTIf implements if syntax.
 type ASTIf struct {
+	Typed
 	From  Locator
 	Cond  AST
 	True  AST
@@ -413,11 +420,6 @@ func (ast *ASTIf) Equal(o AST) bool {
 	}
 
 	return true
-}
-
-// Type implements AST.Type.
-func (ast *ASTIf) Type() *types.Type {
-	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -491,6 +493,7 @@ func (ast *ASTIf) Bytecode(lib *Library) error {
 
 // ASTApply implements apply syntax.
 type ASTApply struct {
+	Typed
 	From   Locator
 	Lambda AST
 	Args   AST
@@ -511,11 +514,6 @@ func (ast *ASTApply) Equal(o AST) bool {
 	return ast.Lambda.Equal(oast.Lambda) &&
 		ast.Args.Equal(oast.Args) &&
 		ast.Tail == oast.Tail
-}
-
-// Type implements AST.Type.
-func (ast *ASTApply) Type() *types.Type {
-	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -562,6 +560,7 @@ func (ast *ASTApply) Bytecode(lib *Library) error {
 
 // ASTCall implements function call syntax.
 type ASTCall struct {
+	Typed
 	From     Locator
 	Inline   bool
 	InlineOp Operand
@@ -655,11 +654,6 @@ func inlineParametrizerCastNumber(params []*types.Type) *types.Type {
 
 func inlineParametrizerCastSymbol(params []*types.Type) *types.Type {
 	return types.Symbol
-}
-
-// Type implements AST.Type.
-func (ast *ASTCall) Type() *types.Type {
-	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -829,6 +823,7 @@ func (ast *ASTCall) Bytecode(lib *Library) error {
 
 // ASTCallUnary implements inlined unary function calls.
 type ASTCallUnary struct {
+	Typed
 	From Locator
 	Op   Operand
 	I    int
@@ -861,11 +856,6 @@ var inlineUnaryTypes = map[Operand]inlineParametrizer{
 	OpMulConst:   inlineParametrizerNumber,
 	OpCastNumber: inlineParametrizerCastNumber,
 	OpCastSymbol: inlineParametrizerCastSymbol,
-}
-
-// Type implements AST.Type.
-func (ast *ASTCallUnary) Type() *types.Type {
-	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -1098,6 +1088,11 @@ func (ast *ASTConstant) Equal(o AST) bool {
 	return ast.Value.Equal(oast.Value)
 }
 
+// SetType implements AST.SetType
+func (ast *ASTConstant) SetType(t *types.Type) {
+	fmt.Printf("ASTConstant.SetType(%v)\n", t)
+}
+
 // Type implements AST.Type.
 func (ast *ASTConstant) Type() *types.Type {
 	if ast.Value == nil {
@@ -1194,6 +1189,7 @@ func (ast *ASTIdentifier) Bytecode(lib *Library) error {
 
 // ASTCond implements cond syntax.
 type ASTCond struct {
+	Typed
 	From     Locator
 	Choices  []*ASTCondChoice
 	Tail     bool
@@ -1244,11 +1240,6 @@ func (ast *ASTCond) Equal(o AST) bool {
 		}
 	}
 	return ast.Tail == oast.Tail && ast.Captures == oast.Captures
-}
-
-// Type implements AST.Type.
-func (ast *ASTCond) Type() *types.Type {
-	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -1382,6 +1373,7 @@ func (ast *ASTCond) Bytecode(lib *Library) error {
 
 // ASTCase implements case syntax.
 type ASTCase struct {
+	Typed
 	From        Locator
 	Choices     []*ASTCaseChoice
 	ValueFrame  *EnvFrame
@@ -1441,11 +1433,6 @@ func (ast *ASTCase) Equal(o AST) bool {
 	}
 	return ast.Expr.Equal(oast.Expr) && ast.Tail == oast.Tail &&
 		ast.Captures == oast.Captures
-}
-
-// Type implements AST.Type.
-func (ast *ASTCase) Type() *types.Type {
-	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -1582,6 +1569,7 @@ func (ast *ASTCase) Bytecode(lib *Library) error {
 
 // ASTAnd implements (and ...) syntax.
 type ASTAnd struct {
+	Typed
 	From  Locator
 	Exprs []AST
 }
@@ -1603,11 +1591,6 @@ func (ast *ASTAnd) Equal(o AST) bool {
 		}
 	}
 	return true
-}
-
-// Type implements AST.Type.
-func (ast *ASTAnd) Type() *types.Type {
-	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -1663,6 +1646,7 @@ func (ast *ASTAnd) Bytecode(lib *Library) error {
 
 // ASTOr implements (or ...) syntax.
 type ASTOr struct {
+	Typed
 	From  Locator
 	Exprs []AST
 }
@@ -1684,11 +1668,6 @@ func (ast *ASTOr) Equal(o AST) bool {
 		}
 	}
 	return true
-}
-
-// Type implements AST.Type.
-func (ast *ASTOr) Type() *types.Type {
-	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
@@ -1748,6 +1727,7 @@ func (ast *ASTOr) Bytecode(lib *Library) error {
 
 // ASTPragma implements compiler pragmas.
 type ASTPragma struct {
+	Typed
 	From       Locator
 	Directives [][]Value
 }
@@ -1760,11 +1740,6 @@ func (ast *ASTPragma) Locator() Locator {
 // Equal implements AST.Equal.
 func (ast *ASTPragma) Equal(o AST) bool {
 	return false
-}
-
-// Type implements AST.Type.
-func (ast *ASTPragma) Type() *types.Type {
-	return types.Unspecified
 }
 
 // TypeXXX implements AST.TypeXXX.
