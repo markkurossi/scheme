@@ -299,9 +299,6 @@ func (ast *ASTApply) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	// Create a new type variable for the return type of the function.
-	rv := env.scm.newTypeVar()
-
 	// Resolve the type of the function.
 
 	var fnSubst InferSubst // XXX sub1
@@ -319,6 +316,25 @@ func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	} else {
 		return nil, nil, ast.From.Errorf("ASTCall.Infer not implemented yet")
 	}
+	subst, retType, callType, err := inferCall(env, fnSubst, fnType, ast.Args)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Set types for arguments.
+	for idx, t := range callType.Args {
+		ast.Args[idx].SetType(t)
+	}
+	ast.t = retType
+
+	return subst, retType, nil
+}
+
+func inferCall(env *InferEnv, fnSubst InferSubst, fnType *types.Type,
+	args []AST) (InferSubst, *types.Type, *types.Type, error) {
+
+	// Create a new type variable for the return type of the function.
+	rv := env.scm.newTypeVar()
 
 	// Create a new type environment.
 	env1 := fnSubst.ApplyEnv(env)
@@ -326,10 +342,10 @@ func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	// Infer argument types.
 	argSubst := make(InferSubst) // XXX sub2
 	var argTypes []*types.Type   // XXX type2
-	for _, arg := range ast.Args {
+	for _, arg := range args {
 		s, t, err := arg.Infer(env1)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		argTypes = append(argTypes, t)
 		argSubst = argSubst.Compose(s)
@@ -348,34 +364,29 @@ func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	fmt.Printf("ASTCall.Infer: calltype=%v\n", callType)
 
 	// Unify fnTypeSubst with callType.
-	subst3, t, err := Unify(callType, fnTypeSubst.Type)
+	subst3, callType, err := Unify(callType, fnTypeSubst.Type)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	fmt.Printf("ASTCall.Infer: => %v\n", t)
-
-	// Set types for arguments.
-	for idx, t := range t.Args {
-		ast.Args[idx].SetType(t)
-	}
+	fmt.Printf("ASTCall.Infer: => %v\n", callType)
 
 	// Compose result substitutions.
 	subst := fnSubst.Compose(argSubst.Compose(subst3))
 
 	// Apply compositions to return variable.
-	ast.t = subst.Apply(&InferScheme{
+	retType := subst.Apply(&InferScheme{
 		Variables: []*types.Type{rv},
 		Type:      rv,
 	}).Type
 
-	return subst, ast.t, nil
+	return subst, retType, callType, nil
 }
 
 func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 	InferSubst, *types.Type, error) {
 
 	switch ast.InlineOp {
-	case OpAdd:
+	case OpAdd, OpSub, OpMul, OpDiv:
 		subst := make(InferSubst)
 		result := &types.Type{
 			Enum:   types.EnumLambda,
@@ -390,6 +401,9 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 
 		return subst, result, nil
 
+	// XXX OpCons
+	// XXX OpEq, OpLt, OpGt, OpLe, OpGe
+
 	default:
 		return nil, nil, ast.From.Errorf("%s: infer not implemented yet",
 			ast.InlineOp)
@@ -397,9 +411,34 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTCallUnary) Infer(env *InferEnv) (
-	InferSubst, *types.Type, error) {
-	return nil, nil, fmt.Errorf("ASTCallUnary.Infer not implemented yet")
+func (ast *ASTCallUnary) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+	// Resolve th etype of the function.
+
+	fnSubst := make(InferSubst)
+	var fnType *types.Type
+
+	switch ast.Op {
+	case OpAddConst, OpSubConst, OpMulConst:
+		fnType = &types.Type{
+			Enum:   types.EnumLambda,
+			Args:   []*types.Type{types.Number},
+			Return: types.Number,
+		}
+
+	default:
+		return nil, nil, ast.From.Errorf("%s: infer not implemented yet",
+			ast.Op)
+	}
+
+	subst, retType, callType, err := inferCall(env, fnSubst, fnType, []AST{
+		ast.Arg,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	ast.Arg.SetType(callType.Args[0])
+
+	return subst, retType, nil
 }
 
 // Infer implements AST.Infer.
