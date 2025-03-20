@@ -110,6 +110,31 @@ func (ast *ASTCall) PP(w pp.Writer) {
 
 // PP implements AST.PP.
 func (ast *ASTCallUnary) PP(w pp.Writer) {
+	var op string
+
+	switch ast.Op {
+	case OpAddConst:
+		op = "+"
+
+	case OpSubConst:
+		op = "-"
+
+	case OpMulConst:
+		op = "*"
+
+	default:
+		op = ast.Op.String()
+	}
+	w.Printf("(%s ", op)
+	ast.Arg.PP(w)
+
+	switch ast.Op {
+	case OpAddConst, OpSubConst, OpMulConst:
+		w.Printf(" %v", ast.I)
+		w.Type("int")
+	}
+
+	w.Printf(")")
 }
 
 // PP implements AST.PP.
