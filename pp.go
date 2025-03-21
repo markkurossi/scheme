@@ -99,6 +99,8 @@ func (ast *ASTCall) PP(w pp.Writer) {
 	w.Printf("(")
 	if ast.Inline {
 		w.Printf("%s", ast.InlineOp)
+	} else {
+		ast.Func.PP(w)
 	}
 	for _, arg := range ast.Args {
 		w.Printf(" ")
