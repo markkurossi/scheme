@@ -169,7 +169,7 @@ func Unify(from, to *types.Type) (InferSubst, *types.Type, error) {
 func unify(from, to *types.Type, subst InferSubst) (
 	InferSubst, *types.Type, error) {
 
-	if from.IsA(to) {
+	if from.IsKindOf(to) {
 		return subst, from, nil
 	}
 	switch from.Enum {
@@ -314,11 +314,45 @@ func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 			return nil, nil, err
 		}
 	} else {
-		return nil, nil, ast.From.Errorf("ASTCall.Infer not implemented yet")
+		fnSubst, fnType, err = ast.Func.Infer(env)
+		if err != nil {
+			return nil, nil, err
+		}
+		if fnType.Enum != types.EnumLambda {
+			return nil, nil,
+				ast.Func.Locator().From().Errorf("invalid function: %v", fnType)
+		}
+		al := len(fnType.Args)
+		if al < len(ast.Args) {
+			// Check if the last argument Kind is Rest.
+			if al == 0 && fnType.Args[al-1].Kind != types.Rest {
+				ast.From.Errorf("too many arguments got %v, need %v",
+					len(ast.Args), al)
+			}
+			fnType = fnType.Clone()
+
+			rest := fnType.Args[al-1]
+			rest.Kind = types.Fixed
+
+			for i := al; i < len(ast.Args); i++ {
+				fnType.Args = append(fnType.Args, rest)
+			}
+		} else if al > len(ast.Args) {
+			// Check if the extra argument Kind are Optional.
+			for i := len(ast.Args); i < al; i++ {
+				if fnType.Args[i].Kind != types.Optional {
+					ast.From.Errorf("too few arguments got %v, need %v",
+						len(ast.Args), al)
+				}
+			}
+			fnType = fnType.Clone()
+			fnType.Args = fnType.Args[:len(ast.Args)]
+		}
 	}
+
 	subst, retType, callType, err := inferCall(env, fnSubst, fnType, ast.Args)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, ast.From.Errorf("%s", err)
 	}
 
 	// Set types for arguments.
@@ -364,11 +398,14 @@ func inferCall(env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 	fmt.Printf("ASTCall.Infer: calltype=%v\n", callType)
 
 	// Unify fnTypeSubst with callType.
-	subst3, callType, err := Unify(callType, fnTypeSubst.Type)
+	subst3, unified, err := Unify(callType, fnTypeSubst.Type)
 	if err != nil {
+		fmt.Printf("Unify failed: %s:\n - %v\n - %v\n",
+			err, callType, fnTypeSubst.Type)
+
 		return nil, nil, nil, err
 	}
-	fmt.Printf("ASTCall.Infer: => %v\n", callType)
+	fmt.Printf("ASTCall.Infer: => %v\n", unified)
 
 	// Compose result substitutions.
 	subst := fnSubst.Compose(argSubst.Compose(subst3))
@@ -379,7 +416,7 @@ func inferCall(env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 		Type:      rv,
 	}).Type
 
-	return subst, retType, callType, nil
+	return subst, retType, unified, nil
 }
 
 func (ast *ASTCall) inlineFuncType(env *InferEnv) (
