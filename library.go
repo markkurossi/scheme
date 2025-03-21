@@ -148,7 +148,8 @@ func (code Code) Print(w io.Writer) {
 
 // PrettyPrint formats the library Scheme code into the pp.Writer.
 func (lib *Library) PrettyPrint(w pp.Writer) error {
-	_, _, err := lib.Body.Infer(NewInferEnv(lib.scm))
+	inferer := NewInferer(lib.scm, lib.Body.Items)
+	_, _, err := lib.Body.Infer(inferer.NewEnv())
 	if err != nil {
 		return err
 	}
@@ -164,7 +165,8 @@ const infer = false
 // Compile compiles the library into bytecode.
 func (lib *Library) Compile() (Value, error) {
 	if infer {
-		_, _, err := lib.Body.Infer(NewInferEnv(lib.scm))
+		inferer := NewInferer(lib.scm, lib.Body.Items)
+		_, _, err := lib.Body.Infer(inferer.NewEnv())
 		if err != nil {
 			return nil, err
 		}

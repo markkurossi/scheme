@@ -12,9 +12,43 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
-func (scm *Scheme) newTypeVar() *types.Type {
-	i := scm.nextTypeVar
-	scm.nextTypeVar++
+// Inferer implements type inference.
+type Inferer struct {
+	scm     *Scheme
+	defines []AST
+}
+
+// NewInferer creates a new type inferer.
+func NewInferer(scm *Scheme, toplevel []AST) *Inferer {
+	inferer := &Inferer{
+		scm: scm,
+	}
+	for _, item := range toplevel {
+		switch ast := item.(type) {
+		case *ASTDefine:
+			inferer.defines = append(inferer.defines, ast)
+
+		case *ASTLambda:
+			if ast.Define {
+				inferer.defines = append(inferer.defines, ast)
+			}
+		}
+	}
+	return inferer
+}
+
+// NewEnv creates a new inference environment.
+func (inferer *Inferer) NewEnv() *InferEnv {
+	env := &InferEnv{
+		inferer:  inferer,
+		bindings: make(map[string]*InferScheme),
+	}
+	return env
+}
+
+func (inferer *Inferer) newTypeVar() *types.Type {
+	i := inferer.scm.nextTypeVar
+	inferer.scm.nextTypeVar++
 
 	return &types.Type{
 		Enum:    types.EnumTypeVar,
@@ -33,7 +67,7 @@ func (scheme *InferScheme) String() string {
 }
 
 // Instantiate creates a type of a type scheme.
-func (scheme *InferScheme) Instantiate(scm *Scheme) *types.Type {
+func (scheme *InferScheme) Instantiate(inferer *Inferer) *types.Type {
 	// Replace all scheme.Variables with fresh TypeVar.
 	result := scheme
 	for _, v := range scheme.Variables {
@@ -42,7 +76,7 @@ func (scheme *InferScheme) Instantiate(scm *Scheme) *types.Type {
 		}
 		subst := make(InferSubst)
 		subst[v.TypeVar] = &InferScheme{
-			Type: scm.newTypeVar(),
+			Type: inferer.newTypeVar(),
 		}
 		result = subst.Apply(result)
 	}
@@ -51,7 +85,7 @@ func (scheme *InferScheme) Instantiate(scm *Scheme) *types.Type {
 
 // InferEnv implements type environment for Infer.
 type InferEnv struct {
-	scm      *Scheme
+	inferer  *Inferer
 	bindings map[string]*InferScheme
 }
 
@@ -67,19 +101,11 @@ func (env *InferEnv) String() string {
 	return "[" + result + "]"
 }
 
-// NewInferEnv creates a new inference environment.
-func NewInferEnv(scm *Scheme) *InferEnv {
-	return &InferEnv{
-		scm:      scm,
-		bindings: make(map[string]*InferScheme),
-	}
-}
-
 // Copy creates a copy of the inference environment.
 func (env *InferEnv) Copy() *InferEnv {
-	result := NewInferEnv(env.scm)
+	result := env.inferer.NewEnv()
 
-	// XXX should we clone InferScheme too?
+	// XXX should we clone InferScheme too in bindings?
 
 	for k, v := range env.bindings {
 		result.bindings[k] = v
@@ -89,11 +115,38 @@ func (env *InferEnv) Copy() *InferEnv {
 
 // Lookup find the name's type from the environment.
 func (env *InferEnv) Lookup(name string) *types.Type {
-	t, ok := env.bindings[name]
+	scheme, ok := env.bindings[name]
 	if ok {
-		return t.Instantiate(env.scm)
+		return scheme.Instantiate(env.inferer)
 	}
-	return env.scm.Intern(name).GlobalType
+	t := env.inferer.scm.Intern(name).GlobalType
+	if !t.IsA(types.Unspecified) {
+		return t
+	}
+
+	// Lookup the name from the toplevel AST.
+	for _, item := range env.inferer.defines {
+		switch def := item.(type) {
+		case *ASTDefine:
+			if def.Name.Name == name {
+				return env.resolve(def)
+			}
+
+		case *ASTLambda:
+			if def.Name.Name == name {
+				return env.resolve(def)
+			}
+		}
+	}
+	return types.Unspecified
+}
+
+func (env *InferEnv) resolve(ast AST) *types.Type {
+	_, t, err := ast.Infer(env)
+	if err != nil {
+		return types.Unspecified
+	}
+	return t
 }
 
 // Generalize generalizes the type into a type scheme.
@@ -139,7 +192,7 @@ func (s InferSubst) Apply(t *InferScheme) *InferScheme {
 // ApplyEnv applies substitutions for the environment and returns a
 // new environment.
 func (s InferSubst) ApplyEnv(env *InferEnv) *InferEnv {
-	result := NewInferEnv(env.scm)
+	result := env.Copy()
 	for k, v := range env.bindings {
 		result.bindings[k] = s.Apply(v)
 	}
@@ -238,7 +291,7 @@ func (ast *ASTDefine) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	}
 
 	// Check the current type of the name.
-	sym := env.scm.Intern(ast.Name.Name)
+	sym := env.inferer.scm.Intern(ast.Name.Name)
 	if !sym.GlobalType.IsA(types.Unspecified) {
 		return nil, nil, ast.From.Errorf("redefining symbol '%s'",
 			ast.Name.Name)
@@ -368,7 +421,7 @@ func inferCall(env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 	args []AST) (InferSubst, *types.Type, *types.Type, error) {
 
 	// Create a new type variable for the return type of the function.
-	rv := env.scm.newTypeVar()
+	rv := env.inferer.newTypeVar()
 
 	// Create a new type environment.
 	env1 := fnSubst.ApplyEnv(env)
@@ -484,12 +537,12 @@ func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 	var args []*InferScheme
 	for _, arg := range ast.Args.Fixed {
-		scheme := env.Generalize(env.scm.newTypeVar())
+		scheme := env.Generalize(env.inferer.newTypeVar())
 		args = append(args, scheme)
 		env.bindings[arg.Name] = scheme
 	}
 	if ast.Args.Rest != nil {
-		scheme := env.Generalize(env.scm.newTypeVar())
+		scheme := env.Generalize(env.inferer.newTypeVar())
 		args = append(args, scheme)
 		env.bindings[ast.Args.Rest.Name] = scheme
 	}

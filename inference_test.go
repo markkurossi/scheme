@@ -29,21 +29,22 @@ var instantiateTests = []struct {
 
 func TestInstantiate(t *testing.T) {
 	scm := newTestScheme(t)
+	inferer := NewInferer(scm, nil)
 
 	scheme := &InferScheme{
 		Type: types.InexactInteger,
 	}
-	got := scheme.Instantiate(scm)
+	got := scheme.Instantiate(inferer)
 	if !got.IsA(types.InexactInteger) {
 		t.Errorf("expected %v, got %v\n", types.InexactInteger, got)
 	}
 
-	tv := scm.newTypeVar()
+	tv := inferer.newTypeVar()
 	scheme = &InferScheme{
 		Variables: []*types.Type{tv},
 		Type:      tv,
 	}
-	got = scheme.Instantiate(scm)
+	got = scheme.Instantiate(inferer)
 	if got.IsA(tv) {
 		t.Errorf("TypeVar %v not substituted\n", tv)
 	} else {
@@ -116,7 +117,9 @@ func TestInference(t *testing.T) {
 		if !ok {
 			t.Fatalf("%s: invalid library: %v", name, library)
 		}
-		_, typ, err := lib.Body.Infer(NewInferEnv(scm))
+		inferer := NewInferer(scm, lib.Body.Items)
+
+		_, typ, err := lib.Body.Infer(inferer.NewEnv())
 		if err != nil {
 			t.Logf("%s: infer error in:", name)
 			t.Logf(" \u2502 %s", test.d)
