@@ -261,6 +261,36 @@ type Type struct {
 	TypeVar      int
 }
 
+// Clone creates a deep copy of the type.
+func (t *Type) Clone() *Type {
+	result := &Type{
+		Enum:         t.Enum,
+		Kind:         t.Kind,
+		Parametrizer: t.Parametrizer,
+		TypeVar:      t.TypeVar,
+	}
+	for _, arg := range t.Args {
+		result.Args = append(result.Args, arg.Clone())
+	}
+	if t.Rest != nil {
+		result.Rest = t.Rest.Clone()
+	}
+	if t.Return != nil {
+		result.Return = t.Return.Clone()
+	}
+	if t.Car != nil {
+		result.Car = t.Car.Clone()
+	}
+	if t.Cdr != nil {
+		result.Cdr = t.Cdr.Clone()
+	}
+	if t.Element != nil {
+		result.Element = t.Element.Clone()
+	}
+
+	return result
+}
+
 // Parametrizer implements type parametrization.
 type Parametrizer interface {
 	Parametrize(ctx Ctx, params []*Type) *Type
