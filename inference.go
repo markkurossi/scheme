@@ -225,8 +225,16 @@ func unify(from, to *types.Type, subst InferSubst) (
 	if from.IsKindOf(to) {
 		return subst, from, nil
 	}
+	if from.Enum == types.EnumTypeVar {
+		return unifyTypeVar(from, to, subst)
+	} else if to.Enum == types.EnumTypeVar {
+		return unifyTypeVar(to, from, subst)
+	}
 	switch from.Enum {
 	case types.EnumLambda:
+		if to.Enum != types.EnumLambda {
+			return nil, nil, fmt.Errorf("can't unify %v with %v", from, to)
+		}
 		if len(from.Args) != len(to.Args) {
 			return nil, nil, fmt.Errorf("different amount of arguments")
 		}
@@ -249,19 +257,22 @@ func unify(from, to *types.Type, subst InferSubst) (
 		result.Return = t
 		return subst, result, nil
 
-	case types.EnumTypeVar:
-		old, ok := subst[from.TypeVar]
-		if ok && !old.Type.IsA(to) {
-			return nil, nil, fmt.Errorf("unify, old %v != new %v", old, to)
-		}
-		subst[from.TypeVar] = &InferScheme{
-			Type: to,
-		}
-		return subst, to, nil
-
 	default:
-		return nil, nil, fmt.Errorf("can't unify %v to %v", from, to)
+		return nil, nil, fmt.Errorf("can't unify %v with %v", from, to)
 	}
+}
+
+func unifyTypeVar(tv, to *types.Type, subst InferSubst) (
+	InferSubst, *types.Type, error) {
+
+	old, ok := subst[tv.TypeVar]
+	if ok && !old.Type.IsA(to) {
+		return nil, nil, fmt.Errorf("unify, old %v != new %v", old, to)
+	}
+	subst[tv.TypeVar] = &InferScheme{
+		Type: to,
+	}
+	return subst, to, nil
 }
 
 // Infer implements AST.Infer.
@@ -403,7 +414,8 @@ func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		}
 	}
 
-	subst, retType, callType, err := inferCall(env, fnSubst, fnType, ast.Args)
+	subst, retType, callType, err := inferCall(ast, env, fnSubst, fnType,
+		ast.Args)
 	if err != nil {
 		return nil, nil, ast.From.Errorf("%s", err)
 	}
@@ -417,8 +429,10 @@ func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	return subst, retType, nil
 }
 
-func inferCall(env *InferEnv, fnSubst InferSubst, fnType *types.Type,
+func inferCall(ast AST, env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 	args []AST) (InferSubst, *types.Type, *types.Type, error) {
+
+	from := ast.Locator().From()
 
 	// Create a new type variable for the return type of the function.
 	rv := env.inferer.newTypeVar()
@@ -440,7 +454,7 @@ func inferCall(env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 
 	// Apply argSubst to fnType.
 	fnTypeSubst := argSubst.Apply(env.Generalize(fnType))
-	fmt.Printf("ASTCall.Infer: fnTypeSubst=%v\n", fnTypeSubst)
+	from.Infof("ASTCall.Infer: fnTypeSubst=%v\n", fnTypeSubst)
 
 	// Create a function type for the called function.
 	callType := &types.Type{ // XXX type3
@@ -448,7 +462,9 @@ func inferCall(env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 		Args:   argTypes,
 		Return: rv,
 	}
-	fmt.Printf("ASTCall.Infer: calltype=%v\n", callType)
+	from.Infof("ASTCall.Infer: calltype=%v, unify:\n", callType)
+	from.Infof(" \u256d\u2574 %v\n", callType)
+	from.Infof(" \u251c\u2574 %v\n", fnTypeSubst.Type)
 
 	// Unify fnTypeSubst with callType.
 	subst3, unified, err := Unify(callType, fnTypeSubst.Type)
@@ -458,7 +474,7 @@ func inferCall(env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 
 		return nil, nil, nil, err
 	}
-	fmt.Printf("ASTCall.Infer: => %v\n", unified)
+	from.Infof(" \u2570> %v\n", unified)
 
 	// Compose result substitutions.
 	subst := fnSubst.Compose(argSubst.Compose(subst3))
@@ -520,7 +536,7 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 			ast.Op)
 	}
 
-	subst, retType, callType, err := inferCall(env, fnSubst, fnType, []AST{
+	subst, retType, callType, err := inferCall(ast, env, fnSubst, fnType, []AST{
 		ast.Arg,
 	})
 	if err != nil {
