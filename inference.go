@@ -322,8 +322,7 @@ func (ast *ASTSequence) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		// XX think this env + subst composition
-		// XXX ??? env = subst.ApplyEnv(env)
+		env = subst.ApplyEnv(env)
 		subst = subst.Compose(s)
 	}
 	return subst, ast.t, nil
@@ -382,6 +381,7 @@ func (ast *ASTLet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		if err != nil {
 			return nil, nil, err
 		}
+		env = subst.ApplyEnv(env)
 		subst = subst.Compose(s)
 	}
 	return subst, ast.t, nil
@@ -630,7 +630,7 @@ func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		env = subst.ApplyEnv(env) // XXX ???
+		env = subst.ApplyEnv(env)
 		subst = subst.Compose(s)
 	}
 	subst[retScheme.Type.Return.TypeVar] = env.Generalize(t)
