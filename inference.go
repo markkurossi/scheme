@@ -639,7 +639,7 @@ func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	retScheme = subst.Apply(retScheme)
 
 	if retScheme.Type.Return.Enum == types.EnumTypeVar {
-		retScheme.Type.Return = types.Unspecified
+		retScheme.Type.Return = types.Any
 		env.inferer.Debugf(ast, "Lambda: no return value => %v\n",
 			retScheme.Type.Return)
 	}
