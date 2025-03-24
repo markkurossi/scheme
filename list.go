@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2024 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -63,6 +63,12 @@ func (pair *PlainPair) SetTo(p Point) {
 // Errorf implements Locator.Errorf.
 func (pair *PlainPair) Errorf(format string, a ...interface{}) error {
 	return fmt.Errorf(format, a...)
+}
+
+// Warningf implements Locator.Warningf.
+func (pair *PlainPair) Warningf(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	fmt.Printf("warning: %s", msg)
 }
 
 // Infof implements Locator.Infof.
@@ -222,6 +228,12 @@ func (pair *LocationPair) Eq(o Value) bool {
 func (pair *LocationPair) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 	return fmt.Errorf("%s: %s", pair.from, msg)
+}
+
+// Warningf implements Locator.Warningf.
+func (pair *LocationPair) Warningf(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	fmt.Printf("%s: warning: %s", pair.from, msg)
 }
 
 // Infof implements Locator.Infof.

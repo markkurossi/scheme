@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2024 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -177,6 +177,12 @@ func (p Point) Errorf(format string, a ...interface{}) error {
 	return fmt.Errorf("%s: %s", p, msg)
 }
 
+// Warningf implements Locator.Warningf.
+func (p Point) Warningf(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	fmt.Printf("%s: warning: %s", p, msg)
+}
+
 // Infof implements Locator.Info.
 func (p Point) Infof(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
@@ -190,6 +196,8 @@ type Locator interface {
 	SetTo(p Point)
 	// Errorf returns an error with the location information.
 	Errorf(format string, a ...interface{}) error
+	// Warningf prints a warning with the location information.
+	Warningf(format string, a ...interface{})
 	// Infof prints information with the location information.
 	Infof(format string, a ...interface{})
 }

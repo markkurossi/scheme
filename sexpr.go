@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2024 Markku Rossi
+// Copyright (c) 2022-, 20252025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -42,6 +42,12 @@ func (p *SexprParser) SetTo(point Point) {
 func (p *SexprParser) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 	return fmt.Errorf("%s: %s", p.From(), msg)
+}
+
+// Warningf implements Locator.Warningf.
+func (p *SexprParser) Warningf(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	fmt.Printf("%s: warning: %s", p.From(), msg)
 }
 
 // Infof implements Locator.Infof.
