@@ -88,6 +88,21 @@ func (ast *ASTLet) PP(w pp.Writer) {
 
 // PP implements AST.PP.
 func (ast *ASTIf) PP(w pp.Writer) {
+	w.Printf("(")
+	w.Keyword("if")
+	w.Printf(" ")
+	w.Indent(4)
+	ast.Cond.PP(w)
+	w.Println()
+	ast.True.PP(w)
+
+	if ast.False != nil {
+		w.Println()
+		ast.False.PP(w)
+	}
+	w.Printf(")")
+	w.Type(ast.Type().String())
+	w.Indent(-4)
 }
 
 // PP implements AST.PP.
