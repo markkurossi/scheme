@@ -139,6 +139,14 @@ var inferenceTests = []struct {
 		d: `(let ((x 1)) x)`,
 		t: types.InexactInteger,
 	},
+	{
+		d: `(define (loop a) (loop (+ a 1))) (loop 0)`,
+		t: types.Any,
+	},
+	{
+		d: `(define (odd n) (e (+ n 1))) (define (e n) (odd (+ n 1))) (odd 0)`,
+		t: types.Any,
+	},
 }
 
 func TestInference(t *testing.T) {
