@@ -38,6 +38,19 @@ following non-compliant design decisions:
    runtime also implements the funtions as procedures so it is
    possible to `apply` them to arguments.
 
+### Extensions
+
+The `pragma` directive can be used to control Scheme's compilation and
+runtime semantics. The `pragma` directives are specified in the
+following format:
+
+``` scheme
+(pragma (directive1 value1) ...)
+```
+
+The following directives are defined:
+ - `verbose-typecheck bool` controls type inference verbosity.
+
 ### Types
 
 The compiler uses type inference to resolve types for all

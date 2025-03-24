@@ -15,7 +15,6 @@ import (
 
 // Inferer implements type inference.
 type Inferer struct {
-	debug   bool
 	scm     *Scheme
 	defines []AST
 	calls   map[*ASTLambda]*inferred
@@ -29,7 +28,6 @@ type inferred struct {
 // NewInferer creates a new type inferer.
 func NewInferer(scm *Scheme, toplevel []AST) *Inferer {
 	inferer := &Inferer{
-		debug: true,
 		scm:   scm,
 		calls: make(map[*ASTLambda]*inferred),
 	}
@@ -49,7 +47,7 @@ func NewInferer(scm *Scheme, toplevel []AST) *Inferer {
 
 // Debugf prints debugging information about type inference.
 func (inferer *Inferer) Debugf(ast AST, format string, a ...interface{}) {
-	if !inferer.debug {
+	if !inferer.scm.pragmaVerboseTypecheck {
 		return
 	}
 	msg := fmt.Sprintf(format, a...)
@@ -692,5 +690,28 @@ func (ast *ASTOr) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTPragma) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	return nil, nil, fmt.Errorf("ASTPragma.Infer not implemented yet")
+	for _, d := range ast.Directives {
+		if len(d) != 2 {
+			return nil, nil, ast.From.Errorf("invalid directive: %v", d)
+		}
+		id, ok := d[0].(*Identifier)
+		if !ok {
+			return nil, nil, ast.From.Errorf(
+				"invalid directive '%v': expected identifier", d[0])
+		}
+		switch id.Name {
+		case "verbose-typecheck":
+			v, ok := d[1].(Boolean)
+			if !ok {
+				return nil, nil,
+					ast.From.Errorf("pragma %s: invalid argument: %v", id, d[1])
+			}
+			env.inferer.scm.pragmaVerboseTypecheck = bool(v)
+
+		default:
+			return nil, nil, ast.From.Errorf("unknown pragma '%s'", id.Name)
+		}
+	}
+
+	return make(InferSubst), types.Unspecified, nil
 }
