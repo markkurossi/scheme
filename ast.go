@@ -1090,7 +1090,6 @@ func (ast *ASTConstant) Equal(o AST) bool {
 
 // SetType implements AST.SetType
 func (ast *ASTConstant) SetType(t *types.Type) {
-	fmt.Printf("ASTConstant.SetType(%v)\n", t)
 }
 
 // Type implements AST.Type.
