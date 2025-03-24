@@ -207,4 +207,23 @@ func (ast *ASTOr) PP(w pp.Writer) {
 
 // PP implements AST.PP.
 func (ast *ASTPragma) PP(w pp.Writer) {
+	w.Printf("(")
+	w.Keyword("pragma")
+	w.Printf(" ")
+	w.Indent(8)
+	for i, d := range ast.Directives {
+		if i > 0 {
+			w.Println()
+		}
+		w.Printf("(")
+		for j, v := range d {
+			if j > 0 {
+				w.Printf(" ")
+			}
+			w.Printf("%v", v)
+		}
+		w.Printf(")")
+	}
+	w.Printf(")")
+	w.Indent(-8)
 }
