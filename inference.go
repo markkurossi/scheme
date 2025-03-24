@@ -389,7 +389,29 @@ func (ast *ASTLet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTIf) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	return nil, nil, fmt.Errorf("ASTIf.Infer not implemented yet")
+	subst, t, err := ast.Cond.Infer(env)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !t.IsA(types.Boolean) {
+		ast.Cond.Locator().From().Warningf("if test is not boolean: %v\n", t)
+	}
+	var tt, ft *types.Type
+	subst, tt, err = ast.True.Infer(env)
+	if err != nil {
+		return nil, nil, err
+	}
+	if ast.False != nil {
+		subst, ft, err = ast.False.Infer(env)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		ft = types.Boolean
+	}
+	ast.t = types.Unify(tt, ft)
+
+	return subst, ast.t, nil
 }
 
 // Infer implements AST.Infer.
@@ -525,9 +547,10 @@ func inferCall(ast AST, env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 	InferSubst, *types.Type, error) {
 
+	subst := make(InferSubst)
+
 	switch ast.InlineOp {
 	case OpAdd, OpSub, OpMul, OpDiv:
-		subst := make(InferSubst)
 		result := &types.Type{
 			Enum:   types.EnumLambda,
 			Return: types.Number,
@@ -542,7 +565,20 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 		return subst, result, nil
 
 	// XXX OpCons
-	// XXX OpEq, OpLt, OpGt, OpLe, OpGe
+
+	case OpEq, OpLt, OpGt, OpLe, OpGe:
+		result := &types.Type{
+			Enum:   types.EnumLambda,
+			Return: types.Boolean,
+		}
+
+		// XXX min argument count.
+
+		for i := 0; i < len(ast.Args); i++ {
+			result.Args = append(result.Args, types.Number)
+		}
+
+		return subst, result, nil
 
 	default:
 		return nil, nil, ast.From.Errorf("%s: infer not implemented yet",

@@ -100,6 +100,9 @@ func (e Enum) Unify(o Enum) Enum {
 	if e == EnumUnspecified || o == EnumUnspecified {
 		return EnumUnspecified
 	}
+	if e == EnumTypeVar || o == EnumTypeVar {
+		return EnumAny
+	}
 
 	for eIter := e; ; eIter = eIter.Super() {
 		for oIter := o; ; oIter = oIter.Super() {
