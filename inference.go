@@ -8,20 +8,30 @@ package scheme
 
 import (
 	"fmt"
+	"unicode"
 
 	"github.com/markkurossi/scheme/types"
 )
 
 // Inferer implements type inference.
 type Inferer struct {
+	debug   bool
 	scm     *Scheme
 	defines []AST
+	calls   map[*ASTLambda]*inferred
+}
+
+type inferred struct {
+	subst InferSubst
+	t     *types.Type
 }
 
 // NewInferer creates a new type inferer.
 func NewInferer(scm *Scheme, toplevel []AST) *Inferer {
 	inferer := &Inferer{
-		scm: scm,
+		debug: true,
+		scm:   scm,
+		calls: make(map[*ASTLambda]*inferred),
 	}
 	for _, item := range toplevel {
 		switch ast := item.(type) {
@@ -35,6 +45,20 @@ func NewInferer(scm *Scheme, toplevel []AST) *Inferer {
 		}
 	}
 	return inferer
+}
+
+// Debugf prints debugging information about type inference.
+func (inferer *Inferer) Debugf(ast AST, format string, a ...interface{}) {
+	if !inferer.debug {
+		return
+	}
+	msg := fmt.Sprintf(format, a...)
+	if len(msg) > 0 && unicode.IsSpace(rune(msg[0])) {
+		msg = "  " + msg
+	} else {
+		msg = "\u22a2 " + msg
+	}
+	ast.Locator().From().Infof("%s", msg)
 }
 
 // NewEnv creates a new inference environment.
@@ -178,15 +202,29 @@ func (s InferSubst) Apply(t *InferScheme) *InferScheme {
 		}
 		switch result.Type.Enum {
 		case types.EnumLambda:
-			panic("InferSubst.Apply: Lambda not implemented yet")
-		case types.EnumTypeVar:
-			if v.IsA(result.Type) {
-				result.Type = replacement.Type
+			for i, arg := range result.Type.Args {
+				result.Type.Args[i] = replace(arg, v, replacement.Type)
 			}
+			if result.Type.Rest != nil {
+				result.Type.Rest = replace(result.Type.Rest, v,
+					replacement.Type)
+			}
+			result.Type.Return = replace(result.Type.Return, v,
+				replacement.Type)
+
+		case types.EnumTypeVar:
+			result.Type = replace(result.Type, v, replacement.Type)
 		}
 	}
 
 	return result
+}
+
+func replace(t, v, r *types.Type) *types.Type {
+	if v.IsA(t) {
+		return r
+	}
+	return t
 }
 
 // ApplyEnv applies substitutions for the environment and returns a
@@ -432,8 +470,6 @@ func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 func inferCall(ast AST, env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 	args []AST) (InferSubst, *types.Type, *types.Type, error) {
 
-	from := ast.Locator().From()
-
 	// Create a new type variable for the return type of the function.
 	rv := env.inferer.newTypeVar()
 
@@ -454,7 +490,7 @@ func inferCall(ast AST, env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 
 	// Apply argSubst to fnType.
 	fnTypeSubst := argSubst.Apply(env.Generalize(fnType))
-	from.Infof("ASTCall.Infer: fnTypeSubst=%v\n", fnTypeSubst)
+	env.inferer.Debugf(ast, "Call: fnTypeSubst=%v\n", fnTypeSubst)
 
 	// Create a function type for the called function.
 	callType := &types.Type{ // XXX type3
@@ -462,9 +498,9 @@ func inferCall(ast AST, env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 		Args:   argTypes,
 		Return: rv,
 	}
-	from.Infof("ASTCall.Infer: calltype=%v, unify:\n", callType)
-	from.Infof(" \u256d\u2574 %v\n", callType)
-	from.Infof(" \u251c\u2574 %v\n", fnTypeSubst.Type)
+	env.inferer.Debugf(ast, "Call: calltype=%v, unify:\n", callType)
+	env.inferer.Debugf(ast, " \u256d\u2574 %v\n", callType)
+	env.inferer.Debugf(ast, " \u251c\u2574 %v\n", fnTypeSubst.Type)
 
 	// Unify fnTypeSubst with callType.
 	subst3, unified, err := Unify(callType, fnTypeSubst.Type)
@@ -474,7 +510,7 @@ func inferCall(ast AST, env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 
 		return nil, nil, nil, err
 	}
-	from.Infof(" \u2570> %v\n", unified)
+	env.inferer.Debugf(ast, " \u2570> %v\n", unified)
 
 	// Compose result substitutions.
 	subst := fnSubst.Compose(argSubst.Compose(subst3))
@@ -549,6 +585,24 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+	cached, ok := env.inferer.calls[ast]
+	if ok {
+		return cached.subst, cached.t, nil
+	}
+	subst := make(InferSubst)
+	retScheme := &InferScheme{
+		Type: &types.Type{
+			Enum:   types.EnumLambda,
+			Return: env.inferer.newTypeVar(),
+		},
+	}
+	retScheme.Variables = append(retScheme.Variables, retScheme.Type.Return)
+
+	env.inferer.calls[ast] = &inferred{
+		subst: subst,
+		t:     retScheme.Type,
+	}
+
 	env = env.Copy()
 
 	var args []*InferScheme
@@ -556,42 +610,43 @@ func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		scheme := env.Generalize(env.inferer.newTypeVar())
 		args = append(args, scheme)
 		env.bindings[arg.Name] = scheme
+
+		retScheme.Variables = append(retScheme.Variables, scheme.Type)
+		retScheme.Type.Args = append(retScheme.Type.Args, scheme.Type)
 	}
 	if ast.Args.Rest != nil {
 		scheme := env.Generalize(env.inferer.newTypeVar())
 		args = append(args, scheme)
 		env.bindings[ast.Args.Rest.Name] = scheme
+
+		retScheme.Variables = append(retScheme.Variables, scheme.Type)
+		retScheme.Type.Return = scheme.Type
 	}
 
-	var subst InferSubst
 	var t *types.Type
 	var err error
 
 	for _, item := range ast.Body {
+		var s InferSubst
 		subst, t, err = item.Infer(env)
 		if err != nil {
 			return nil, nil, err
 		}
-		env = subst.ApplyEnv(env)
+		env = subst.ApplyEnv(env) // XXX ???
+		subst = subst.Compose(s)
+	}
+	subst[retScheme.Type.Return.TypeVar] = env.Generalize(t)
+
+	// Apply substitution to return type.
+	retScheme = subst.Apply(retScheme)
+
+	if retScheme.Type.Return.Enum == types.EnumTypeVar {
+		retScheme.Type.Return = types.Unspecified
+		env.inferer.Debugf(ast, "Lambda: no return value => %v\n",
+			retScheme.Type.Return)
 	}
 
-	// Apply substitution to argument types.
-	for idx, arg := range args {
-		args[idx] = subst.Apply(arg)
-	}
-
-	ast.t = &types.Type{
-		Enum:   types.EnumLambda,
-		Return: t,
-	}
-	for i := 0; i < len(ast.Args.Fixed); i++ {
-		ast.t.Args = append(ast.t.Args, args[i].Type)
-	}
-	if ast.Args.Rest != nil {
-		ast.t.Rest = args[len(ast.Args.Fixed)].Type
-	}
-
-	fmt.Printf("ASTLambda: type=%v\n", ast.t)
+	ast.t = retScheme.Type
 
 	return subst, ast.t, nil
 }

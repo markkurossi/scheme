@@ -52,6 +52,48 @@ func TestInstantiate(t *testing.T) {
 	}
 }
 
+func TestApply(t *testing.T) {
+	scm := newTestScheme(t)
+	inferer := NewInferer(scm, nil)
+	env := inferer.NewEnv()
+
+	subst := make(InferSubst)
+	scheme := &InferScheme{
+		Type: &types.Type{
+			Enum: types.EnumLambda,
+			Args: []*types.Type{
+				inferer.newTypeVar(),
+			},
+			Rest:   inferer.newTypeVar(),
+			Return: inferer.newTypeVar(),
+		},
+	}
+	scheme.Variables = []*types.Type{
+		scheme.Type.Args[0],
+		scheme.Type.Rest,
+		scheme.Type.Return,
+	}
+	types := []*InferScheme{
+		env.Generalize(types.ExactInteger),
+		env.Generalize(types.String),
+		env.Generalize(types.ExactFloat),
+	}
+	for i, t := range types {
+		subst[scheme.Variables[i].TypeVar] = t
+	}
+
+	scheme = subst.Apply(scheme)
+	if !scheme.Type.Args[0].IsA(types[0].Type) {
+		t.Errorf("Args[0] type mismatch")
+	}
+	if !scheme.Type.Rest.IsA(types[1].Type) {
+		t.Errorf("Rest type mismatch")
+	}
+	if !scheme.Type.Return.IsA(types[2].Type) {
+		t.Errorf("Return type mismatch")
+	}
+}
+
 var inferenceTests = []struct {
 	d string
 	t *types.Type

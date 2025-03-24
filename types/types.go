@@ -74,8 +74,7 @@ func (e Enum) Super() Enum {
 		return EnumUnspecified
 
 	case EnumAny, EnumNil, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
-		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair,
-		EnumVector, EnumTypeVar:
+		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair, EnumVector:
 		return EnumAny
 
 	case EnumExactInteger, EnumExactFloat:
@@ -86,6 +85,9 @@ func (e Enum) Super() Enum {
 
 	case EnumInexactFloat:
 		return EnumExactFloat
+
+	case EnumTypeVar:
+		return EnumTypeVar
 
 	default:
 		panic(fmt.Sprintf("unknown Enum %d", e))
