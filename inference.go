@@ -544,10 +544,37 @@ func inferCall(ast AST, env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 	return subst, retType, unified, nil
 }
 
+var minArgCount = map[Operand]int{
+	OpAdd: 0,
+	OpSub: 1,
+	OpMul: 0,
+	OpDiv: 1,
+
+	OpEq: 2,
+	OpLt: 2,
+	OpGt: 2,
+	OpLe: 2,
+	OpGe: 2,
+
+	OpCons: 2,
+}
+
 func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 	InferSubst, *types.Type, error) {
 
 	subst := make(InferSubst)
+
+	minArgs, ok := minArgCount[ast.InlineOp]
+	if !ok {
+		panic(fmt.Sprintf("unknown inline function: %v", ast.InlineOp))
+	}
+	if len(ast.Args) < minArgs {
+		ast.From.Errorf("too few arguments: got %v, need %v",
+			len(ast.Args), minArgs)
+	}
+	if ast.InlineOp == OpCons && len(ast.Args) > 2 {
+		ast.From.Errorf("too many arguments: got %v, max 2", len(ast.Args))
+	}
 
 	switch ast.InlineOp {
 	case OpAdd, OpSub, OpMul, OpDiv:
@@ -556,23 +583,29 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 			Return: types.Number,
 		}
 
-		// XXX min argument count.
-
 		for i := 0; i < len(ast.Args); i++ {
 			result.Args = append(result.Args, types.Number)
 		}
 
 		return subst, result, nil
 
-	// XXX OpCons
+	case OpCons:
+		result := &types.Type{
+			Enum: types.EnumLambda,
+			Args: []*types.Type{types.Any, types.Any},
+			Return: &types.Type{
+				Enum: types.EnumPair,
+				Car:  types.Any,
+				Cdr:  types.Any,
+			},
+		}
+		return subst, result, nil
 
 	case OpEq, OpLt, OpGt, OpLe, OpGe:
 		result := &types.Type{
 			Enum:   types.EnumLambda,
 			Return: types.Boolean,
 		}
-
-		// XXX min argument count.
 
 		for i := 0; i < len(ast.Args); i++ {
 			result.Args = append(result.Args, types.Number)
@@ -581,7 +614,7 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 		return subst, result, nil
 
 	default:
-		return nil, nil, ast.From.Errorf("%s: infer not implemented yet",
+		return nil, nil, ast.From.Errorf("%s: unknown inline function",
 			ast.InlineOp)
 	}
 }
