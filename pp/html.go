@@ -62,6 +62,9 @@ func (w *HTML) Header() {
       .keyword {
           color: rgb(170, 51, 119);
       }
+      .string {
+          color: rgb(238, 102, 119);
+      }
     </style>
   </head>
   <body>
@@ -151,6 +154,13 @@ func (w *HTML) Type(t string) {
 	}
 	w.output(fmt.Sprintf(`<span class="type">%s</span>`, html.EscapeString(t)))
 	w.col += len(t)
+}
+
+// Literal implements Writer.Literal.
+func (w *HTML) Literal(lit string) {
+	w.output(fmt.Sprintf(`<span class="string">%s</span>`,
+		html.EscapeString(lit)))
+	w.col += len(lit)
 }
 
 // Error implements Writer.Error.

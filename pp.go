@@ -209,7 +209,12 @@ func (ast *ASTLambda) PP(w pp.Writer) {
 
 // PP implements AST.PP.
 func (ast *ASTConstant) PP(w pp.Writer) {
-	w.Printf("%s", ToScheme(ast.Value))
+	switch v := ast.Value.(type) {
+	case String:
+		w.Literal(ToScheme(v))
+	default:
+		w.Printf("%s", ToScheme(ast.Value))
+	}
 	w.Type(ast.Type().String())
 }
 

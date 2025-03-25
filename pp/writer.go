@@ -44,6 +44,9 @@ type Writer interface {
 	// Type prints a type.
 	Type(t string)
 
+	// Literal prints a string literal.
+	Literal(t string)
+
 	// Error returns an error if any of the methods failed during the
 	// pretty-printing.
 	Error() error
