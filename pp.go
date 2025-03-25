@@ -12,13 +12,20 @@ import (
 
 // PP implements AST.PP.
 func (ast *ASTSequence) PP(w pp.Writer) {
+	w.Printf("(")
+	w.Keyword("begin")
+	w.Println()
+	w.Indent(2)
 	for idx, item := range ast.Items {
-		if idx > 0 {
+		item.PP(w)
+		if idx+1 >= len(ast.Items) {
+			w.Printf(")")
+			w.Type(ast.Type().String())
+		} else {
 			w.Println()
 		}
-		item.PP(w)
-		w.Println()
 	}
+	w.Indent(-2)
 }
 
 // PP implements AST.PP.
@@ -83,7 +90,6 @@ func (ast *ASTLet) PP(w pp.Writer) {
 
 	w.Indent(2)
 	for idx, b := range ast.Body {
-
 		b.PP(w)
 		if idx+1 >= len(ast.Body) {
 			w.Printf(")")
