@@ -135,8 +135,8 @@ func (env *InferEnv) Copy() *InferEnv {
 	return result
 }
 
-// Lookup find the name's type from the environment.
-func (env *InferEnv) Lookup(name string) *types.Type {
+// Get gets the name's type from the environment.
+func (env *InferEnv) Get(name string) *types.Type {
 	scheme, ok := env.bindings[name]
 	if ok {
 		return scheme.Instantiate(env.inferer)
@@ -161,6 +161,16 @@ func (env *InferEnv) Lookup(name string) *types.Type {
 		}
 	}
 	return types.Unspecified
+}
+
+// Set sets the name's type in the environment.
+func (env *InferEnv) Set(name string, t *types.Type) error {
+	_, ok := env.bindings[name]
+	if !ok {
+		return fmt.Errorf("unbound symbol '%s'", name)
+	}
+	env.bindings[name] = env.Generalize(t)
+	return nil
 }
 
 func (env *InferEnv) resolve(ast AST) *types.Type {
@@ -331,7 +341,7 @@ func (ast *ASTSequence) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 // Infer implements AST.Infer.
 func (ast *ASTDefine) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	// Infer initializer type.
-	_, t, err := ast.Value.Infer(env)
+	subst, t, err := ast.Value.Infer(env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -339,19 +349,47 @@ func (ast *ASTDefine) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	// Check the current type of the name.
 	sym := env.inferer.scm.Intern(ast.Name.Name)
 	if !sym.GlobalType.IsA(types.Unspecified) {
-		return nil, nil, ast.From.Errorf("redefining symbol '%s'",
-			ast.Name.Name)
+		return nil, nil, ast.From.Errorf("redefining symbol '%s'", ast.Name)
 	}
 
 	sym.GlobalType = t
 	ast.t = t
 
-	return make(InferSubst), t, nil
+	return subst, t, nil
 }
 
 // Infer implements AST.Infer.
 func (ast *ASTSet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	return nil, nil, fmt.Errorf("ASTSet.Infer not implemented yet")
+	// Infer initializer type.
+	subst, t, err := ast.Value.Infer(env)
+	if err != nil {
+		return nil, nil, err
+	}
+	if ast.Binding != nil {
+		// let-variables can be assigned with different value types.
+		err = env.Set(ast.Name, t)
+		if err != nil {
+			return nil, nil, err
+		}
+		ast.t = t
+		return subst, ast.t, nil
+	}
+
+	// Check the current type of the name.
+	sym := env.inferer.scm.Intern(ast.Name)
+	if sym.GlobalType.IsA(types.Unspecified) {
+		return nil, nil, ast.From.Errorf("setting undefined symbol '%s'",
+			ast.Name)
+	}
+	if !t.IsKindOf(sym.GlobalType) {
+		return nil, nil,
+			ast.From.Errorf("can't assign %s to variable of type %s",
+				t, sym.GlobalType)
+	}
+
+	ast.t = sym.GlobalType
+
+	return subst, ast.t, nil
 }
 
 // Infer implements AST.Infer.
@@ -381,7 +419,7 @@ func (ast *ASTLet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		env = subst.ApplyEnv(env)
+		bodyEnv = subst.ApplyEnv(bodyEnv)
 		subst = subst.Compose(s)
 	}
 	return subst, ast.t, nil
@@ -730,7 +768,7 @@ func (ast *ASTConstant) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 // Infer implements AST.Infer.
 func (ast *ASTIdentifier) Infer(env *InferEnv) (
 	InferSubst, *types.Type, error) {
-	ast.t = env.Lookup(ast.Name)
+	ast.t = env.Get(ast.Name)
 	if ast.t.IsA(types.Unspecified) {
 		return nil, nil, ast.From.Errorf("undefined symbol '%s'", ast.Name)
 	}
