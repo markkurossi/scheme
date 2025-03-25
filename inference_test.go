@@ -155,6 +155,10 @@ var inferenceTests = []struct {
 		d: `(let ((init (+ #e1 1))) (set! init 42) init)`,
 		t: types.InexactInteger,
 	},
+	{
+		d: `(begin #t "foo" 3)`,
+		t: types.InexactInteger,
+	},
 }
 
 func TestInference(t *testing.T) {
