@@ -229,6 +229,31 @@ func (ast *ASTCase) PP(w pp.Writer) {
 
 // PP implements AST.PP.
 func (ast *ASTAnd) PP(w pp.Writer) {
+	w.Printf("(")
+	w.Keyword("and")
+
+	var indented bool
+	lastLine := ast.Locator().From().Line
+
+	for _, expr := range ast.Exprs {
+		line := expr.Locator().From().Line
+		if line != lastLine {
+			w.Println()
+			if !indented {
+				w.Indent(5)
+				indented = true
+			}
+		} else {
+			w.Printf(" ")
+		}
+		lastLine = line
+		expr.PP(w)
+	}
+	w.Printf(")")
+	w.Type(ast.Type().String())
+	if indented {
+		w.Indent(-5)
+	}
 }
 
 // PP implements AST.PP.
