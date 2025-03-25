@@ -787,7 +787,22 @@ func (ast *ASTCase) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTAnd) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	return nil, nil, fmt.Errorf("ASTAnd.Infer not implemented yet")
+	subst := make(InferSubst)
+	result := types.Boolean
+
+	for _, expr := range ast.Exprs {
+		_, t, err := expr.Infer(env)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !t.IsA(types.Boolean) {
+			expr.Locator().From().Warningf("and expr is not boolean: %v\n", t)
+		}
+		result = types.Unify(result, t)
+	}
+	ast.t = result
+
+	return subst, ast.t, nil
 }
 
 // Infer implements AST.Infer.
