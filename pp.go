@@ -35,6 +35,12 @@ func (ast *ASTDefine) PP(w pp.Writer) {
 
 // PP implements AST.PP.
 func (ast *ASTSet) PP(w pp.Writer) {
+	w.Printf("(set! ")
+	w.Name(ast.Name)
+	w.Printf(" ")
+	ast.Value.PP(w)
+	w.Printf(")")
+	w.Type(ast.Type().String())
 }
 
 // PP implements AST.PP.
@@ -77,10 +83,13 @@ func (ast *ASTLet) PP(w pp.Writer) {
 
 	w.Indent(2)
 	for idx, b := range ast.Body {
+
 		b.PP(w)
 		if idx+1 >= len(ast.Body) {
 			w.Printf(")")
 			w.Type(ast.Type().String())
+		} else {
+			w.Println()
 		}
 	}
 	w.Indent(-2)
