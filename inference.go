@@ -394,7 +394,6 @@ func (ast *ASTSet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTLet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-
 	bodyEnv := env.Copy()
 	var subst InferSubst
 	var err error
@@ -659,7 +658,7 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 
 // Infer implements AST.Infer.
 func (ast *ASTCallUnary) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	// Resolve th etype of the function.
+	// Resolve the type of the function.
 
 	fnSubst := make(InferSubst)
 	var fnType *types.Type
@@ -807,7 +806,22 @@ func (ast *ASTAnd) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTOr) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	return nil, nil, fmt.Errorf("ASTOr.Infer not implemented yet")
+	subst := make(InferSubst)
+	result := types.Boolean
+
+	for _, expr := range ast.Exprs {
+		_, t, err := expr.Infer(env)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !t.IsA(types.Boolean) {
+			expr.Locator().From().Warningf("or expr is not boolean: %v\n", t)
+		}
+		result = types.Unify(result, t)
+	}
+	ast.t = result
+
+	return subst, ast.t, nil
 }
 
 // Infer implements AST.Infer.

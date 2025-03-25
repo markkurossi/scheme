@@ -159,6 +159,22 @@ var inferenceTests = []struct {
 		d: `(begin #t "foo" 3)`,
 		t: types.InexactInteger,
 	},
+	{
+		d: `(and #t #f)`,
+		t: types.Boolean,
+	},
+	{
+		d: `(and)`,
+		t: types.Boolean,
+	},
+	{
+		d: `(or #t #f)`,
+		t: types.Boolean,
+	},
+	{
+		d: `(or)`,
+		t: types.Boolean,
+	},
 }
 
 func TestInference(t *testing.T) {
