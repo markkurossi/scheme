@@ -332,7 +332,7 @@ func (ast *ASTSequence) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		env = subst.ApplyEnv(env)
+		env = s.ApplyEnv(env)
 		subst = subst.Compose(s)
 	}
 	return subst, ast.t, nil
@@ -418,7 +418,7 @@ func (ast *ASTLet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		bodyEnv = subst.ApplyEnv(bodyEnv)
+		bodyEnv = s.ApplyEnv(bodyEnv)
 		subst = subst.Compose(s)
 	}
 	return subst, ast.t, nil
@@ -732,11 +732,11 @@ func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 	for _, item := range ast.Body {
 		var s InferSubst
-		subst, t, err = item.Infer(env)
+		s, t, err = item.Infer(env)
 		if err != nil {
 			return nil, nil, err
 		}
-		env = subst.ApplyEnv(env)
+		env = s.ApplyEnv(env)
 		subst = subst.Compose(s)
 	}
 	subst[retScheme.Type.Return.TypeVar] = env.Generalize(t)
@@ -776,7 +776,55 @@ func (ast *ASTIdentifier) Infer(env *InferEnv) (
 
 // Infer implements AST.Infer.
 func (ast *ASTCond) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	return nil, nil, fmt.Errorf("ASTCond.Infer not implemented yet")
+	var result *types.Type
+	var err error
+
+	for _, choice := range ast.Choices {
+		var choiceType *types.Type
+		if choice.Cond == nil {
+			choiceType = types.Boolean
+		} else {
+			_, choiceType, err = choice.Cond.Infer(env)
+			if err != nil {
+				return nil, nil, err
+			}
+			if choice.Func == nil && !choiceType.IsA(types.Boolean) {
+				choice.Cond.Locator().From().
+					Warningf("choice is not boolean: %v\n", choiceType)
+			}
+		}
+		if choice.Func != nil {
+			_, fnType, err := choice.Func.Infer(env)
+			if err != nil {
+				return nil, nil, err
+			}
+			if fnType.Enum != types.EnumLambda {
+				return nil, nil, choice.Func.Locator().From().
+					Errorf("invalid function: %v", fnType)
+			}
+			result = types.Unify(result, fnType.Return)
+		} else if len(choice.Exprs) == 0 {
+			result = types.Unify(result, choiceType)
+		} else {
+			choiceEnv := env.Copy()
+			subst := make(InferSubst)
+			var choiceType *types.Type
+
+			for _, expr := range choice.Exprs {
+				var s InferSubst
+				s, choiceType, err = expr.Infer(env)
+				if err != nil {
+					return nil, nil, err
+				}
+				choiceEnv = s.ApplyEnv(choiceEnv)
+				subst = subst.Compose(s)
+			}
+			result = types.Unify(result, choiceType)
+		}
+	}
+	ast.t = result
+
+	return make(InferSubst), result, nil
 }
 
 // Infer implements AST.Infer.
