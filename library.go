@@ -34,6 +34,10 @@ type Library struct {
 	current   *lambdaCompilation
 }
 
+func (lib *Library) String() string {
+	return fmt.Sprintf("(library %v %v)", lib.Name, lib.Source)
+}
+
 // Scheme implements Value.Scheme.
 func (lib *Library) Scheme() string {
 	return fmt.Sprintf("library %s", lib.Name.Scheme())
