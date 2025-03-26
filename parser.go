@@ -880,7 +880,7 @@ func (p *Parser) parseCond(env *Env, list []Pair,
 			choice.Func = funcAST
 
 			// Create call frame.
-			env.PushCaptureFrame(captures, FUFrame, 1)
+			env.PushCaptureFrame(false, FUFrame, 1)
 
 			// Push argument scope.
 			choice.FuncArgsFrame = env.PushCaptureFrame(false, FUArgs, 1)

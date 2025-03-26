@@ -1350,7 +1350,7 @@ func (ast *ASTCond) Bytecode(lib *Library) error {
 			lib.addCall(nil, 1, ast.Tail)
 			if !ast.Tail {
 				// Pop value scope.
-				lib.addPopS(choice.From, 1, ast.Captures)
+				lib.addPopS(choice.From, 1, false)
 			}
 		} else {
 			// Compile expressions.
