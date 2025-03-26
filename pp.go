@@ -226,6 +226,36 @@ func (ast *ASTIdentifier) PP(w pp.Writer) {
 
 // PP implements AST.PP.
 func (ast *ASTCond) PP(w pp.Writer) {
+	w.Printf("(")
+	w.Keyword("cond")
+	w.Printf(" ")
+	w.Indent(6)
+
+	for i, choice := range ast.Choices {
+		w.Printf("(")
+		if choice.Cond == nil {
+			w.Keyword("else")
+		} else {
+			choice.Cond.PP(w)
+		}
+		if choice.Func != nil {
+			w.Printf(" => ")
+			choice.Func.PP(w)
+		} else {
+			for _, expr := range choice.Exprs {
+				w.Printf(" ")
+				expr.PP(w)
+			}
+		}
+		w.Printf(")")
+		if i+1 >= len(ast.Choices) {
+			w.Printf(")")
+			w.Type(ast.Type().String())
+		} else {
+			w.Println()
+		}
+	}
+	w.Indent(-6)
 }
 
 // PP implements AST.PP.
