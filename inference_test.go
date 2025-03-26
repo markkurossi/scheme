@@ -175,6 +175,10 @@ var inferenceTests = []struct {
 		d: `(or)`,
 		t: types.Boolean,
 	},
+	{
+		d: `(cond ((> 3 2) "greater") ((< 3 2) "less") (else "equal"))`,
+		t: types.String,
+	},
 }
 
 func TestInference(t *testing.T) {

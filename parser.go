@@ -203,8 +203,9 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 				return nil, v.Errorf("invalid quote: %v", v)
 			}
 			return &ASTConstant{
-				From:  loc,
-				Value: quoted,
+				From:   loc,
+				Quoted: true,
+				Value:  quoted,
 			}, nil
 		}
 		if isKeyword(v.Car(), KwSchemeApply) {

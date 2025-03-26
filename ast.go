@@ -1066,8 +1066,9 @@ func (ast *ASTLambda) Bytecode(lib *Library) error {
 
 // ASTConstant implements contant values.
 type ASTConstant struct {
-	From  Locator
-	Value Value
+	From   Locator
+	Quoted bool
+	Value  Value
 }
 
 func (ast *ASTConstant) String() string {

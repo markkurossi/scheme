@@ -209,6 +209,9 @@ func (ast *ASTLambda) PP(w pp.Writer) {
 
 // PP implements AST.PP.
 func (ast *ASTConstant) PP(w pp.Writer) {
+	if ast.Quoted {
+		w.Printf("'")
+	}
 	switch v := ast.Value.(type) {
 	case String:
 		w.Literal(ToScheme(v))
