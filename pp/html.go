@@ -13,6 +13,17 @@ import (
 	"strings"
 )
 
+// Emacs font-lock-
+//
+// comment-face:	   Firebrick		#B22222
+// string-face:		   VioletRed4		#8b2252
+// keyword-face:	   Purple			#a020f0
+// builtin-face: 	   dark slate blue	#483d8b
+// function-name-face: Blue1			#0000ff
+// variable-name-face: sienna			#a0522d
+// type-face: 		   ForestGreen		#228b22
+// constant-face: 	   dark cyan		#008b8b
+
 // HTML implements HTML pretty-printing.
 type HTML struct {
 	err    error
@@ -49,21 +60,21 @@ func (w *HTML) Header() {
           font-family: monospace;
       }
       .name {
-          color: rgb(68, 119, 170);
+          color: #0000ff;
           font-weight: bold;
       }
       .type {
           font-size: 70%%;
           vertical-align: top;
           border-radius: 5px;
-          color: rgb(34, 136, 51);
+          color: #228b22;
           margin-left: 2px;
       }
       .keyword {
-          color: rgb(170, 51, 119);
+          color: #800080;
       }
       .string {
-          color: rgb(238, 102, 119);
+          color: #8b2252;
       }
     </style>
   </head>
