@@ -819,7 +819,7 @@ func (ast *ASTCond) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 			for _, expr := range choice.Exprs {
 				var s InferSubst
-				s, choiceType, err = expr.Infer(env)
+				s, choiceType, err = expr.Infer(choiceEnv)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -836,7 +836,32 @@ func (ast *ASTCond) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTCase) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	return nil, nil, fmt.Errorf("ASTCase.Infer not implemented yet")
+	var result *types.Type
+
+	_, _, err := ast.Expr.Infer(env)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, choice := range ast.Choices {
+		choiceEnv := env.Copy()
+		subst := make(InferSubst)
+		var choiceType *types.Type
+
+		for _, expr := range choice.Exprs {
+			var s InferSubst
+			s, choiceType, err = expr.Infer(choiceEnv)
+			if err != nil {
+				return nil, nil, err
+			}
+			choiceEnv = s.ApplyEnv(choiceEnv)
+			subst = subst.Compose(s)
+		}
+		result = types.Unify(result, choiceType)
+	}
+	ast.t = result
+
+	return make(InferSubst), result, nil
 }
 
 // Infer implements AST.Infer.
