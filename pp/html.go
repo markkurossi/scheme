@@ -61,7 +61,6 @@ func (w *HTML) Header() {
       }
       .name {
           color: #0000ff;
-          font-weight: bold;
       }
       .type {
           font-size: 70%%;
