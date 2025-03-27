@@ -395,6 +395,17 @@ var (
 	}
 )
 
+// Concrete tests if the type is concrete.
+func (t *Type) Concrete() bool {
+	switch t.Enum {
+	case EnumUnspecified, EnumTypeVar:
+		return false
+
+	default:
+		return true
+	}
+}
+
 // IsA tests if type is the same as the argument type.
 func (t *Type) IsA(o *Type) bool {
 	if t.Enum != o.Enum {
