@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2024 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -133,6 +133,18 @@ var debugBuiltins = []Builtin{
 					t = types.Any
 				}
 				scm.Stdout.Printf("%v\n", t)
+			}
+			return nil, nil
+		},
+	},
+	{
+		Name:   "print-stack",
+		Return: types.Nil,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			if true {
+				scm.PrintStack()
+			} else {
+				scm.printStack()
 			}
 			return nil, nil
 		},
