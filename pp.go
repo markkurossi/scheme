@@ -263,6 +263,53 @@ func (ast *ASTCond) PP(w pp.Writer) {
 
 // PP implements AST.PP.
 func (ast *ASTCase) PP(w pp.Writer) {
+	w.Printf("(")
+	w.Keyword("case")
+	w.Printf(" ")
+	ast.Expr.PP(w)
+	w.Println()
+	w.Indent(2)
+
+	for i, choice := range ast.Choices {
+		lastLine := choice.From.From().Line
+
+		w.Printf("(")
+		if len(choice.Datums) == 0 {
+			w.Keyword("else")
+		} else {
+			w.Printf("(")
+			for j, datum := range choice.Datums {
+				if j > 0 {
+					w.Printf(" ")
+				}
+				w.Printf("%v", datum)
+			}
+			w.Printf(")")
+		}
+		w.Printf(" ")
+		w.Indent(1)
+
+		for j, expr := range choice.Exprs {
+			line := expr.Locator().From().Line
+			if line != lastLine {
+				w.Println()
+			} else if j > 0 {
+				w.Printf(" ")
+			}
+			expr.PP(w)
+		}
+		w.Printf(")")
+		w.Indent(-1)
+
+		if i+1 >= len(ast.Choices) {
+			w.Printf(")")
+			w.Type(ast.Type().String())
+		} else {
+			w.Println()
+		}
+	}
+
+	w.Indent(-2)
 }
 
 // PP implements AST.PP.
