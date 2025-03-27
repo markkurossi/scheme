@@ -798,9 +798,16 @@ func (ast *ASTCond) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 			if err != nil {
 				return nil, nil, err
 			}
-			if fnType.Enum != types.EnumLambda {
-				return nil, nil, choice.Func.Locator().From().
-					Errorf("invalid function: %v", fnType)
+			// Check function validity.
+			if fnType.Concrete() {
+				if fnType.Enum != types.EnumLambda {
+					return nil, nil, choice.Func.Locator().From().
+						Errorf("invalid function: %v", fnType)
+				}
+				if fnType.MinArgs() != 1 {
+					return nil, nil, choice.Func.Locator().From().
+						Errorf("function must take one argument: %v", fnType)
+				}
 			}
 			result = types.Unify(result, fnType.Return)
 		} else if len(choice.Exprs) == 0 {
