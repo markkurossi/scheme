@@ -729,12 +729,18 @@ func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 
 		var prefix string
 		var prefixes []string
-		for idx, arg := range ast.Args {
+
+		limit := len(ft.Args)
+		if limit > len(ast.Args) {
+			limit = len(ast.Args)
+		}
+
+		for idx := 0; idx < limit; idx++ {
 			for len(prefix) < argOfs[idx] {
 				prefix += " "
 			}
 			prefixes = append(prefixes, prefix)
-			fmt.Printf("%s%s\n", prefix, arg)
+			fmt.Printf("%s%s\n", prefix, ast.Args[idx])
 			prefix += "|"
 		}
 		fmt.Println(prefix)
