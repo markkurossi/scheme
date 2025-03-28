@@ -63,7 +63,7 @@ func (inferer *Inferer) Debugf(ast AST, format string, a ...interface{}) {
 func (inferer *Inferer) NewEnv() *InferEnv {
 	env := &InferEnv{
 		inferer:  inferer,
-		bindings: make(map[string]*InferScheme),
+		bindings: make(map[string]InferEnvBinding),
 	}
 	return env
 }
@@ -108,7 +108,23 @@ func (scheme *InferScheme) Instantiate(inferer *Inferer) *types.Type {
 // InferEnv implements type environment for Infer.
 type InferEnv struct {
 	inferer  *Inferer
-	bindings map[string]*InferScheme
+	bindings map[string]InferEnvBinding
+}
+
+// InferEnvBinding defines known bindings in the inference
+// environment. In most cases these contain the resolved InferSchemes
+// but letrec environments contain forward declarations to initializer
+// ASTs.
+type InferEnvBinding struct {
+	scheme *InferScheme
+	ast    AST
+}
+
+func (ieb InferEnvBinding) String() string {
+	if ieb.scheme != nil {
+		return ieb.scheme.String()
+	}
+	return fmt.Sprintf("%v", ieb.ast)
 }
 
 func (env *InferEnv) String() string {
@@ -137,9 +153,12 @@ func (env *InferEnv) Copy() *InferEnv {
 
 // Get gets the name's type from the environment.
 func (env *InferEnv) Get(name string) *types.Type {
-	scheme, ok := env.bindings[name]
+	binding, ok := env.bindings[name]
 	if ok {
-		return scheme.Instantiate(env.inferer)
+		if binding.scheme != nil {
+			return binding.scheme.Instantiate(env.inferer)
+		}
+		return env.resolve(binding.ast)
 	}
 	t := env.inferer.scm.Intern(name).GlobalType
 	if !t.IsA(types.Unspecified) {
@@ -163,14 +182,35 @@ func (env *InferEnv) Get(name string) *types.Type {
 	return types.Unspecified
 }
 
-// Set sets the name's type in the environment.
-func (env *InferEnv) Set(name string, t *types.Type) error {
+// Define defines the name with its type scheme.
+func (env *InferEnv) Define(name string, scheme *InferScheme) error {
 	_, ok := env.bindings[name]
-	if !ok {
-		return fmt.Errorf("unbound symbol '%s'", name)
+	if ok {
+		return fmt.Errorf("symbol already bound '%s'", name)
 	}
-	env.bindings[name] = env.Generalize(t)
+	env.bindings[name] = InferEnvBinding{
+		scheme: scheme,
+	}
 	return nil
+}
+
+// DefineAST defines the name with its initializer AST.
+func (env *InferEnv) DefineAST(name string, ast AST) error {
+	_, ok := env.bindings[name]
+	if ok {
+		return fmt.Errorf("symbol already bound '%s'", name)
+	}
+	env.bindings[name] = InferEnvBinding{
+		ast: ast,
+	}
+	return nil
+}
+
+// Set sets the name's type scheme in the environment. This overrides any old binding the name might have.
+func (env *InferEnv) Set(name string, scheme *InferScheme) {
+	env.bindings[name] = InferEnvBinding{
+		scheme: scheme,
+	}
 }
 
 func (env *InferEnv) resolve(ast AST) *types.Type {
@@ -240,7 +280,15 @@ func replace(t, v, r *types.Type) *types.Type {
 func (s InferSubst) ApplyEnv(env *InferEnv) *InferEnv {
 	result := env.Copy()
 	for k, v := range env.bindings {
-		result.bindings[k] = s.Apply(v)
+		if v.scheme != nil {
+			result.bindings[k] = InferEnvBinding{
+				scheme: s.Apply(v.scheme),
+			}
+		} else {
+			result.bindings[k] = InferEnvBinding{
+				ast: v.ast,
+			}
+		}
 	}
 	return result
 }
@@ -367,10 +415,7 @@ func (ast *ASTSet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	}
 	if ast.Binding != nil {
 		// let-variables can be assigned with different value types.
-		err = env.Set(ast.Name, t)
-		if err != nil {
-			return nil, nil, err
-		}
+		env.Set(ast.Name, env.Generalize(t))
 		ast.t = t
 		return subst, ast.t, nil
 	}
@@ -406,9 +451,7 @@ func (ast *ASTLet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		}
 		env1 := subst.ApplyEnv(env)
 
-		t := env1.Generalize(type1)
-
-		bodyEnv.bindings[b.Name()] = t
+		bodyEnv.Set(b.Name(), env1.Generalize(type1))
 		bodyEnv = subst.ApplyEnv(bodyEnv)
 	}
 
@@ -713,7 +756,7 @@ func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	for _, arg := range ast.Args.Fixed {
 		scheme := env.Generalize(env.inferer.newTypeVar())
 		args = append(args, scheme)
-		env.bindings[arg.Name] = scheme
+		env.Set(arg.Name, scheme)
 
 		retScheme.Variables = append(retScheme.Variables, scheme.Type)
 		retScheme.Type.Args = append(retScheme.Type.Args, scheme.Type)
@@ -721,7 +764,7 @@ func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	if ast.Args.Rest != nil {
 		scheme := env.Generalize(env.inferer.newTypeVar())
 		args = append(args, scheme)
-		env.bindings[ast.Args.Rest.Name] = scheme
+		env.Set(ast.Args.Rest.Name, scheme)
 
 		retScheme.Variables = append(retScheme.Variables, scheme.Type)
 		retScheme.Type.Return = scheme.Type
