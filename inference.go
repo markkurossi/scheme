@@ -206,10 +206,19 @@ func (env *InferEnv) DefineAST(name string, ast AST) error {
 	return nil
 }
 
-// Set sets the name's type scheme in the environment. This overrides any old binding the name might have.
+// Set sets the name's type scheme in the environment. This overrides
+// any old binding the name might have.
 func (env *InferEnv) Set(name string, scheme *InferScheme) {
 	env.bindings[name] = InferEnvBinding{
 		scheme: scheme,
+	}
+}
+
+// SetAST sets the name's initializer AST in the environment. This
+// overrides any old binding the name might have.
+func (env *InferEnv) SetAST(name string, ast AST) {
+	env.bindings[name] = InferEnvBinding{
+		ast: ast,
 	}
 }
 
@@ -439,19 +448,31 @@ func (ast *ASTSet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTLet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+	initEnv := env.Copy()
 	bodyEnv := env.Copy()
 	var subst InferSubst
 	var err error
 
+	// Bind all names to their init ASTs with letrec.
+	if ast.Kind == KwLetrec {
+		for _, b := range ast.Bindings {
+			initEnv.SetAST(b.Name(), b.Init)
+		}
+	}
+
+	// Resolve initializer types.
 	for _, b := range ast.Bindings {
-		var type1 *types.Type
-		subst, type1, err = b.Init.Infer(env)
+		var t *types.Type
+		subst, t, err = b.Init.Infer(initEnv)
 		if err != nil {
 			return nil, nil, err
 		}
-		env1 := subst.ApplyEnv(env)
+		if ast.Kind != KwLet {
+			initEnv.Set(b.Name(), initEnv.Generalize(t))
+			initEnv = subst.ApplyEnv(initEnv)
+		}
 
-		bodyEnv.Set(b.Name(), env1.Generalize(type1))
+		bodyEnv.Set(b.Name(), initEnv.Generalize(t))
 		bodyEnv = subst.ApplyEnv(bodyEnv)
 	}
 
