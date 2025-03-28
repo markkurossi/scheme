@@ -225,6 +225,7 @@ func (env *InferEnv) SetAST(name string, ast AST) {
 func (env *InferEnv) resolve(ast AST) *types.Type {
 	_, t, err := ast.Infer(env)
 	if err != nil {
+		fmt.Printf("%s\n", err)
 		return types.Unspecified
 	}
 	return t
@@ -517,7 +518,7 @@ func (ast *ASTIf) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTApply) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	return nil, nil, fmt.Errorf("ASTApply.Infer not implemented yet")
+	return nil, nil, ast.From.Errorf("ASTApply.Infer not implemented yet")
 }
 
 // Infer implements AST.Infer.
@@ -728,11 +729,25 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	var fnType *types.Type
 
 	switch ast.Op {
+	case OpPairp, OpNullp, OpZerop, OpNot:
+		fnType = &types.Type{
+			Enum:   types.EnumLambda,
+			Args:   []*types.Type{types.Any},
+			Return: types.Boolean,
+		}
+
 	case OpAddConst, OpSubConst, OpMulConst:
 		fnType = &types.Type{
 			Enum:   types.EnumLambda,
 			Args:   []*types.Type{types.Number},
 			Return: types.Number,
+		}
+
+	case OpCar, OpCdr:
+		fnType = &types.Type{
+			Enum:   types.EnumLambda,
+			Args:   []*types.Type{types.Pair},
+			Return: types.Unspecified,
 		}
 
 	default:
