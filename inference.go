@@ -495,7 +495,7 @@ func (ast *ASTIf) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	if !t.IsA(types.Boolean) {
+	if t.Concrete() && !t.IsA(types.Boolean) {
 		ast.Cond.Locator().From().Warningf("if test is not boolean: %v\n", t)
 	}
 	var tt, ft *types.Type
@@ -537,26 +537,46 @@ func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		if err != nil {
 			return nil, nil, err
 		}
+		env.inferer.Debugf(ast, "Call: inline: fnType=%v\n", fnType)
 	} else {
 		fnSubst, fnType, err = ast.Func.Infer(env)
 		if err != nil {
 			return nil, nil, err
 		}
-		if fnType.Enum != types.EnumLambda {
+		env.inferer.Debugf(ast, "Call: code: fnType=%v\n", fnType)
+
+		switch fnType.Enum {
+		case types.EnumTypeVar:
+			env.inferer.Debugf(ast, "unspecified function %v => %v\n",
+				fnType, types.Unspecified)
+			return make(InferSubst), types.Unspecified, nil
+
+		case types.EnumLambda:
+
+		default:
 			return nil, nil,
 				ast.Func.Locator().From().Errorf("invalid function: %v", fnType)
 		}
 		al := len(fnType.Args)
 		if al < len(ast.Args) {
-			// Check if the last argument Kind is Rest.
-			if al == 0 && fnType.Args[al-1].Kind != types.Rest {
-				ast.From.Errorf("too many arguments got %v, need %v",
-					len(ast.Args), al)
-			}
-			fnType = fnType.Clone()
+			// Check if the function supports rest arguments.
 
-			rest := fnType.Args[al-1]
-			rest.Kind = types.Fixed
+			fnType = fnType.Clone()
+			var rest *types.Type
+
+			if al > 0 && fnType.Args[al-1].Kind == types.Rest {
+				rest = fnType.Args[al-1]
+				rest.Kind = types.Fixed
+			} else if fnType.Rest != nil {
+				rest = fnType.Rest
+				fnType.Rest = nil
+			} else {
+				return nil, nil,
+					ast.From.Errorf("too many arguments got %v, need %v",
+						len(ast.Args), al)
+			}
+
+			env.inferer.Debugf(ast, "%v expanding rest: %v\n", fnType, rest)
 
 			for i := al; i < len(ast.Args); i++ {
 				fnType.Args = append(fnType.Args, rest)
@@ -598,16 +618,20 @@ func inferCall(ast AST, env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 	// Create a new type environment.
 	env1 := fnSubst.ApplyEnv(env)
 
+	env.inferer.Debugf(ast, "Call: fnType=%v\n", fnType)
+
 	// Infer argument types.
 	argSubst := make(InferSubst) // XXX sub2
 	var argTypes []*types.Type   // XXX type2
-	for _, arg := range args {
+	for idx, arg := range args {
 		s, t, err := arg.Infer(env1)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		argTypes = append(argTypes, t)
 		argSubst = argSubst.Compose(s)
+
+		env.inferer.Debugf(ast, " %v: %v\n", idx, t)
 	}
 
 	// Apply argSubst to fnType.
@@ -803,7 +827,7 @@ func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		env.Set(ast.Args.Rest.Name, scheme)
 
 		retScheme.Variables = append(retScheme.Variables, scheme.Type)
-		retScheme.Type.Return = scheme.Type
+		retScheme.Type.Rest = scheme.Type
 	}
 
 	var t *types.Type
@@ -850,6 +874,7 @@ func (ast *ASTIdentifier) Infer(env *InferEnv) (
 	if ast.t.IsA(types.Unspecified) {
 		return nil, nil, ast.From.Errorf("undefined symbol '%s'", ast.Name)
 	}
+	env.inferer.Debugf(ast, "Identifier: %v=%v\n", ast.Name, ast.t)
 	return make(InferSubst), ast.t, nil
 }
 
