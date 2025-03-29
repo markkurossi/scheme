@@ -158,10 +158,14 @@ func (lib *Library) PrettyPrint(w pp.Writer) error {
 		return err
 	}
 	w.Header()
-	for idx, item := range lib.Body.Items {
-		if idx > 0 {
+	last := 1
+	for _, item := range lib.Body.Items {
+		line := item.Locator().From().Line
+		if line > last+1 {
 			w.Println()
 		}
+		last = line
+
 		item.PP(w)
 		w.Println()
 	}
