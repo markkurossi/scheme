@@ -786,6 +786,7 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		return nil, nil, err
 	}
 	ast.Arg.SetType(callType.Args[0])
+	ast.t = retType
 
 	return subst, retType, nil
 }

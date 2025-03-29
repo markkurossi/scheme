@@ -168,6 +168,7 @@ func (ast *ASTCallUnary) PP(w pp.Writer) {
 	}
 
 	w.Printf(")")
+	w.Type(ast.Type().String())
 }
 
 // PP implements AST.PP.
