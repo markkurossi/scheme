@@ -24,8 +24,8 @@ type Writer interface {
 	// margin as the current one.
 	Pop()
 
-	// Indent adjust the line indentation with n columns.
-	Indent(n int)
+	// PushN adjust the left margin with n columns.
+	PushN(n int)
 
 	// Println formats using the default formats for its operands and
 	// outputs the result. Spaces are always added between operands

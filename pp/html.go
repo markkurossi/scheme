@@ -97,7 +97,21 @@ func (w *HTML) Trailer() {
 
 // Push implements Writer.Push.
 func (w *HTML) Push() {
-	w.stack = append(w.stack, w.col)
+	if w.col < w.indent {
+		w.push(w.indent)
+	} else {
+		w.push(w.col)
+	}
+}
+
+// PushN implements Writer.PushN.
+func (w *HTML) PushN(n int) {
+	w.push(w.indent + n)
+}
+
+func (w *HTML) push(n int) {
+	w.stack = append(w.stack, w.indent)
+	w.indent = n
 }
 
 // Pop implements Writer.Pop.
@@ -105,15 +119,8 @@ func (w *HTML) Pop() {
 	if len(w.stack) < 2 {
 		panic("stack underflow")
 	}
+	w.indent = w.stack[len(w.stack)-1]
 	w.stack = w.stack[:len(w.stack)-1]
-}
-
-// Indent implements Writer.Indent.
-func (w *HTML) Indent(n int) {
-	w.indent += n
-	if w.indent < 0 {
-		panic("negative indentation")
-	}
 }
 
 // Println implements Writer.Println.
@@ -186,8 +193,7 @@ func (w *HTML) output(str string) {
 		return
 	}
 	if w.col == 0 {
-		stackCol := w.stack[len(w.stack)-1]
-		for i := 0; i < stackCol+w.indent; i++ {
+		for i := 0; i < w.indent; i++ {
 			_, w.err = w.w.Write([]byte{' '})
 			if w.err != nil {
 				return

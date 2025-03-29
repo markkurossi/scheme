@@ -15,7 +15,7 @@ func (ast *ASTSequence) PP(w pp.Writer) {
 	w.Printf("(")
 	w.Keyword("begin")
 	w.Println()
-	w.Indent(2)
+	w.PushN(2)
 	for idx, item := range ast.Items {
 		item.PP(w)
 		if idx+1 >= len(ast.Items) {
@@ -25,7 +25,7 @@ func (ast *ASTSequence) PP(w pp.Writer) {
 			w.Println()
 		}
 	}
-	w.Indent(-2)
+	w.Pop()
 }
 
 // PP implements AST.PP.
@@ -53,14 +53,13 @@ func (ast *ASTSet) PP(w pp.Writer) {
 // PP implements AST.PP.
 func (ast *ASTLet) PP(w pp.Writer) {
 	w.Push()
-	defer w.Pop()
 
 	w.Printf("(")
 	w.Keyword(ast.Kind.String())
 	w.Printf(" (")
 
 	indent := len(ast.Kind.String()) + 3
-	w.Indent(indent)
+	w.PushN(indent)
 
 	// Count the length of the longest identifier.
 	var longest int
@@ -79,16 +78,17 @@ func (ast *ASTLet) PP(w pp.Writer) {
 			w.Printf(" ")
 		}
 
+		w.Push()
 		b.Init.PP(w)
 		if idx+1 >= len(ast.Bindings) {
 			w.Println("))")
 		} else {
 			w.Println(")")
 		}
+		w.Pop()
 	}
-	w.Indent(-indent)
-
-	w.Indent(2)
+	w.Pop()
+	w.PushN(2)
 	for idx, b := range ast.Body {
 		b.PP(w)
 		if idx+1 >= len(ast.Body) {
@@ -98,7 +98,8 @@ func (ast *ASTLet) PP(w pp.Writer) {
 			w.Println()
 		}
 	}
-	w.Indent(-2)
+	w.Pop()
+	w.Pop()
 }
 
 // PP implements AST.PP.
@@ -106,7 +107,7 @@ func (ast *ASTIf) PP(w pp.Writer) {
 	w.Printf("(")
 	w.Keyword("if")
 	w.Printf(" ")
-	w.Indent(4)
+	w.PushN(4)
 	ast.Cond.PP(w)
 	w.Println()
 	ast.True.PP(w)
@@ -117,7 +118,7 @@ func (ast *ASTIf) PP(w pp.Writer) {
 	}
 	w.Printf(")")
 	w.Type(ast.Type().String())
-	w.Indent(-4)
+	w.Pop()
 }
 
 // PP implements AST.PP.
@@ -194,7 +195,7 @@ func (ast *ASTLambda) PP(w pp.Writer) {
 		w.Printf(" . %s", ast.Args.Rest.Name)
 	}
 	w.Println(")")
-	w.Indent(2)
+	w.PushN(2)
 	for idx, b := range ast.Body {
 		b.PP(w)
 		if idx+1 >= len(ast.Body) {
@@ -204,7 +205,7 @@ func (ast *ASTLambda) PP(w pp.Writer) {
 			w.Println()
 		}
 	}
-	w.Indent(-2)
+	w.Pop()
 }
 
 // PP implements AST.PP.
@@ -232,7 +233,7 @@ func (ast *ASTCond) PP(w pp.Writer) {
 	w.Printf("(")
 	w.Keyword("cond")
 	w.Printf(" ")
-	w.Indent(6)
+	w.PushN(6)
 
 	for i, choice := range ast.Choices {
 		w.Printf("(")
@@ -258,7 +259,7 @@ func (ast *ASTCond) PP(w pp.Writer) {
 			w.Println()
 		}
 	}
-	w.Indent(-6)
+	w.Pop()
 }
 
 // PP implements AST.PP.
@@ -268,7 +269,7 @@ func (ast *ASTCase) PP(w pp.Writer) {
 	w.Printf(" ")
 	ast.Expr.PP(w)
 	w.Println()
-	w.Indent(2)
+	w.PushN(2)
 
 	for i, choice := range ast.Choices {
 		lastLine := choice.From.From().Line
@@ -287,7 +288,7 @@ func (ast *ASTCase) PP(w pp.Writer) {
 			w.Printf(")")
 		}
 		w.Printf(" ")
-		w.Indent(1)
+		w.PushN(1)
 
 		for j, expr := range choice.Exprs {
 			line := expr.Locator().From().Line
@@ -299,7 +300,7 @@ func (ast *ASTCase) PP(w pp.Writer) {
 			expr.PP(w)
 		}
 		w.Printf(")")
-		w.Indent(-1)
+		w.Pop()
 
 		if i+1 >= len(ast.Choices) {
 			w.Printf(")")
@@ -309,7 +310,7 @@ func (ast *ASTCase) PP(w pp.Writer) {
 		}
 	}
 
-	w.Indent(-2)
+	w.Pop()
 }
 
 // PP implements AST.PP.
@@ -325,7 +326,7 @@ func (ast *ASTAnd) PP(w pp.Writer) {
 		if line != lastLine {
 			w.Println()
 			if !indented {
-				w.Indent(5)
+				w.PushN(5)
 				indented = true
 			}
 		} else {
@@ -337,7 +338,7 @@ func (ast *ASTAnd) PP(w pp.Writer) {
 	w.Printf(")")
 	w.Type(ast.Type().String())
 	if indented {
-		w.Indent(-5)
+		w.Pop()
 	}
 }
 
@@ -354,7 +355,7 @@ func (ast *ASTOr) PP(w pp.Writer) {
 		if line != lastLine {
 			w.Println()
 			if !indented {
-				w.Indent(4)
+				w.PushN(4)
 				indented = true
 			}
 		} else {
@@ -366,7 +367,7 @@ func (ast *ASTOr) PP(w pp.Writer) {
 	w.Printf(")")
 	w.Type(ast.Type().String())
 	if indented {
-		w.Indent(-4)
+		w.Pop()
 	}
 }
 
@@ -375,7 +376,7 @@ func (ast *ASTPragma) PP(w pp.Writer) {
 	w.Printf("(")
 	w.Keyword("pragma")
 	w.Printf(" ")
-	w.Indent(8)
+	w.PushN(8)
 	for i, d := range ast.Directives {
 		if i > 0 {
 			w.Println()
@@ -390,5 +391,5 @@ func (ast *ASTPragma) PP(w pp.Writer) {
 		w.Printf(")")
 	}
 	w.Printf(")")
-	w.Indent(-8)
+	w.Pop()
 }
