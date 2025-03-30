@@ -952,8 +952,8 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 			Args: []*types.Type{types.Any, types.Any},
 			Return: &types.Type{
 				Enum: types.EnumPair,
-				Car:  types.Any,
-				Cdr:  types.Any,
+				Car:  env.argTypes[0],
+				Cdr:  env.argTypes[1],
 			},
 		}
 		return subst, result, nil
