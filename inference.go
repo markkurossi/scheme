@@ -769,7 +769,7 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 		if returnType == nil {
 			returnType = types.Number
 		}
-		if !returnType.IsKindOf(types.Number) {
+		if returnType.Concrete() && !returnType.IsKindOf(types.Number) {
 			return nil, nil,
 				ast.From.Errorf("invalid arguments: %v, expected %v",
 					returnType, types.Number)
