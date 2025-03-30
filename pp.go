@@ -58,8 +58,7 @@ func (ast *ASTLet) PP(w pp.Writer) {
 	w.Keyword(ast.Kind.String())
 	w.Printf(" (")
 
-	indent := len(ast.Kind.String()) + 3
-	w.PushN(indent)
+	w.Push()
 
 	// Count the length of the longest identifier.
 	var longest int
@@ -78,14 +77,12 @@ func (ast *ASTLet) PP(w pp.Writer) {
 			w.Printf(" ")
 		}
 
-		w.Push()
 		b.Init.PP(w)
 		if idx+1 >= len(ast.Bindings) {
 			w.Println("))")
 		} else {
 			w.Println(")")
 		}
-		w.Pop()
 	}
 	w.Pop()
 	w.PushN(2)

@@ -43,6 +43,11 @@ func NewHTML(w io.Writer, name string) *HTML {
 	}
 }
 
+// Debug implements Writer.Debug.
+func (w *HTML) Debug() {
+	fmt.Printf("HTML: stack=%v\n", w.stack)
+}
+
 // Header implements Writer.Header.
 func (w *HTML) Header() {
 	if w.err != nil {
@@ -170,7 +175,6 @@ func (w *HTML) Type(t string) {
 		return
 	}
 	w.output(fmt.Sprintf(`<span class="type">%s</span>`, html.EscapeString(t)))
-	w.col += len(t)
 }
 
 // Literal implements Writer.Literal.

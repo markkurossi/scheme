@@ -9,6 +9,9 @@ package pp
 
 // Writer implements Scheme pretty-printer.
 type Writer interface {
+	// Debug prints debugging information about the Writer.
+	Debug()
+
 	// Header creates the output header. This is called at the
 	// beginning of the pretty-print.
 	Header()
