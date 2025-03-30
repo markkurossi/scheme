@@ -33,8 +33,7 @@ type Scheme struct {
 
 	hasRuntime bool
 
-	pragmaVerboseTypecheck bool
-	nextTypeVar            int
+	nextTypeVar int
 
 	pc      int
 	sp      int
@@ -58,6 +57,9 @@ type Params struct {
 
 	// Do not warn when redefining global symbols.
 	NoWarnDefine bool
+
+	// Enable verbose typecheck.
+	PragmaVerboseTypecheck bool
 }
 
 // New creates a new Scheme interpreter.
@@ -74,7 +76,6 @@ func NewWithParams(params Params) (*Scheme, error) {
 		stack:   make([]Value, 4096), // XXX initial stack depth
 		symbols: make(map[string]*Identifier),
 	}
-	scm.pragmaVerboseTypecheck = false
 
 	scm.DefineBuiltins(booleanBuiltins)
 	scm.DefineBuiltins(characterBuiltins)

@@ -61,7 +61,7 @@ func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
 
 // Debugf prints debugging information about type inference.
 func (inferer *Inferer) Debugf(ast AST, format string, a ...interface{}) {
-	if !inferer.scm.pragmaVerboseTypecheck {
+	if !inferer.scm.Params.PragmaVerboseTypecheck {
 		return
 	}
 	msg := fmt.Sprintf(format, a...)
@@ -1156,7 +1156,7 @@ func (ast *ASTPragma) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 				return nil, nil,
 					ast.From.Errorf("pragma %s: invalid argument: %v", id, d[1])
 			}
-			env.inferer.scm.pragmaVerboseTypecheck = bool(v)
+			env.inferer.scm.Params.PragmaVerboseTypecheck = bool(v)
 
 		default:
 			return nil, nil, ast.From.Errorf("unknown pragma '%s'", id.Name)
