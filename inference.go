@@ -21,7 +21,7 @@ type Inferer struct {
 }
 
 type inferred struct {
-	subst InferSubst
+	subst *InferSubstCtx
 	t     *types.Type
 }
 
@@ -124,7 +124,7 @@ type InferEnv struct {
 	inferer  *Inferer
 	bindings map[string]InferEnvBinding
 	argTypes []*types.Type
-	argSubst InferSubst
+	argSubst *InferSubstCtx
 }
 
 // InferEnvBinding defines known bindings in the inference
@@ -257,8 +257,120 @@ func (env *InferEnv) Generalize(t *types.Type) *InferScheme {
 	}
 }
 
+// InferSubstCtx defines context aware type substitutions.
+type InferSubstCtx struct {
+	def InferSubst
+	pos InferSubst
+	neg InferSubst
+}
+
+// NewInferSubstCtx creates a new type inference substitution context.
+func NewInferSubstCtx() *InferSubstCtx {
+	return &InferSubstCtx{
+		def: make(InferSubst),
+	}
+}
+
+// Compose composes type substitutions ictx and ictx2.
+func (ictx *InferSubstCtx) Compose(ictx2 *InferSubstCtx) *InferSubstCtx {
+	return &InferSubstCtx{
+		def: compose(ictx.def, ictx2.def),
+		pos: compose(ictx.pos, ictx2.pos),
+		neg: compose(ictx.neg, ictx2.neg),
+	}
+}
+
+func compose(a, b InferSubst) InferSubst {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	return a.Compose(b)
+}
+
+// ApplyEnv applies substitutions for the environment and returns a
+// new environment.
+func (ictx *InferSubstCtx) ApplyEnv(env *InferEnv) *InferEnv {
+	return ictx.def.ApplyEnv(env)
+}
+
+// Default returns the default substitutions.
+func (ictx *InferSubstCtx) Default() InferSubst {
+	return ictx.def
+}
+
+// Positive returns the true-branch substitutions.
+func (ictx *InferSubstCtx) Positive() InferSubst {
+	if ictx.pos != nil {
+		return ictx.pos
+	}
+	return ictx.def
+}
+
+// Negative returns the false-branch substitutions.
+func (ictx *InferSubstCtx) Negative() InferSubst {
+	if ictx.neg != nil {
+		return ictx.neg
+	}
+	return ictx.def
+}
+
 // InferSubst implements type substitutions.
 type InferSubst map[int]*InferScheme
+
+// Patch applies substitutions for the type scheme and returns the
+// result scheme.
+func (s InferSubst) Patch(t *InferScheme) *InferScheme {
+	result := &InferScheme{
+		Variables: t.Variables,
+		Type:      t.Type,
+	}
+	for typeVar, replacement := range s {
+		v := &types.Type{
+			Enum:    types.EnumTypeVar,
+			TypeVar: typeVar,
+		}
+		switch result.Type.Enum {
+		case types.EnumLambda:
+			for i, arg := range result.Type.Args {
+				result.Type.Args[i] = replace(arg, v, replacement.Type)
+			}
+			if result.Type.Rest != nil {
+				result.Type.Rest = replace(result.Type.Rest, v,
+					replacement.Type)
+			}
+			result.Type.Return = replace(result.Type.Return, v,
+				replacement.Type)
+			if result.Type.Return == nil {
+				panic("Lambda return type is nil")
+			}
+
+		case types.EnumTypeVar:
+			result.Type = replace(result.Type, v, replacement.Type)
+		}
+	}
+	return result
+}
+
+// PatchEnv applies substitutions for the environment and returns a
+// new environment.
+func (s InferSubst) PatchEnv(env *InferEnv) *InferEnv {
+	result := env.Copy()
+	for k, v := range env.bindings {
+		if v.scheme != nil {
+			result.bindings[k] = InferEnvBinding{
+				scheme: s.Patch(v.scheme),
+			}
+		} else {
+			result.bindings[k] = InferEnvBinding{
+				ast: v.ast,
+			}
+		}
+	}
+	return result
+}
 
 // Apply applies substitution for the type and returns the result
 // type.
@@ -345,12 +457,12 @@ func (s InferSubst) Compose(s2 InferSubst) InferSubst {
 
 // Unify unifies type from to type to and returns the substitutions
 // that must be done to from.
-func Unify(from, to *types.Type) (InferSubst, *types.Type, error) {
-	return unify(from, to, make(InferSubst))
+func Unify(from, to *types.Type) (*InferSubstCtx, *types.Type, error) {
+	return unify(from, to, NewInferSubstCtx())
 }
 
-func unify(from, to *types.Type, subst InferSubst) (
-	InferSubst, *types.Type, error) {
+func unify(from, to *types.Type, subst *InferSubstCtx) (
+	*InferSubstCtx, *types.Type, error) {
 
 	if from.IsKindOf(to) {
 		return subst, from, nil
@@ -392,29 +504,33 @@ func unify(from, to *types.Type, subst InferSubst) (
 	}
 }
 
-func unifyTypeVar(tv, to *types.Type, subst InferSubst) (
-	InferSubst, *types.Type, error) {
+func unifyTypeVar(tv, to *types.Type, subst *InferSubstCtx) (
+	*InferSubstCtx, *types.Type, error) {
 
-	old, ok := subst[tv.TypeVar]
+	def := subst.Default()
+
+	old, ok := def[tv.TypeVar]
 	if ok && !old.Type.IsA(to) {
 		return nil, nil, fmt.Errorf("unify, old %v != new %v", old, to)
 	}
 	if to == nil {
 		panic("unifyTypeVar: to=nil")
 	}
-	subst[tv.TypeVar] = &InferScheme{
+	def[tv.TypeVar] = &InferScheme{
 		Type: to,
 	}
 	return subst, to, nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTSequence) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	subst := make(InferSubst)
+func (ast *ASTSequence) Infer(env *InferEnv) (
+	*InferSubstCtx, *types.Type, error) {
+
+	subst := NewInferSubstCtx()
 	var err error
 
 	for _, item := range ast.Items {
-		var s InferSubst
+		var s *InferSubstCtx
 		s, ast.t, err = item.Infer(env)
 		if err != nil {
 			return nil, nil, err
@@ -426,7 +542,9 @@ func (ast *ASTSequence) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTDefine) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+func (ast *ASTDefine) Infer(env *InferEnv) (
+	*InferSubstCtx, *types.Type, error) {
+
 	// Infer initializer type.
 	subst, t, err := ast.Value.Infer(env)
 	if err != nil {
@@ -446,7 +564,7 @@ func (ast *ASTDefine) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTSet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+func (ast *ASTSet) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	// Infer initializer type.
 	subst, t, err := ast.Value.Infer(env)
 	if err != nil {
@@ -477,10 +595,10 @@ func (ast *ASTSet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTLet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+func (ast *ASTLet) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	initEnv := env.Copy()
 	bodyEnv := env.Copy()
-	var subst InferSubst
+	var subst *InferSubstCtx
 	var err error
 
 	// Bind all names to their init ASTs with letrec.
@@ -507,7 +625,7 @@ func (ast *ASTLet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	}
 
 	for _, body := range ast.Body {
-		var s InferSubst
+		var s *InferSubstCtx
 		s, ast.t, err = body.Infer(bodyEnv)
 		if err != nil {
 			return nil, nil, err
@@ -519,7 +637,7 @@ func (ast *ASTLet) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTIf) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+func (ast *ASTIf) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	subst, t, err := ast.Cond.Infer(env)
 	if err != nil {
 		return nil, nil, err
@@ -527,13 +645,22 @@ func (ast *ASTIf) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	if t.Concrete() && !t.IsA(types.Boolean) {
 		ast.Cond.Locator().From().Warningf("if test is not boolean: %v\n", t)
 	}
+
+	env.inferer.Debugf(ast, "If: pos: %v\n", subst.Positive())
+	env.inferer.Debugf(ast, " - env : %v\n", env)
+
+	trueEnv := subst.Positive().PatchEnv(env)
+	env.inferer.Debugf(ast, " => env: %v\n", trueEnv)
+
 	var tt, ft *types.Type
-	subst, tt, err = ast.True.Infer(env)
+	subst, tt, err = ast.True.Infer(trueEnv)
 	if err != nil {
 		return nil, nil, err
 	}
+	env.inferer.Debugf(ast, " => subst: %v\n", subst)
+
 	if ast.False != nil {
-		subst, ft, err = ast.False.Infer(env)
+		subst, ft, err = ast.False.Infer(subst.Negative().ApplyEnv(env))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -546,7 +673,7 @@ func (ast *ASTIf) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTApply) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+func (ast *ASTApply) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	// Resolve the type of the function.
 	fnSubst, fnType, err := ast.Lambda.Infer(env)
 	if err != nil {
@@ -561,11 +688,22 @@ func (ast *ASTApply) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	return fnSubst, fnType.Return, nil
 }
 
+var typePredicates = map[string]*types.Type{
+	"boolean?": types.Boolean,
+	"char?":    types.Character,
+	"float?":   types.InexactFloat,
+	"integer?": types.InexactInteger,
+	"number?":  types.Number,
+	"pair?":    types.Pair,
+	"string?":  types.String,
+	"symbol?":  types.Symbol,
+}
+
 // Infer implements AST.Infer.
-func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	// Resolve call argument types.
 	env.inferer.Debugf(ast, "Call: argument types:\n")
-	argSubst := make(InferSubst)
+	argSubst := NewInferSubstCtx()
 	var argTypes []*types.Type
 	for idx, arg := range ast.Args {
 		s, t, err := arg.Infer(env)
@@ -581,8 +719,8 @@ func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 	// Resolve the type of the function.
 
-	var fnSubst InferSubst // XXX sub1
-	var fnType *types.Type // XXX type1
+	var fnSubst *InferSubstCtx // XXX sub1
+	var fnType *types.Type     // XXX type1
 	var err error
 
 	// XXX inlining should happen only after we know the argument
@@ -605,7 +743,7 @@ func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		case types.EnumTypeVar:
 			env.inferer.Debugf(ast, "unspecified function %v => %v\n",
 				fnType, types.Unspecified)
-			return make(InferSubst), types.Unspecified, nil
+			return NewInferSubstCtx(), types.Unspecified, nil
 
 		case types.EnumLambda:
 
@@ -613,6 +751,7 @@ func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 			return nil, nil,
 				ast.Func.Locator().From().Errorf("invalid function: %v", fnType)
 		}
+
 		al := len(fnType.Args)
 		if al < len(ast.Args) {
 			// Check if the function supports rest arguments.
@@ -650,7 +789,7 @@ func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		}
 	}
 
-	subst, retType, callType, err := inferCall(ast, env, fnSubst, fnType,
+	subst, retType, callType, a0TV, err := inferCall(ast, env, fnSubst, fnType,
 		ast.Args)
 	if err != nil {
 		return nil, nil, ast.From.Errorf("%s", err)
@@ -662,11 +801,28 @@ func (ast *ASTCall) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	}
 	ast.t = retType
 
+	// Check typecheck predicates.
+	id, ok := ast.Func.(*ASTIdentifier)
+	if ok && len(fnType.Args) == 1 && a0TV != nil &&
+		a0TV.Enum == types.EnumTypeVar {
+
+		t, ok := typePredicates[id.Name]
+		if ok {
+			env.inferer.Debugf(ast, "%s %v=%v\n", id.Name, a0TV, t)
+			subst.pos = subst.def.Compose(make(InferSubst))
+			subst.pos[a0TV.TypeVar] = &InferScheme{
+				Variables: []*types.Type{a0TV},
+				Type:      t,
+			}
+		}
+	}
+
 	return subst, retType, nil
 }
 
-func inferCall(ast AST, env *InferEnv, fnSubst InferSubst, fnType *types.Type,
-	args []AST) (InferSubst, *types.Type, *types.Type, error) {
+func inferCall(ast AST, env *InferEnv, fnSubst *InferSubstCtx,
+	fnType *types.Type, args []AST) (
+	*InferSubstCtx, *types.Type, *types.Type, *types.Type, error) {
 
 	// Create a new type variable for the return type of the function.
 	rv := env.inferer.newTypeVar()
@@ -677,21 +833,25 @@ func inferCall(ast AST, env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 	env.inferer.Debugf(ast, "Call: fnType=%v\n", fnType)
 
 	// Infer argument types.
-	argSubst := make(InferSubst) // XXX sub2
-	var argTypes []*types.Type   // XXX type2
+	argSubst := NewInferSubstCtx()
+	var argTypes []*types.Type // XXX type2
 	for idx, arg := range args {
 		s, t, err := arg.Infer(env1)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		argTypes = append(argTypes, t)
 		argSubst = argSubst.Compose(s)
 
 		env.inferer.Debugf(ast, " %v: %v\n", idx, t)
 	}
+	var a0TV *types.Type
+	if len(args) > 0 {
+		a0TV = argTypes[0]
+	}
 
 	// Apply argSubst to fnType.
-	fnTypeSubst := argSubst.Apply(env.Generalize(fnType))
+	fnTypeSubst := argSubst.Default().Apply(env.Generalize(fnType))
 	env.inferer.Debugf(ast, "Call: fnTypeSubst=%v\n", fnTypeSubst)
 
 	// Create a function type for the called function.
@@ -709,7 +869,7 @@ func inferCall(ast AST, env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 	if err != nil {
 		env.inferer.Warningf(ast, "Unify failed: %s:\n - %v\n - %v\n",
 			err, callType, fnTypeSubst.Type)
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	env.inferer.Debugf(ast, " \u2570> %v\n", unified)
 
@@ -717,12 +877,12 @@ func inferCall(ast AST, env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 	subst := fnSubst.Compose(argSubst.Compose(subst3))
 
 	// Apply compositions to return variable.
-	retType := subst.Apply(&InferScheme{
+	retType := subst.Default().Apply(&InferScheme{
 		Variables: []*types.Type{rv},
 		Type:      rv,
 	}).Type
 
-	return subst, retType, unified, nil
+	return subst, retType, unified, a0TV, nil
 }
 
 var minArgCount = map[Operand]int{
@@ -741,9 +901,9 @@ var minArgCount = map[Operand]int{
 }
 
 func (ast *ASTCall) inlineFuncType(env *InferEnv) (
-	InferSubst, *types.Type, error) {
+	*InferSubstCtx, *types.Type, error) {
 
-	subst := make(InferSubst)
+	subst := NewInferSubstCtx()
 
 	minArgs, ok := minArgCount[ast.InlineOp]
 	if !ok {
@@ -817,7 +977,9 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTCallUnary) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+func (ast *ASTCallUnary) Infer(env *InferEnv) (
+	*InferSubstCtx, *types.Type, error) {
+
 	env.inferer.Debugf(ast, "CallUnary: %v\n", ast.Op)
 
 	// Resolve argument type.
@@ -828,7 +990,7 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 	// Resolve the type of the function.
 
-	fnSubst := make(InferSubst)
+	fnSubst := NewInferSubstCtx()
 	var fnType *types.Type
 
 	switch ast.Op {
@@ -882,9 +1044,10 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 			ast.Op)
 	}
 
-	subst, retType, callType, err := inferCall(ast, env, fnSubst, fnType, []AST{
-		ast.Arg,
-	})
+	subst, retType, callType, _, err := inferCall(ast, env, fnSubst, fnType,
+		[]AST{
+			ast.Arg,
+		})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -895,12 +1058,13 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+func (ast *ASTLambda) Infer(env *InferEnv) (
+	*InferSubstCtx, *types.Type, error) {
 	cached, ok := env.inferer.calls[ast]
 	if ok {
 		return cached.subst, cached.t, nil
 	}
-	subst := make(InferSubst)
+	subst := NewInferSubstCtx()
 	retScheme := &InferScheme{
 		Type: &types.Type{
 			Enum:   types.EnumLambda,
@@ -922,8 +1086,11 @@ func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	env = env.Copy()
 
 	var args []*InferScheme
-	for _, arg := range ast.Args.Fixed {
+	for idx, arg := range ast.Args.Fixed {
 		scheme := env.Generalize(env.inferer.newTypeVar())
+
+		env.inferer.Debugf(ast, "\u03bb: arg[%v]=%v\n", idx, scheme)
+
 		args = append(args, scheme)
 		env.Set(arg.Name, scheme)
 
@@ -938,12 +1105,13 @@ func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		retScheme.Variables = append(retScheme.Variables, scheme.Type)
 		retScheme.Type.Rest = scheme.Type
 	}
+	env.inferer.Debugf(ast, "\u03bb: env=%v\n", env)
 
 	var t *types.Type
 	var err error
 
 	for _, item := range ast.Body {
-		var s InferSubst
+		var s *InferSubstCtx
 		s, t, err = item.Infer(env)
 		if err != nil {
 			return nil, nil, err
@@ -954,13 +1122,13 @@ func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	if t == nil {
 		t = types.Unspecified
 	}
-	subst[retScheme.Type.Return.TypeVar] = env.Generalize(t)
+	subst.Default()[retScheme.Type.Return.TypeVar] = env.Generalize(t)
 
 	env.inferer.Debugf(ast, "\u03bb: return type: %v\n", retScheme)
 	env.inferer.Debugf(ast, "\u03bb: subst: %v\n", subst)
 
 	// Apply substitution to return type.
-	retScheme = subst.Apply(retScheme)
+	retScheme = subst.Default().Apply(retScheme)
 
 	env.inferer.Debugf(ast, "\u03bb: return type: %v\n", retScheme)
 
@@ -976,8 +1144,10 @@ func (ast *ASTLambda) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTConstant) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	subst := make(InferSubst)
+func (ast *ASTConstant) Infer(env *InferEnv) (
+	*InferSubstCtx, *types.Type, error) {
+
+	subst := NewInferSubstCtx()
 	if ast.Value == nil {
 		return subst, types.Nil, nil
 	}
@@ -986,7 +1156,10 @@ func (ast *ASTConstant) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTIdentifier) Infer(env *InferEnv) (
-	InferSubst, *types.Type, error) {
+	*InferSubstCtx, *types.Type, error) {
+
+	result := NewInferSubstCtx()
+
 	ast.t = env.Get(ast.Name)
 	if ast.t.IsA(types.Unspecified) {
 		return nil, nil, ast.From.Errorf("\u22a2 undefined symbol '%s'",
@@ -1005,20 +1178,21 @@ func (ast *ASTIdentifier) Infer(env *InferEnv) (
 		ast.t.Return = t
 	}
 
-	return make(InferSubst), ast.t, nil
+	return result, ast.t, nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTCond) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+func (ast *ASTCond) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	var result *types.Type
 	var err error
 
 	for _, choice := range ast.Choices {
+		var choiceSubst *InferSubstCtx
 		var choiceType *types.Type
 		if choice.Cond == nil {
 			choiceType = types.Boolean
 		} else {
-			_, choiceType, err = choice.Cond.Infer(env)
+			choiceSubst, choiceType, err = choice.Cond.Infer(env)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1048,11 +1222,14 @@ func (ast *ASTCond) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 			result = types.Unify(result, choiceType)
 		} else {
 			choiceEnv := env.Copy()
-			subst := make(InferSubst)
+			if choiceSubst != nil {
+				choiceEnv = choiceSubst.Positive().PatchEnv(choiceEnv)
+			}
+			subst := NewInferSubstCtx()
 			var choiceType *types.Type
 
 			for _, expr := range choice.Exprs {
-				var s InferSubst
+				var s *InferSubstCtx
 				s, choiceType, err = expr.Infer(choiceEnv)
 				if err != nil {
 					return nil, nil, err
@@ -1065,11 +1242,11 @@ func (ast *ASTCond) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	}
 	ast.t = result
 
-	return make(InferSubst), result, nil
+	return NewInferSubstCtx(), result, nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTCase) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+func (ast *ASTCase) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	var result *types.Type
 
 	_, _, err := ast.Expr.Infer(env)
@@ -1079,11 +1256,11 @@ func (ast *ASTCase) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 
 	for _, choice := range ast.Choices {
 		choiceEnv := env.Copy()
-		subst := make(InferSubst)
+		subst := NewInferSubstCtx()
 		var choiceType *types.Type
 
 		for _, expr := range choice.Exprs {
-			var s InferSubst
+			var s *InferSubstCtx
 			s, choiceType, err = expr.Infer(choiceEnv)
 			if err != nil {
 				return nil, nil, err
@@ -1095,12 +1272,12 @@ func (ast *ASTCase) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 	}
 	ast.t = result
 
-	return make(InferSubst), result, nil
+	return NewInferSubstCtx(), result, nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTAnd) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	subst := make(InferSubst)
+func (ast *ASTAnd) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
+	subst := NewInferSubstCtx()
 	result := types.Boolean
 
 	for _, expr := range ast.Exprs {
@@ -1119,8 +1296,8 @@ func (ast *ASTAnd) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTOr) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
-	subst := make(InferSubst)
+func (ast *ASTOr) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
+	subst := NewInferSubstCtx()
 	result := types.Boolean
 
 	for _, expr := range ast.Exprs {
@@ -1139,7 +1316,9 @@ func (ast *ASTOr) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTPragma) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
+func (ast *ASTPragma) Infer(env *InferEnv) (
+	*InferSubstCtx, *types.Type, error) {
+
 	for _, d := range ast.Directives {
 		if len(d) != 2 {
 			return nil, nil, ast.From.Errorf("invalid directive: %v", d)
@@ -1163,5 +1342,5 @@ func (ast *ASTPragma) Infer(env *InferEnv) (InferSubst, *types.Type, error) {
 		}
 	}
 
-	return make(InferSubst), types.Unspecified, nil
+	return NewInferSubstCtx(), types.Unspecified, nil
 }

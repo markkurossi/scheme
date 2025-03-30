@@ -20,7 +20,7 @@ type AST interface {
 	SetType(t *types.Type)
 	Type() *types.Type
 	TypeXXX(ctx types.Ctx) *types.Type
-	Infer(env *InferEnv) (InferSubst, *types.Type, error)
+	Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error)
 	Typecheck(lib *Library, round int) error
 	Bytecode(lib *Library) error
 	PP(w pp.Writer)
