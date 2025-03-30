@@ -884,6 +884,22 @@ func bit(z Value, i int) (uint, error) {
 	}
 }
 
+func parametrizeNumber(args []*types.Type) (*types.Type, error) {
+	var returnType *types.Type
+
+	for _, t := range args {
+		returnType = types.Unify(returnType, t)
+	}
+	if returnType == nil {
+		returnType = types.Number
+	}
+	if !returnType.IsKindOf(types.Number) {
+		return nil, fmt.Errorf("invalid arguments: %v, expected %v",
+			returnType, types.Number)
+	}
+	return returnType, nil
+}
+
 var numberBuiltins = []Builtin{
 	{
 		Name:   "number?",
@@ -1058,6 +1074,7 @@ var numberBuiltins = []Builtin{
 			}
 			return sum, nil
 		},
+		Parametrize: parametrizeNumber,
 	},
 	{
 		Name:   "scheme::*",

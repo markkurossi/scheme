@@ -30,7 +30,6 @@ type Scheme struct {
 	Stdout  *Port
 	Stderr  *Port
 	Parsing bool
-	verbose bool
 
 	hasRuntime bool
 
@@ -75,6 +74,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 		stack:   make([]Value, 4096), // XXX initial stack depth
 		symbols: make(map[string]*Identifier),
 	}
+	scm.pragmaVerboseTypecheck = false
 
 	scm.DefineBuiltins(booleanBuiltins)
 	scm.DefineBuiltins(characterBuiltins)
@@ -107,7 +107,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 }
 
 func (scm *Scheme) verbosef(format string, a ...interface{}) {
-	if scm.verbose {
+	if scm.Params.Verbose {
 		fmt.Printf(format, a...)
 	}
 }
@@ -187,10 +187,11 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 
 	lambda := &Lambda{
 		Impl: &LambdaImpl{
-			Name:   builtin.Name,
-			Args:   args,
-			Return: builtin.Return,
-			Native: builtin.Native,
+			Name:         builtin.Name,
+			Args:         args,
+			Return:       builtin.Return,
+			Native:       builtin.Native,
+			Parametrizer: builtin.Parametrize,
 		},
 	}
 	sym := scm.Intern(builtin.Name)

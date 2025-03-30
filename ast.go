@@ -677,7 +677,11 @@ func (ast *ASTCall) TypeXXX(ctx types.Ctx) *types.Type {
 	if t.Parametrizer == nil {
 		return t.Return
 	}
-	return t.Parametrizer.Parametrize(ctx, params)
+	result, err := t.Parametrizer.Parametrize(ctx, params)
+	if err != nil {
+		panic(fmt.Sprintf("parametrize failed: %v", err))
+	}
+	return result
 }
 
 // Typecheck implements AST.Typecheck.
@@ -978,10 +982,10 @@ func (ast *ASTLambda) TypeXXX(ctx types.Ctx) *types.Type {
 
 // Parametrize implements types.Parametrizer.
 func (ast *ASTLambda) Parametrize(ctx types.Ctx,
-	params []*types.Type) *types.Type {
+	params []*types.Type) (*types.Type, error) {
 
 	if ctx[ast] {
-		return types.Unspecified
+		return types.Unspecified, nil
 	}
 	ctx[ast] = true
 	defer func() {
@@ -990,7 +994,7 @@ func (ast *ASTLambda) Parametrize(ctx types.Ctx,
 
 	// Bind argument types.
 	if len(params) < ast.Args.Min || len(params) > ast.Args.Max {
-		return types.Unspecified
+		return types.Unspecified, nil
 	}
 	for i := 0; i < len(ast.Args.Fixed); i++ {
 		ast.ArgBindings[i].Type = params[i]
@@ -1013,7 +1017,7 @@ func (ast *ASTLambda) Parametrize(ctx types.Ctx,
 		result = a.TypeXXX(ctx)
 	}
 
-	return result
+	return result, nil
 }
 
 // Typecheck implements AST.Typecheck.

@@ -298,7 +298,7 @@ func (t *Type) Clone() *Type {
 
 // Parametrizer implements type parametrization.
 type Parametrizer interface {
-	Parametrize(ctx Ctx, params []*Type) *Type
+	Parametrize(ctx Ctx, params []*Type) (*Type, error)
 }
 
 // Ctx defines context for type parametrization.

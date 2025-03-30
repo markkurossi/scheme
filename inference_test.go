@@ -149,7 +149,7 @@ var inferenceTests = []struct {
 	},
 	{
 		d: `(define init (+ #e1 1)) (set! init 42)`,
-		t: types.Number,
+		t: types.ExactInteger,
 	},
 	{
 		d: `(let ((init (+ #e1 1))) (set! init 42) init)`,

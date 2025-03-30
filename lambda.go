@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -68,6 +68,9 @@ func (v *Lambda) Type() *types.Type {
 			}
 		}
 	}
+	if v.Impl.Parametrizer != nil {
+		t.Parametrizer = v.Impl
+	}
 	return t
 }
 
@@ -93,17 +96,18 @@ func (v *Lambda) MapPC(pc int) (source string, line int) {
 
 // LambdaImpl implements lambda functions.
 type LambdaImpl struct {
-	Name     string
-	Args     Args
-	Return   *types.Type
-	Captures bool
-	Capture  *VMEnvFrame
-	Native   Native
-	Source   string
-	Code     Code
-	MaxStack int
-	PCMap    PCMap
-	Body     []AST
+	Name         string
+	Args         Args
+	Return       *types.Type
+	Captures     bool
+	Capture      *VMEnvFrame
+	Native       Native
+	Parametrizer Parametrize
+	Source       string
+	Code         Code
+	MaxStack     int
+	PCMap        PCMap
+	Body         []AST
 }
 
 // Scheme implements the Value.Scheme().
@@ -180,6 +184,12 @@ func (v *LambdaImpl) Equal(o Value) bool {
 // Type implements the Value.Type().
 func (v *LambdaImpl) Type() *types.Type {
 	return types.Unspecified
+}
+
+// Parametrize implements types.Parametrizer.Parametrize.
+func (v *LambdaImpl) Parametrize(ctx types.Ctx, params []*types.Type) (
+	*types.Type, error) {
+	return v.Parametrizer(params)
 }
 
 // Args specify lambda arguments.
@@ -277,12 +287,16 @@ func (tn *TypedName) String() string {
 // Native implements native functions.
 type Native func(scm *Scheme, args []Value) (Value, error)
 
+// Parametrize implements argument parametrization.
+type Parametrize func(args []*types.Type) (*types.Type, error)
+
 // Builtin defines a built-in native function.
 type Builtin struct {
-	Name    string
-	Aliases []string
-	Args    []string
-	Return  *types.Type
-	Flags   Flags
-	Native  Native
+	Name        string
+	Aliases     []string
+	Args        []string
+	Return      *types.Type
+	Flags       Flags
+	Native      Native
+	Parametrize Parametrize
 }
