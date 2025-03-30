@@ -45,6 +45,20 @@ func NewInferer(scm *Scheme, toplevel []AST) *Inferer {
 	return inferer
 }
 
+// Warningf prints a warning message about type inference.
+func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
+	if !inferer.scm.Params.Verbose {
+		return
+	}
+	msg := fmt.Sprintf(format, a...)
+	if len(msg) > 0 && unicode.IsSpace(rune(msg[0])) {
+		msg = "  " + msg
+	} else {
+		msg = "\u22a2 warning: " + msg
+	}
+	ast.Locator().From().Infof("%s", msg)
+}
+
 // Debugf prints debugging information about type inference.
 func (inferer *Inferer) Debugf(ast AST, format string, a ...interface{}) {
 	if !inferer.scm.pragmaVerboseTypecheck {
@@ -693,9 +707,8 @@ func inferCall(ast AST, env *InferEnv, fnSubst InferSubst, fnType *types.Type,
 	// Unify fnTypeSubst with callType.
 	subst3, unified, err := Unify(callType, fnTypeSubst.Type)
 	if err != nil {
-		fmt.Printf("Unify failed: %s:\n - %v\n - %v\n",
+		env.inferer.Warningf(ast, "Unify failed: %s:\n - %v\n - %v\n",
 			err, callType, fnTypeSubst.Type)
-
 		return nil, nil, nil, err
 	}
 	env.inferer.Debugf(ast, " \u2570> %v\n", unified)
