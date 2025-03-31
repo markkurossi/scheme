@@ -401,7 +401,6 @@ var listBuiltins = []Builtin{
 			return NewPair(args[0], args[1]), nil
 		},
 		Parametrize: func(args []*types.Type) (*types.Type, error) {
-			panic(42)
 			if len(args) != 2 {
 				return nil, fmt.Errorf(
 					"invalid amount of arguments: got %v, expected 2",
