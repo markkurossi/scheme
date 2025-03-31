@@ -393,6 +393,10 @@ var (
 		Car:  Any,
 		Cdr:  Any,
 	}
+	Vector = &Type{
+		Enum:    EnumVector,
+		Element: Any,
+	}
 )
 
 // Concrete tests if the type is concrete.
