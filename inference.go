@@ -689,14 +689,16 @@ func (ast *ASTApply) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 }
 
 var typePredicates = map[string]*types.Type{
-	"boolean?": types.Boolean,
-	"char?":    types.Character,
-	"float?":   types.InexactFloat,
-	"integer?": types.InexactInteger,
-	"number?":  types.Number,
-	"pair?":    types.Pair,
-	"string?":  types.String,
-	"symbol?":  types.Symbol,
+	"boolean?":    types.Boolean,
+	"bytevector?": types.Bytevector,
+	"char?":       types.Character,
+	"float?":      types.InexactFloat,
+	"integer?":    types.InexactInteger,
+	"number?":     types.Number,
+	"pair?":       types.Pair,
+	"string?":     types.String,
+	"symbol?":     types.Symbol,
+	"vector?":     types.Vector,
 }
 
 // Infer implements AST.Infer.
@@ -1044,7 +1046,7 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 			ast.Op)
 	}
 
-	subst, retType, callType, _, err := inferCall(ast, env, fnSubst, fnType,
+	subst, retType, callType, a0TV, err := inferCall(ast, env, fnSubst, fnType,
 		[]AST{
 			ast.Arg,
 		})
@@ -1053,6 +1055,21 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 	}
 	ast.Arg.SetType(callType.Args[0])
 	ast.t = retType
+
+	// Check pair? predicate.
+	if ast.Op == OpPairp && a0TV != nil && a0TV.Enum == types.EnumTypeVar {
+		t := &types.Type{
+			Enum: types.EnumPair,
+			Car:  types.Any,
+			Cdr:  types.Any,
+		}
+		env.inferer.Debugf(ast, "%s %v=%v\n", ast.Op, a0TV, t)
+		subst.pos = subst.def.Compose(make(InferSubst))
+		subst.pos[a0TV.TypeVar] = &InferScheme{
+			Variables: []*types.Type{a0TV},
+			Type:      t,
+		}
+	}
 
 	return subst, retType, nil
 }
