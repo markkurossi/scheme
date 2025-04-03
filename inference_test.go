@@ -141,11 +141,15 @@ var inferenceTests = []struct {
 	},
 	{
 		d: `(define (loop a) (loop (+ a 1))) (loop 0)`,
-		t: types.Any,
+		t: &types.Type{
+			Enum: types.EnumTypeVar,
+		},
 	},
 	{
 		d: `(define (odd n) (e (+ n 1))) (define (e n) (odd (+ n 1))) (odd 0)`,
-		t: types.Any,
+		t: &types.Type{
+			Enum: types.EnumTypeVar,
+		},
 	},
 	{
 		d: `(define init (+ #e1 1)) (set! init 42)`,
@@ -207,7 +211,9 @@ func TestInference(t *testing.T) {
 			t.Logf(" \u2502 %s", test.d)
 			t.Fatalf(" \u2570 %s", err)
 		}
-		if !typ.IsA(test.t) {
+		if (test.t.Enum == types.EnumTypeVar &&
+			typ.Enum != types.EnumTypeVar) ||
+			(test.t.Enum != types.EnumTypeVar && !typ.IsA(test.t)) {
 			t.Logf("%s: type error in:", name)
 			t.Logf(" \u2502 %s", test.d)
 			t.Errorf(" \u2570 expected %v, got %v", test.t, typ)

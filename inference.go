@@ -17,6 +17,7 @@ import (
 type Inferer struct {
 	scm     *Scheme
 	defines []AST
+	nesting int
 	calls   map[*ASTLambda]*inferred
 }
 
@@ -45,18 +46,46 @@ func NewInferer(scm *Scheme, toplevel []AST) *Inferer {
 	return inferer
 }
 
+// Enter increases inferer debug nesting.
+func (inferer *Inferer) Enter() {
+	inferer.nesting++
+}
+
+// Exit decreases inferer debug nesting.
+func (inferer *Inferer) Exit() {
+	inferer.nesting--
+}
+
+// Print prints an inferer debug message.
+func (inferer *Inferer) Print(ast AST, lead, msg string) {
+	var prefix string
+	var indent string
+	if len(msg) > 0 && unicode.IsSpace(rune(msg[0])) {
+		prefix = "  "
+		indent = "  "
+	} else {
+		prefix = "\u22a2 "
+		indent = "\u00b7 "
+	}
+	for i := 1; i < inferer.nesting; i++ {
+		prefix += indent
+	}
+	ast.Locator().From().Infof("%s%s%s", prefix, lead, msg)
+}
+
 // Warningf prints a warning message about type inference.
 func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
 	if !inferer.scm.Params.Verbose {
 		return
 	}
 	msg := fmt.Sprintf(format, a...)
+	var lead string
 	if len(msg) > 0 && unicode.IsSpace(rune(msg[0])) {
-		msg = "  " + msg
+		lead = ""
 	} else {
-		msg = "\u22a2 warning: " + msg
+		lead = "warning: "
 	}
-	ast.Locator().From().Infof("%s", msg)
+	inferer.Print(ast, lead, msg)
 }
 
 // Debugf prints debugging information about type inference.
@@ -65,12 +94,7 @@ func (inferer *Inferer) Debugf(ast AST, format string, a ...interface{}) {
 		return
 	}
 	msg := fmt.Sprintf(format, a...)
-	if len(msg) > 0 && unicode.IsSpace(rune(msg[0])) {
-		msg = "  " + msg
-	} else {
-		msg = "\u22a2 " + msg
-	}
-	ast.Locator().From().Infof("%s", msg)
+	inferer.Print(ast, "", msg)
 }
 
 // NewEnv creates a new inference environment.
@@ -638,6 +662,9 @@ func (ast *ASTLet) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTIf) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
+	env.inferer.Enter()
+	defer env.inferer.Exit()
+
 	subst, t, err := ast.Cond.Infer(env)
 	if err != nil {
 		return nil, nil, err
@@ -674,6 +701,9 @@ func (ast *ASTIf) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTApply) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
+	env.inferer.Enter()
+	defer env.inferer.Exit()
+
 	// Resolve the type of the function.
 	fnSubst, fnType, err := ast.Lambda.Infer(env)
 	if err != nil {
@@ -703,6 +733,9 @@ var typePredicates = map[string]*types.Type{
 
 // Infer implements AST.Infer.
 func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
+	env.inferer.Enter()
+	defer env.inferer.Exit()
+
 	// Resolve call argument types.
 	env.inferer.Debugf(ast, "Call: argument types:\n")
 	argSubst := NewInferSubstCtx()
@@ -767,6 +800,13 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 			} else if fnType.Rest != nil {
 				rest = fnType.Rest
 				fnType.Rest = nil
+
+				env.argTypes = env.argTypes[:al]
+				env.argTypes = append(env.argTypes, &types.Type{
+					Enum: types.EnumPair,
+					Car:  env.inferer.newTypeVar(),
+					Cdr:  env.inferer.newTypeVar(),
+				})
 			} else {
 				return nil, nil,
 					ast.From.Errorf("too many arguments got %v, need %v",
@@ -847,6 +887,11 @@ func inferCall(ast AST, env *InferEnv, fnSubst *InferSubstCtx,
 
 		env.inferer.Debugf(ast, " %v: %v\n", idx, t)
 	}
+	if len(env.argTypes) > 0 {
+		argSubst = env.argSubst
+		argTypes = env.argTypes
+	}
+
 	var a0TV *types.Type
 	if len(args) > 0 {
 		a0TV = argTypes[0]
@@ -904,6 +949,9 @@ var minArgCount = map[Operand]int{
 
 func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 	*InferSubstCtx, *types.Type, error) {
+
+	env.inferer.Enter()
+	defer env.inferer.Exit()
 
 	subst := NewInferSubstCtx()
 
@@ -981,6 +1029,9 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 // Infer implements AST.Infer.
 func (ast *ASTCallUnary) Infer(env *InferEnv) (
 	*InferSubstCtx, *types.Type, error) {
+
+	env.inferer.Enter()
+	defer env.inferer.Exit()
 
 	env.inferer.Debugf(ast, "CallUnary: %v\n", ast.Op)
 
@@ -1077,6 +1128,10 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 // Infer implements AST.Infer.
 func (ast *ASTLambda) Infer(env *InferEnv) (
 	*InferSubstCtx, *types.Type, error) {
+
+	env.inferer.Enter()
+	defer env.inferer.Exit()
+
 	cached, ok := env.inferer.calls[ast]
 	if ok {
 		return cached.subst, cached.t, nil
@@ -1142,19 +1197,11 @@ func (ast *ASTLambda) Infer(env *InferEnv) (
 	subst.Default()[retScheme.Type.Return.TypeVar] = env.Generalize(t)
 
 	env.inferer.Debugf(ast, "\u03bb: return type: %v\n", retScheme)
-	env.inferer.Debugf(ast, "\u03bb: subst: %v\n", subst)
 
 	// Apply substitution to return type.
 	retScheme = subst.Default().Apply(retScheme)
 
 	env.inferer.Debugf(ast, "\u03bb: return type: %v\n", retScheme)
-
-	if retScheme.Type.Return.Enum == types.EnumTypeVar {
-		retScheme.Type.Return = types.Any
-		env.inferer.Debugf(ast, "Lambda: no return value => %v\n",
-			retScheme.Type.Return)
-	}
-
 	ast.t = retScheme.Type
 
 	return subst, ast.t, nil
@@ -1174,6 +1221,9 @@ func (ast *ASTConstant) Infer(env *InferEnv) (
 // Infer implements AST.Infer.
 func (ast *ASTIdentifier) Infer(env *InferEnv) (
 	*InferSubstCtx, *types.Type, error) {
+
+	env.inferer.Enter()
+	defer env.inferer.Exit()
 
 	result := NewInferSubstCtx()
 
