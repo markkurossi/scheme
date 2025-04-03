@@ -1036,10 +1036,12 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 	env.inferer.Debugf(ast, "CallUnary: %v\n", ast.Op)
 
 	// Resolve argument type.
-	_, argType, err := ast.Arg.Infer(env)
+	argSubst, argType, err := ast.Arg.Infer(env)
 	if err != nil {
 		return nil, nil, err
 	}
+	env.argTypes = []*types.Type{argType}
+	env.argSubst = argSubst
 
 	// Resolve the type of the function.
 
