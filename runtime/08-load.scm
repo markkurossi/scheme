@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2023 Markku Rossi
+;;; Copyright (c) 2023-2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -10,9 +10,9 @@
       (home (getenv "HOME"))
       (gopath "/src/github.com/markkurossi/scheme/lib"))
   (cond
-   (gohome
+   ((string? gohome)
     (set! load-path (cons (string-append gohome gopath) load-path)))
-   (home
+   ((string? home)
     (set! load-path (cons (string-append home "/go" gopath) load-path)))))
 
 ;; (display "load-path=") (display load-path) (newline)
