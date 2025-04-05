@@ -68,8 +68,11 @@ func Unify(a *Type, b *Type) *Type {
 			Element: Unify(a.Element, b.Element),
 		}
 
+	case EnumNil:
+		return Nil
+
 	default:
-		panic(fmt.Sprintf("unknown Enum: %d", e))
+		panic(fmt.Sprintf("unknown Enum: %v[%v]", e, e))
 	}
 }
 

@@ -188,6 +188,46 @@ func TestIsKindOf(t *testing.T) {
 		t.Errorf("!%v.IsKindOf(%v)", pair, pair2)
 	}
 
+	// (set! scheme::libraries (cons this scheme::libraries)))
+	//	can't assign
+	//    pair(pair(t728 t729) pair(pair(any ?) ?)) to variable of type
+	//    pair(pair(any ?) ?)
+	value := &Type{
+		Enum: EnumPair,
+		Car: &Type{
+			Enum: EnumPair,
+			Car: &Type{
+				Enum:    EnumTypeVar,
+				TypeVar: 728,
+			},
+			Cdr: &Type{
+				Enum:    EnumTypeVar,
+				TypeVar: 729,
+			},
+		},
+		Cdr: &Type{
+			Enum: EnumPair,
+			Car: &Type{
+				Enum: EnumPair,
+				Car:  Any,
+				Cdr:  Unspecified,
+			},
+			Cdr: Unspecified,
+		},
+	}
+	lvalue := &Type{
+		Enum: EnumPair,
+		Car: &Type{
+			Enum: EnumPair,
+			Car:  Any,
+			Cdr:  Unspecified,
+		},
+		Cdr: Unspecified,
+	}
+	if !value.IsKindOf(lvalue) {
+		t.Errorf("!%v.IsKindOf(%v)", value, lvalue)
+	}
+
 	vector := &Type{
 		Enum:    EnumVector,
 		Element: ExactInteger,

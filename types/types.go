@@ -87,7 +87,7 @@ func (e Enum) Super() Enum {
 		return EnumExactFloat
 
 	case EnumTypeVar:
-		return EnumTypeVar
+		return EnumAny
 
 	default:
 		panic(fmt.Sprintf("unknown Enum %d", e))
@@ -100,8 +100,11 @@ func (e Enum) Unify(o Enum) Enum {
 	if e == EnumUnspecified || o == EnumUnspecified {
 		return EnumUnspecified
 	}
-	if e == EnumTypeVar || o == EnumTypeVar {
-		return EnumAny
+	if e == EnumTypeVar {
+		return o
+	}
+	if o == EnumTypeVar {
+		return e
 	}
 
 	for eIter := e; ; eIter = eIter.Super() {
@@ -455,6 +458,9 @@ func (t *Type) IsKindOf(o *Type) bool {
 		return true
 	}
 	if o.Enum == EnumPair && t.Enum == EnumNil {
+		return true
+	}
+	if o.Enum == EnumTypeVar {
 		return true
 	}
 
