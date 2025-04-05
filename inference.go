@@ -204,17 +204,17 @@ func (env *InferEnv) Copy() *InferEnv {
 }
 
 // Get gets the name's type from the environment.
-func (env *InferEnv) Get(name string) *types.Type {
+func (env *InferEnv) Get(name string) (*types.Type, bool) {
 	binding, ok := env.bindings[name]
 	if ok {
 		if binding.scheme != nil {
-			return binding.scheme.Instantiate(env.inferer)
+			return binding.scheme.Instantiate(env.inferer), true
 		}
 		return env.resolve(binding.ast)
 	}
 	t := env.inferer.scm.Intern(name).GlobalType
 	if !t.IsA(types.Unspecified) {
-		return t
+		return t, true
 	}
 
 	// Lookup the name from the toplevel AST.
@@ -231,7 +231,7 @@ func (env *InferEnv) Get(name string) *types.Type {
 			}
 		}
 	}
-	return types.Unspecified
+	return types.Unspecified, false
 }
 
 // Define defines the name with its type scheme.
@@ -274,13 +274,13 @@ func (env *InferEnv) SetAST(name string, ast AST) {
 	}
 }
 
-func (env *InferEnv) resolve(ast AST) *types.Type {
+func (env *InferEnv) resolve(ast AST) (*types.Type, bool) {
 	_, t, err := ast.Infer(env)
 	if err != nil {
 		fmt.Printf("%s\n", err)
-		return types.Unspecified
+		return types.Unspecified, false
 	}
-	return t
+	return t, true
 }
 
 // Generalize generalizes the type into a type scheme.
@@ -1373,8 +1373,9 @@ func (ast *ASTIdentifier) Infer(env *InferEnv) (
 
 	result := NewInferSubstCtx()
 
-	ast.t = env.Get(ast.Name)
-	if ast.t.IsA(types.Unspecified) {
+	var ok bool
+	ast.t, ok = env.Get(ast.Name)
+	if !ok {
 		return nil, nil, ast.From.Errorf("\u22a2 undefined symbol '%s'",
 			ast.Name)
 	}
