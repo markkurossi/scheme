@@ -174,28 +174,15 @@ func (lib *Library) PrettyPrint(w pp.Writer) error {
 	return w.Error()
 }
 
-const infer = false
-
 // Compile compiles the library into bytecode.
 func (lib *Library) Compile() (Value, error) {
-	if infer {
-		inferer := NewInferer(lib.scm, lib.Body.Items)
-		_, _, err := lib.Body.Infer(inferer.NewEnv())
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		lib.recheck = true
-		for round := 0; lib.recheck; round++ {
-			lib.recheck = false
-			err := lib.Body.Typecheck(lib, round)
-			if err != nil {
-				return nil, err
-			}
-		}
+	inferer := NewInferer(lib.scm, lib.Body.Items)
+	_, _, err := lib.Body.Infer(inferer.NewEnv())
+	if err != nil {
+		return nil, err
 	}
 
-	err := lib.Body.Bytecode(lib)
+	err = lib.Body.Bytecode(lib)
 	if err != nil {
 		return nil, err
 	}
@@ -253,15 +240,17 @@ func (lib *Library) Compile() (Value, error) {
 			if def.Name != nil {
 				name = def.Name.Name
 			}
-
-			ctx := make(types.Ctx)
+			t := def.Self.Type()
+			if t.Enum != types.EnumLambda {
+				return nil, fmt.Errorf("invalid lambda type: %v", t)
+			}
 
 			instr.I = def.Start
 			instr.J = def.End
 			instr.V = &LambdaImpl{
 				Name:     name,
 				Args:     def.Args,
-				Return:   def.Body[len(def.Body)-1].TypeXXX(ctx),
+				Return:   t.Return,
 				Captures: def.Captures,
 				Source:   lib.Source,
 				Code:     lib.Init[def.Start:def.End],
