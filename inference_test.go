@@ -57,7 +57,7 @@ func TestApply(t *testing.T) {
 	inferer := NewInferer(scm, nil)
 	env := inferer.NewEnv()
 
-	subst := make(InferSubst)
+	subst := NewInferSubst()
 	scheme := &InferScheme{
 		Type: &types.Type{
 			Enum: types.EnumLambda,
@@ -79,7 +79,7 @@ func TestApply(t *testing.T) {
 		env.Generalize(types.ExactFloat),
 	}
 	for i, t := range types {
-		subst[scheme.Variables[i].TypeVar] = t
+		subst.tv[scheme.Variables[i].TypeVar] = t
 	}
 
 	scheme = subst.Apply(scheme)
