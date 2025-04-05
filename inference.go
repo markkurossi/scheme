@@ -1379,12 +1379,12 @@ func (ast *ASTIdentifier) Infer(env *InferEnv) (
 			ast.Name)
 	}
 	env.inferer.Debugf(ast, "Identifier: name=%v, t=%v\n", ast.Name, ast.t)
-	if ast.t.Parametrizer != nil {
+	if ast.t.Parametrizer != nil && len(env.argTypes) > 0 {
 		env.inferer.Debugf(ast, "calling parametrizer\n")
 		ctx := make(map[interface{}]bool)
 		t, err := ast.t.Parametrizer.Parametrize(ctx, env.argTypes)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, ast.From.Errorf("%s", err)
 		}
 		env.inferer.Debugf(ast, " => %v\n", t)
 		ast.t = ast.t.Clone()
