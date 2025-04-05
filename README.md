@@ -79,11 +79,11 @@ Any
   |     |
   |     +-- ExactInteger (big.Int)
   |     |     |
-  |     |     +-- InxactInteger (int64)
+  |     |     +-- InexactInteger (int64)
   |     |
   |     +-- ExactFloat (big.Float)
   |           |
-  |           +-- InxactFloat (float64)
+  |           +-- InexactFloat (float64)
   |
   +-- Lambda(Type...) Type
   |
