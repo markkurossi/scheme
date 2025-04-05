@@ -1290,8 +1290,12 @@ func (ast *ASTLambda) Infer(env *InferEnv) (
 	}
 
 	if ast.Define {
-		id := env.inferer.scm.Intern(ast.Name.Name)
-		id.GlobalType = retScheme.Type
+		sym := env.inferer.scm.Intern(ast.Name.Name)
+		if !sym.GlobalType.IsA(types.Unspecified) {
+			return nil, nil, ast.From.Errorf("redefining symbol '%s'", ast.Name)
+		}
+		sym.GlobalType = retScheme.Type
+		env.inferer.Debugf(ast, "%v=%v\n", ast.Name, retScheme.Type)
 	}
 
 	env = env.Copy()
@@ -1346,9 +1350,6 @@ func (ast *ASTLambda) Infer(env *InferEnv) (
 
 	env.inferer.Debugf(ast, "\u03bb: return type: %v\n", retScheme)
 	ast.t = retScheme.Type
-	if ast.Define {
-		env.inferer.Debugf(ast, "%v=%v\n", ast.Name, ast.t)
-	}
 
 	return subst, ast.t, nil
 }
