@@ -50,6 +50,8 @@ following format:
 
 The following directives are defined:
  - `verbose-typecheck bool` controls type inference verbosity.
+ - `check-boolean-exprs bool` controls checking expression boolean
+   value in boolean contexts (`if`, `cond`, `and`, `or`)
 
 ### Types
 
@@ -101,6 +103,8 @@ Any
    - [ ] Error handlers
    - [ ] Call with current continuation
  - [ ] Compiler
+   - [ ] Instantiate lambdas with different numeric argument values
+         (inexact float, inexact int)
    - [ ] 7.1. Library form
      - [ ] import/export
      - [ ] rename
