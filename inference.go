@@ -102,7 +102,7 @@ func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
 
 // Debugf prints debugging information about type inference.
 func (inferer *Inferer) Debugf(ast AST, format string, a ...interface{}) {
-	if !inferer.scm.Params.PragmaVerboseTypecheck {
+	if !inferer.scm.Params.Pragma.VerboseTypecheck {
 		return
 	}
 	msg := fmt.Sprintf(format, a...)
@@ -778,7 +778,8 @@ func (ast *ASTIf) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	if t.Concrete() && !t.IsA(types.Boolean) {
+	if !env.inferer.scm.Params.Pragma.NoCheckBooleanExprs &&
+		t.Concrete() && !t.IsA(types.Boolean) {
 		ast.Cond.Locator().From().Warningf("if test is not boolean: %v\n", t)
 	}
 
@@ -1271,6 +1272,9 @@ func (ast *ASTLambda) Infer(env *InferEnv) (
 	env.inferer.Enter(ast)
 	defer env.inferer.Exit(ast)
 
+	env.inferer.scm.Params.PushScope()
+	defer env.inferer.scm.Params.PopScope()
+
 	cached, ok := env.inferer.calls[ast]
 	if ok {
 		return cached.subst, cached.t, nil
@@ -1411,7 +1415,8 @@ func (ast *ASTCond) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 			if err != nil {
 				return nil, nil, err
 			}
-			if choice.Func == nil && choiceType.Concrete() &&
+			if !env.inferer.scm.Params.Pragma.NoCheckBooleanExprs &&
+				choice.Func == nil && choiceType.Concrete() &&
 				!choiceType.IsA(types.Boolean) {
 				choice.Cond.Locator().From().
 					Warningf("choice is not boolean: %v\n", choiceType)
@@ -1501,7 +1506,8 @@ func (ast *ASTAnd) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		if t.Concrete() && !t.IsA(types.Boolean) {
+		if !env.inferer.scm.Params.Pragma.NoCheckBooleanExprs &&
+			t.Concrete() && !t.IsA(types.Boolean) {
 			expr.Locator().From().Warningf("and expr is not boolean: %v\n", t)
 		}
 		result = types.Unify(result, t)
@@ -1521,7 +1527,8 @@ func (ast *ASTOr) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		if !t.IsA(types.Boolean) {
+		if !env.inferer.scm.Params.Pragma.NoCheckBooleanExprs &&
+			t.Concrete() && !t.IsA(types.Boolean) {
 			expr.Locator().From().Warningf("or expr is not boolean: %v\n", t)
 		}
 		result = types.Unify(result, t)
@@ -1545,13 +1552,21 @@ func (ast *ASTPragma) Infer(env *InferEnv) (
 				"invalid directive '%v': expected identifier", d[0])
 		}
 		switch id.Name {
+		case "check-boolean-exprs":
+			v, ok := d[1].(Boolean)
+			if !ok {
+				return nil, nil,
+					ast.From.Errorf("pragma %s: invalid argument: %v", id, d[1])
+			}
+			env.inferer.scm.Params.Pragma.NoCheckBooleanExprs = !bool(v)
+
 		case "verbose-typecheck":
 			v, ok := d[1].(Boolean)
 			if !ok {
 				return nil, nil,
 					ast.From.Errorf("pragma %s: invalid argument: %v", id, d[1])
 			}
-			env.inferer.scm.Params.PragmaVerboseTypecheck = bool(v)
+			env.inferer.scm.Params.Pragma.VerboseTypecheck = bool(v)
 
 		default:
 			return nil, nil, ast.From.Errorf("unknown pragma '%s'", id.Name)

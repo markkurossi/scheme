@@ -715,7 +715,7 @@ func (ast *ASTCall) Typecheck(lib *Library, round int) error {
 		return ast.From.Errorf("too many arguments: got %v, max %v",
 			len(ast.Args), ft.MaxArgs())
 	}
-	if lib.scm.Params.PragmaVerboseTypecheck {
+	if lib.scm.Params.Pragma.VerboseTypecheck {
 		var argOfs []int
 		sig := fmt.Sprintf("(%v", ast.Func)
 		for _, arg := range ft.Args {
@@ -1778,7 +1778,7 @@ func (ast *ASTPragma) Typecheck(lib *Library, round int) error {
 				return ast.From.Errorf("pragma %s: invalid argument: %v",
 					id, d[1])
 			}
-			lib.scm.Params.PragmaVerboseTypecheck = bool(v)
+			lib.scm.Params.Pragma.VerboseTypecheck = bool(v)
 
 		default:
 			return ast.From.Errorf("unknown pragma '%s'", id.Name)

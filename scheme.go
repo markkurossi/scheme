@@ -58,8 +58,33 @@ type Params struct {
 	// Do not warn when redefining global symbols.
 	NoWarnDefine bool
 
-	// Enable verbose typecheck.
-	PragmaVerboseTypecheck bool
+	// Pragmas.
+	Pragma  Pragmas
+	pragmas []Pragmas
+}
+
+// PushScope push a new compilation scope and saves the current
+// parameters.
+func (p *Params) PushScope() {
+	p.pragmas = append(p.pragmas, p.Pragma)
+}
+
+// PopScope pops a compilation scope and restores saved parameters.
+func (p *Params) PopScope() {
+	if len(p.pragmas) == 0 {
+		panic("scope stack underflow")
+	}
+	p.Pragma = p.pragmas[len(p.pragmas)-1]
+	p.pragmas = p.pragmas[:len(p.pragmas)-1]
+}
+
+// Pragmas define compilation pragmas.
+type Pragmas struct {
+	// Do not check boolean expressions in boolean contexts.
+	NoCheckBooleanExprs bool
+
+	// Enable verbose typechecks.
+	VerboseTypecheck bool
 }
 
 // New creates a new Scheme interpreter.

@@ -110,7 +110,7 @@ func main() {
 	for _, p := range pragmas {
 		switch p.key {
 		case "verbose-typecheck":
-			params.PragmaVerboseTypecheck = p.val
+			params.Pragma.VerboseTypecheck = p.val
 
 		default:
 			log.Fatalf("unknown pragma: %v", p.key)
