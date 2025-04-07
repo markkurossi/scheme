@@ -450,53 +450,6 @@ func (ast *ASTCall) Equal(o AST) bool {
 	return ast.Tail == oast.Tail
 }
 
-var inlineCallTypes = map[Operand]inlineParametrizer{
-	OpCons: inlineParametrizerCons,
-	OpAdd:  inlineParametrizerNumber,
-	OpSub:  inlineParametrizerNumber,
-	OpMul:  inlineParametrizerNumber,
-	OpDiv:  inlineParametrizerNumber,
-	OpEq:   inlineParametrizerBoolean,
-	OpLt:   inlineParametrizerBoolean,
-	OpGt:   inlineParametrizerBoolean,
-	OpLe:   inlineParametrizerBoolean,
-	OpGe:   inlineParametrizerBoolean,
-}
-
-type inlineParametrizer func(params []*types.Type) *types.Type
-
-func inlineParametrizerCons(params []*types.Type) *types.Type {
-	return &types.Type{
-		Enum: types.EnumPair,
-		Car:  types.Unspecified,
-		Cdr:  types.Unspecified,
-	}
-}
-
-func inlineParametrizerNumber(params []*types.Type) *types.Type {
-	var result *types.Type
-	for _, param := range params {
-		result = types.Coerce(result, param)
-	}
-	return result
-}
-
-func inlineParametrizerBoolean(params []*types.Type) *types.Type {
-	return types.Boolean
-}
-
-func inlineParametrizerUnspecified(params []*types.Type) *types.Type {
-	return types.Unspecified
-}
-
-func inlineParametrizerCastNumber(params []*types.Type) *types.Type {
-	return types.Number
-}
-
-func inlineParametrizerCastSymbol(params []*types.Type) *types.Type {
-	return types.Symbol
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTCall) Bytecode(lib *Library) error {
 	var self *lambdaCompilation
@@ -575,34 +528,6 @@ func (ast *ASTCallUnary) Equal(o AST) bool {
 		return false
 	}
 	return ast.Op == oast.Op && ast.Arg.Equal(oast.Arg)
-}
-
-var inlineUnaryTypes = map[Operand]inlineParametrizer{
-	OpPairp:      inlineParametrizerBoolean,
-	OpNullp:      inlineParametrizerBoolean,
-	OpZerop:      inlineParametrizerBoolean,
-	OpNot:        inlineParametrizerBoolean,
-	OpCar:        inlineParametrizerUnspecified,
-	OpCdr:        inlineParametrizerUnspecified,
-	OpAddConst:   inlineParametrizerNumber,
-	OpSubConst:   inlineParametrizerNumber,
-	OpMulConst:   inlineParametrizerNumber,
-	OpCastNumber: inlineParametrizerCastNumber,
-	OpCastSymbol: inlineParametrizerCastSymbol,
-}
-
-var inlineUnaryArgTypes = map[Operand]*types.Type{
-	OpPairp:      types.Any,
-	OpCar:        types.Pair,
-	OpCdr:        types.Pair,
-	OpNullp:      types.Any,
-	OpZerop:      types.Any,
-	OpNot:        types.Any,
-	OpAddConst:   types.Number,
-	OpSubConst:   types.Number,
-	OpMulConst:   types.Number,
-	OpCastNumber: types.Any,
-	OpCastSymbol: types.Any,
 }
 
 // Bytecode implements AST.Bytecode.
