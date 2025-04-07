@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2023-2024 Markku Rossi
+;;; Copyright (c) 2023-2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -8,7 +8,7 @@
   (cond
    ((null? obj) "'()")
    ((boolean? obj) (if obj "#t" "#f"))
-   ((number? obj) (number->string (number! obj)))
+   ((number? obj) (number->string obj))
    ((char? obj) (string-append "#\\" (list->string (cons obj '()))))
 
    ((string? obj)
@@ -39,7 +39,7 @@
       (add #\")
       (iter (string->list obj))))
 
-   ((symbol? obj) (symbol->string (symbol! obj)))
+   ((symbol? obj) (symbol->string obj))
 
    ((pair? obj)
     (letrec ((head '())
