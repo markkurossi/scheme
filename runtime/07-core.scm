@@ -9,7 +9,7 @@
    ((null? obj) "'()")
    ((boolean? obj) (if obj "#t" "#f"))
    ((number? obj) (number->string obj))
-   ((char? obj) (string-append "#\\" (list->string (cons obj '()))))
+   ((char? obj) (string-append "#\\" (string obj)))
 
    ((string? obj)
     (letrec ((head '())
@@ -118,7 +118,7 @@
    ((null? obj) "'()")
    ((boolean? obj) (if obj "true" "false"))
    ((number? obj) (number->string obj))
-   ((char? obj) (list->string (list obj)))
+   ((char? obj) (string obj))
    ((string? obj) obj)
    ((symbol? obj) (symbol->string obj))
 
