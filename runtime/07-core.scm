@@ -120,7 +120,7 @@
    ((number? obj) (number->string obj))
    ((char? obj) (list->string (list obj)))
    ((string? obj) obj)
-   ((symbol? obj) (symbol->string (symbol! obj)))
+   ((symbol? obj) (symbol->string obj))
 
    ((pair? obj)
     (letrec ((head '())

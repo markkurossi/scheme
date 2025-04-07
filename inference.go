@@ -1218,20 +1218,6 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 			Return: types.Unspecified,
 		}
 
-	case OpCastNumber:
-		fnType = &types.Type{
-			Enum:   types.EnumLambda,
-			Args:   []*types.Type{types.Any},
-			Return: types.Number,
-		}
-
-	case OpCastSymbol:
-		fnType = &types.Type{
-			Enum:   types.EnumLambda,
-			Args:   []*types.Type{types.Any},
-			Return: types.Symbol,
-		}
-
 	default:
 		return nil, nil, ast.From.Errorf("%s: infer not implemented yet",
 			ast.Op)

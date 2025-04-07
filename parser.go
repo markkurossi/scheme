@@ -326,14 +326,12 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 }
 
 var inlineUnary = map[string]Operand{
-	"pair?":   OpPairp,
-	"car":     OpCar,
-	"cdr":     OpCdr,
-	"null?":   OpNullp,
-	"zero?":   OpZerop,
-	"not":     OpNot,
-	"number!": OpCastNumber,
-	"symbol!": OpCastSymbol,
+	"pair?": OpPairp,
+	"car":   OpCar,
+	"cdr":   OpCdr,
+	"null?": OpNullp,
+	"zero?": OpZerop,
+	"not":   OpNot,
 }
 
 var inlineUnaryBinary = map[string]Operand{
