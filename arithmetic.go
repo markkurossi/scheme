@@ -893,7 +893,7 @@ func parametrizeNumber(args []*types.Type) (*types.Type, error) {
 	if returnType == nil {
 		returnType = types.Number
 	}
-	if !returnType.IsKindOf(types.Number) {
+	if returnType.Concrete() && !returnType.IsKindOf(types.Number) {
 		return nil, fmt.Errorf("invalid arguments: %v, expected %v",
 			returnType, types.Number)
 	}
@@ -1083,6 +1083,7 @@ var numberBuiltins = []Builtin{
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return numMul(args[0], args[1])
 		},
+		Parametrize: parametrizeNumber,
 	},
 	{
 		Name:   "-",
@@ -1132,6 +1133,7 @@ var numberBuiltins = []Builtin{
 
 			return diff, nil
 		},
+		Parametrize: parametrizeNumber,
 	},
 	{
 		Name:   "scheme::/",
@@ -1140,6 +1142,7 @@ var numberBuiltins = []Builtin{
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return numDiv(args[0], args[1])
 		},
+		Parametrize: parametrizeNumber,
 	},
 	{
 		Name:    "mod",
