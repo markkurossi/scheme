@@ -250,3 +250,31 @@ Any
      - [ ] force
      - [ ] null-environment
      - [ ] scheme-report-environment
+
+Test VM dispatch techniques:
+
+``` go
+func (vm *VirtualMachine) execute(p *Program) (eval, error) {
+	code := p.code
+	ip := 0
+
+	for ip < len(code) {
+		ip += code[ip](vm)
+		if vm.err != nil {
+			return nil, vm.err
+		}
+	}
+	if vm.sp == 0 {
+		return nil, nil
+	}
+	return vm.stack[vm.sp-1], nil
+}
+
+func (c *compiler) emitPushNull() {
+	c.emit(func(vm *VirtualMachine) int {
+		vm.stack[vm.sp] = nil
+		vm.sp++
+		return 1
+	})
+}
+```
