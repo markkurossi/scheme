@@ -234,7 +234,7 @@ func repl(scm *scheme.Scheme) {
 
 	for {
 		input.count = 0
-		v, err := scm.Eval("input", input)
+		v, err := scm.Eval("repl", input)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			input.SaveHistory()
