@@ -910,8 +910,7 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 		case types.EnumLambda:
 
 		default:
-			return nil, nil,
-				errf(ast.Func, "invalid function: %v", fnType)
+			return nil, nil, errf(ast.Func, "invalid function: %v", fnType)
 		}
 
 		al := len(fnType.Args)
@@ -1209,9 +1208,7 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 	case OpAddConst, OpSubConst, OpMulConst:
 		if argType.Concrete() {
 			if !argType.IsKindOf(types.Number) {
-				return nil, nil,
-					ast.Arg.Locator().From().
-						Errorf("\u22a2 invalid argument: %v", argType)
+				return nil, nil, errf(ast.Arg, "invalid argument: %v", argType)
 			}
 		} else {
 			argType = types.Number
@@ -1426,12 +1423,12 @@ func (ast *ASTCond) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 			// Check function validity.
 			if fnType.Concrete() {
 				if fnType.Enum != types.EnumLambda {
-					return nil, nil, choice.Func.Locator().From().
-						Errorf("invalid function: %v", fnType)
+					return nil, nil, errf(choice.Func, "invalid function: %v",
+						fnType)
 				}
 				if fnType.MinArgs() != 1 {
-					return nil, nil, choice.Func.Locator().From().
-						Errorf("function must take one argument: %v", fnType)
+					return nil, nil, errf(choice.Func,
+						"function must take one argument: %v", fnType)
 				}
 			}
 			result = types.Unify(result, fnType.Return)
