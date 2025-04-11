@@ -14,6 +14,11 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
+func errf(ast AST, format string, a ...interface{}) error {
+	msg := fmt.Sprintf(format, a...)
+	return ast.Locator().From().Errorf("\u22a2 %s", msg)
+}
+
 // Inferer implements type inference.
 type Inferer struct {
 	scm     *Scheme
@@ -569,11 +574,16 @@ func unify(from, to *types.Type, subst *InferSubstCtx) (
 	switch from.Enum {
 	case types.EnumLambda:
 		if to.Enum != from.Enum {
-			return nil, nil, fmt.Errorf("unify: can't unify %v with %v",
+			return nil, nil, fmt.Errorf("can't unify %v with %v",
 				from, to)
 		}
-		if len(from.Args) != len(to.Args) {
-			return nil, nil, fmt.Errorf("unify: different amount of arguments")
+		if len(from.Args) < len(to.Args) {
+			return nil, nil, fmt.Errorf("too few arguments: got %v, need %v",
+				len(from.Args), len(to.Args))
+		}
+		if len(from.Args) > len(to.Args) {
+			return nil, nil, fmt.Errorf("too many arguments: got %v, need %v",
+				len(from.Args), len(to.Args))
 		}
 		result := &types.Type{
 			Enum: types.EnumLambda,
@@ -581,7 +591,7 @@ func unify(from, to *types.Type, subst *InferSubstCtx) (
 		for idx, arg := range from.Args {
 			subst, t, err = unify(arg, to.Args[idx], subst)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, fmt.Errorf("argument %d: %s", idx, err)
 			}
 			result.Args = append(result.Args, t)
 		}
@@ -594,7 +604,7 @@ func unify(from, to *types.Type, subst *InferSubstCtx) (
 
 	case types.EnumPair:
 		if to.Enum != from.Enum {
-			return nil, nil, fmt.Errorf("unify: can't unify %v with %v",
+			return nil, nil, fmt.Errorf("can't unify %v with %v",
 				from, to)
 		}
 		result := &types.Type{
@@ -615,7 +625,7 @@ func unify(from, to *types.Type, subst *InferSubstCtx) (
 		return subst, result, nil
 
 	default:
-		return nil, nil, fmt.Errorf("unify: can't unify %v with %v", from, to)
+		return nil, nil, fmt.Errorf("can't unify %v with %v", from, to)
 	}
 }
 
@@ -681,7 +691,7 @@ func (ast *ASTDefine) Infer(env *InferEnv) (
 	// Check the current type of the name.
 	sym := env.inferer.scm.Intern(ast.Name.Name)
 	if !sym.GlobalType.IsA(types.Unspecified) {
-		return nil, nil, ast.From.Errorf("redefining symbol '%s'", ast.Name)
+		return nil, nil, errf(ast, "redefining symbol '%s'", ast.Name)
 	}
 
 	env.inferer.calls[ast] = &inferred{
@@ -713,13 +723,11 @@ func (ast *ASTSet) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	// Check the current type of the name.
 	sym := env.inferer.scm.Intern(ast.Name)
 	if sym.GlobalType.IsA(types.Unspecified) {
-		return nil, nil, ast.From.Errorf("\u22a2 setting undefined symbol '%s'",
-			ast.Name)
+		return nil, nil, errf(ast, "setting undefined symbol '%s'", ast.Name)
 	}
 	if !t.IsKindOf(sym.GlobalType) {
-		return nil, nil,
-			ast.From.Errorf("can't assign %s to variable of type %s",
-				t, sym.GlobalType)
+		return nil, nil, errf(ast, "can't assign %s to variable of type %s",
+			t, sym.GlobalType)
 	}
 
 	ast.t = sym.GlobalType
@@ -821,7 +829,7 @@ func (ast *ASTApply) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 
 	env.inferer.Debugf(ast, "Apply: fnType=%v\n", fnType)
 	if fnType.Concrete() && fnType.Enum != types.EnumLambda {
-		return nil, nil, ast.From.Errorf("invalid function: %v", fnType)
+		return nil, nil, errf(ast, "invalid function: %v", fnType)
 	}
 
 	return fnSubst, fnType.Return, nil
@@ -865,6 +873,7 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 
 	// Resolve the type of the function.
 
+	var fnName string
 	var fnSubst *InferSubstCtx // XXX sub1
 	var fnType *types.Type     // XXX type1
 	var err error
@@ -878,12 +887,19 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 			return nil, nil, err
 		}
 		env.inferer.Debugf(ast, "Call: inline: fnType=%v\n", fnType)
+		fnName = ast.InlineOp.String()
 	} else {
 		fnSubst, fnType, err = ast.Func.Infer(env)
 		if err != nil {
 			return nil, nil, err
 		}
 		env.inferer.Debugf(ast, "Call: code: fnType=%v\n", fnType)
+		switch fn := ast.Func.(type) {
+		case *ASTIdentifier:
+			fnName = fn.Name
+		default:
+			fnName = "lambda"
+		}
 
 		switch fnType.Enum {
 		case types.EnumTypeVar:
@@ -895,7 +911,7 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 
 		default:
 			return nil, nil,
-				ast.Func.Locator().From().Errorf("invalid function: %v", fnType)
+				errf(ast.Func, "invalid function: %v", fnType)
 		}
 
 		al := len(fnType.Args)
@@ -940,16 +956,15 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 				fnType.Args = append(fnType.Args, restType)
 
 			} else {
-				return nil, nil,
-					ast.From.Errorf("too many arguments got %v, need %v",
-						len(ast.Args), al)
+				return nil, nil, errf(ast, "too many arguments got %v, need %v",
+					len(ast.Args), al)
 			}
 
 		} else if al > len(ast.Args) {
 			// Check if the extra argument Kind are Optional.
 			for i := len(ast.Args); i < al; i++ {
 				if fnType.Args[i].Kind != types.Optional {
-					ast.From.Errorf("too few arguments got %v, need %v",
+					errf(ast, "too few arguments got %v, need %v",
 						len(ast.Args), al)
 				}
 			}
@@ -961,7 +976,7 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	subst, retType, callType, a0TV, err := inferCall(ast, env, fnSubst, fnType,
 		ast.Args)
 	if err != nil {
-		return nil, nil, ast.From.Errorf("%s", err)
+		return nil, nil, errf(ast, "%s: %s", fnName, err)
 	}
 
 	// Set types for arguments.
@@ -1098,11 +1113,10 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 		panic(fmt.Sprintf("unknown inline function: %v", ast.InlineOp))
 	}
 	if len(ast.Args) < minArgs {
-		ast.From.Errorf("too few arguments: got %v, need %v",
-			len(ast.Args), minArgs)
+		errf(ast, "too few arguments: got %v, need %v", len(ast.Args), minArgs)
 	}
 	if ast.InlineOp == OpCons && len(ast.Args) > 2 {
-		ast.From.Errorf("too many arguments: got %v, max 2", len(ast.Args))
+		errf(ast, "too many arguments: got %v, need 2", len(ast.Args))
 	}
 
 	env.inferer.Debugf(ast, "Call: inlineFuncType: %v\n", ast.InlineOp)
@@ -1118,9 +1132,8 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 			returnType = types.Number
 		}
 		if returnType.Concrete() && !returnType.IsKindOf(types.Number) {
-			return nil, nil,
-				ast.From.Errorf("invalid arguments: %v, expected %v",
-					returnType, types.Number)
+			return nil, nil, errf(ast, "invalid arguments: %v, expected %v",
+				returnType, types.Number)
 		}
 
 		result := &types.Type{
@@ -1159,8 +1172,7 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 		return subst, result, nil
 
 	default:
-		return nil, nil, ast.From.Errorf("%s: unknown inline function",
-			ast.InlineOp)
+		return nil, nil, errf(ast, "%s: unknown inline function", ast.InlineOp)
 	}
 }
 
@@ -1198,8 +1210,8 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 		if argType.Concrete() {
 			if !argType.IsKindOf(types.Number) {
 				return nil, nil,
-					ast.Arg.Locator().From().Errorf("invalid argument: %v",
-						argType)
+					ast.Arg.Locator().From().
+						Errorf("\u22a2 invalid argument: %v", argType)
 			}
 		} else {
 			argType = types.Number
@@ -1219,8 +1231,7 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 		}
 
 	default:
-		return nil, nil, ast.From.Errorf("%s: infer not implemented yet",
-			ast.Op)
+		return nil, nil, errf(ast, "%s: infer not implemented yet", ast.Op)
 	}
 
 	subst, retType, callType, a0TV, err := inferCall(ast, env, fnSubst, fnType,
@@ -1282,7 +1293,7 @@ func (ast *ASTLambda) Infer(env *InferEnv) (
 	if ast.Define {
 		sym := env.inferer.scm.Intern(ast.Name.Name)
 		if !sym.GlobalType.IsA(types.Unspecified) {
-			return nil, nil, ast.From.Errorf("redefining symbol '%s'", ast.Name)
+			return nil, nil, errf(ast, "redefining symbol '%s'", ast.Name)
 		}
 		sym.GlobalType = retScheme.Type
 		env.inferer.Debugf(ast, "%v=%v\n", ast.Name, retScheme.Type)
@@ -1367,8 +1378,7 @@ func (ast *ASTIdentifier) Infer(env *InferEnv) (
 	var ok bool
 	ast.t, ok = env.Get(ast.Name)
 	if !ok {
-		return nil, nil, ast.From.Errorf("\u22a2 undefined symbol '%s'",
-			ast.Name)
+		return nil, nil, errf(ast, "undefined symbol '%s'", ast.Name)
 	}
 	env.inferer.Debugf(ast, "Identifier: name=%v, t=%v\n", ast.Name, ast.t)
 	if ast.t.Parametrizer != nil && len(env.argTypes) > 0 {
@@ -1376,7 +1386,7 @@ func (ast *ASTIdentifier) Infer(env *InferEnv) (
 		ctx := make(map[interface{}]bool)
 		t, err := ast.t.Parametrizer.Parametrize(ctx, env.argTypes)
 		if err != nil {
-			return nil, nil, ast.From.Errorf("%s", err)
+			return nil, nil, errf(ast, "%s", err)
 		}
 		env.inferer.Debugf(ast, " => %v\n", t)
 		ast.t = ast.t.Clone()
@@ -1530,32 +1540,32 @@ func (ast *ASTPragma) Infer(env *InferEnv) (
 
 	for _, d := range ast.Directives {
 		if len(d) != 2 {
-			return nil, nil, ast.From.Errorf("invalid directive: %v", d)
+			return nil, nil, errf(ast, "invalid directive: %v", d)
 		}
 		id, ok := d[0].(*Identifier)
 		if !ok {
-			return nil, nil, ast.From.Errorf(
-				"invalid directive '%v': expected identifier", d[0])
+			return nil, nil,
+				errf(ast, "invalid directive '%v': expected identifier", d[0])
 		}
 		switch id.Name {
 		case "check-boolean-exprs":
 			v, ok := d[1].(Boolean)
 			if !ok {
-				return nil, nil,
-					ast.From.Errorf("pragma %s: invalid argument: %v", id, d[1])
+				return nil, nil, errf(ast, "pragma %s: invalid argument: %v",
+					id, d[1])
 			}
 			env.inferer.scm.Params.Pragma.NoCheckBooleanExprs = !bool(v)
 
 		case "verbose-typecheck":
 			v, ok := d[1].(Boolean)
 			if !ok {
-				return nil, nil,
-					ast.From.Errorf("pragma %s: invalid argument: %v", id, d[1])
+				return nil, nil, errf(ast, "pragma %s: invalid argument: %v",
+					id, d[1])
 			}
 			env.inferer.scm.Params.Pragma.VerboseTypecheck = bool(v)
 
 		default:
-			return nil, nil, ast.From.Errorf("unknown pragma '%s'", id.Name)
+			return nil, nil, errf(ast, "\u22a2 unknown pragma '%s'", id.Name)
 		}
 	}
 
