@@ -100,7 +100,7 @@ func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
 	if len(msg) > 0 && unicode.IsSpace(rune(msg[0])) {
 		lead = ""
 	} else {
-		lead = "warning: "
+		lead = "\u22a2 warning: "
 	}
 	inferer.Print(ast, lead, msg)
 }

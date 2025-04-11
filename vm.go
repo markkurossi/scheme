@@ -730,11 +730,11 @@ func (scm *Scheme) VMWarningf(format string, a ...interface{}) {
 
 	source, line, err := scm.Location()
 	if err != nil || line == 0 || len(source) == 0 {
-		scm.Stderr.Printf("warning: %v\n", msg)
+		scm.Stderr.Printf("\u22a5 warning: %v\n", msg)
 	} else if line == 0 {
-		scm.Stderr.Printf("%s: warning: %v\n", source, msg)
+		scm.Stderr.Printf("%s: \u22a5 warning: %v\n", source, msg)
 	} else {
-		scm.Stderr.Printf("%s:%v: %s\n", source, line, msg)
+		scm.Stderr.Printf("%s:%v: \u22a5 warning: %s\n", source, line, msg)
 	}
 }
 
@@ -746,9 +746,9 @@ func (scm *Scheme) VMErrorf(format string, a ...interface{}) error {
 	if err != nil || line == 0 || len(source) == 0 {
 		return errors.New(msg)
 	} else if line == 0 {
-		return fmt.Errorf("%s: %s", source, msg)
+		return fmt.Errorf("%s: \u22a5 %s", source, msg)
 	}
-	return fmt.Errorf("%s:%v: %s", source, line, msg)
+	return fmt.Errorf("%s:%v: \u22a5 %s", source, line, msg)
 }
 
 func (scm *Scheme) popToplevel() {
