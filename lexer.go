@@ -174,19 +174,19 @@ func (p Point) SetTo(point Point) {
 // Errorf implements Locator.Errorf.
 func (p Point) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
-	return fmt.Errorf("%s: %s", p, msg)
+	return fmt.Errorf("%s: \u2260 %s", p, msg)
 }
 
 // Warningf implements Locator.Warningf.
 func (p Point) Warningf(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
-	fmt.Printf("%s: warning: %s", p, msg)
+	fmt.Printf("%s: \u2260 warning: %s", p, msg)
 }
 
 // Infof implements Locator.Info.
 func (p Point) Infof(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
-	fmt.Printf("%s: %s", p, msg)
+	fmt.Printf("%s: \u2260 %s", p, msg)
 }
 
 // Locator interface a source location.
@@ -322,7 +322,7 @@ func NewLexer(source string, in io.Reader) *Lexer {
 
 func (l *Lexer) errf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
-	return fmt.Errorf("%s: %s", l.point, msg)
+	return fmt.Errorf("%s: \u2260 %s", l.point, msg)
 }
 
 // ReadRune reads the next input rune.
@@ -700,7 +700,7 @@ func (l *Lexer) parseNumber() (*Token, error) {
 
 		default:
 			l.UnreadRune()
-			return nil, l.errf("unexpected character: %c", r)
+			return nil, l.errf("number: unexpected character: %c", r)
 		}
 
 		r, _, err = l.ReadRune()
@@ -719,7 +719,7 @@ func (l *Lexer) parseNumber() (*Token, error) {
 		if r == '#' {
 			if hasSign {
 				l.UnreadRune()
-				return nil, l.errf("unexpected character: %c", r)
+				return nil, l.errf("number: unexpected character: %c", r)
 			}
 			// Continue from the top.
 
@@ -734,7 +734,7 @@ func (l *Lexer) parseNumber() (*Token, error) {
 			return l.newNumber(exact, negative, ival, fval)
 		} else {
 			l.UnreadRune()
-			return nil, l.errf("unexpected character: %c", r)
+			return nil, l.errf("number: unexpected character: %c", r)
 		}
 	}
 }
@@ -788,7 +788,7 @@ func (l *Lexer) parseDigit(base int64) (*big.Int, *big.Float, error) {
 			}
 
 		default:
-			return nil, nil, l.errf("invalid base %v", base)
+			return nil, nil, l.errf("digit: invalid base %v", base)
 		}
 		if done {
 			if base == 10 && r == '.' {
@@ -802,7 +802,7 @@ func (l *Lexer) parseDigit(base int64) (*big.Int, *big.Float, error) {
 		count++
 	}
 	if count == 0 {
-		return nil, nil, l.errf("unexpected EOF")
+		return nil, nil, l.errf("digit: unexpected EOF")
 	}
 
 	return result, nil, nil

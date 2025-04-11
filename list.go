@@ -62,18 +62,20 @@ func (pair *PlainPair) SetTo(p Point) {
 
 // Errorf implements Locator.Errorf.
 func (pair *PlainPair) Errorf(format string, a ...interface{}) error {
-	return fmt.Errorf(format, a...)
+	msg := fmt.Sprintf(format, a...)
+	return fmt.Errorf("\u2260 %s", msg)
 }
 
 // Warningf implements Locator.Warningf.
 func (pair *PlainPair) Warningf(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
-	fmt.Printf("warning: %s", msg)
+	fmt.Printf("\u2260 warning: %s", msg)
 }
 
 // Infof implements Locator.Infof.
 func (pair *PlainPair) Infof(format string, a ...interface{}) {
-	fmt.Printf(format, a...)
+	msg := fmt.Sprintf(format, a...)
+	fmt.Printf("\u2260 %s", msg)
 }
 
 // Car returns the pair's car value.
@@ -227,19 +229,19 @@ func (pair *LocationPair) Eq(o Value) bool {
 // Errorf implements Locator.Errorf.
 func (pair *LocationPair) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
-	return fmt.Errorf("%s: %s", pair.from, msg)
+	return fmt.Errorf("%s: \u2260 %s", pair.from, msg)
 }
 
 // Warningf implements Locator.Warningf.
 func (pair *LocationPair) Warningf(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
-	fmt.Printf("%s: warning: %s", pair.from, msg)
+	fmt.Printf("%s: \u2260 warning: %s", pair.from, msg)
 }
 
 // Infof implements Locator.Infof.
 func (pair *LocationPair) Infof(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
-	fmt.Printf("%s: %s", pair.from, msg)
+	fmt.Printf("%s: \u2260 %s", pair.from, msg)
 }
 
 func (pair *LocationPair) String() string {
