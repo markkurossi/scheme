@@ -194,33 +194,6 @@ func (inferred Inferred) Apply(t *types.Type) *types.Type {
 	return t
 }
 
-// InferScheme implements a type with list of type variables.
-type InferScheme struct {
-	Variables []*types.Type
-	Type      *types.Type
-}
-
-func (scheme *InferScheme) String() string {
-	return fmt.Sprintf("Scheme(%v, %v)", scheme.Variables, scheme.Type)
-}
-
-// Instantiate creates a type of a type scheme.
-func (scheme *InferScheme) Instantiate(inferer *Inferer) *types.Type {
-	// Replace all scheme.Variables with fresh TypeVar.
-	result := scheme
-	for _, v := range scheme.Variables {
-		if v.Enum != types.EnumTypeVar {
-			panic(fmt.Sprintf("invalid type variable: %v", v))
-		}
-		subst := NewInferSubst()
-		subst.tv[v.TypeVar] = &InferScheme{
-			Type: inferer.newTypeVar(),
-		}
-		result = subst.Apply(result)
-	}
-	return result.Type
-}
-
 // InferEnv implements environment for type inference.
 type InferEnv struct {
 	inferer  *Inferer
@@ -408,8 +381,8 @@ type Branch struct {
 }
 
 // InferEnvBinding defines known bindings in the inference
-// environment. In most cases these contain the resolved InferSchemes
-// but letrec environments contain forward declarations to initializer
+// environment. In most cases these contain the resolved types but
+// letrec environments contain forward declarations to initializer
 // ASTs.
 type InferEnvBinding struct {
 	t   *types.Type
@@ -421,141 +394,6 @@ func (ieb InferEnvBinding) String() string {
 		return ieb.t.String()
 	}
 	return fmt.Sprintf("%v", ieb.ast)
-}
-
-// InferSubst implements type substitutions.
-type InferSubst struct {
-	tv map[int]*InferScheme
-	id map[string]*InferScheme
-}
-
-// NewInferSubst creates a new type substitutions instance.
-func NewInferSubst() *InferSubst {
-	return &InferSubst{
-		tv: make(map[int]*InferScheme),
-		id: make(map[string]*InferScheme),
-	}
-}
-
-func (s *InferSubst) String() string {
-	var result string
-	if len(s.tv) > 0 {
-		result += fmt.Sprintf("tv=%v", s.tv)
-	}
-	if len(s.id) > 0 {
-		if len(result) > 0 {
-			result += ","
-		}
-		result += fmt.Sprintf("id=%v", s.id)
-	}
-	return result
-}
-
-// Patch applies substitutions for the type scheme and returns the
-// result scheme.
-func (s *InferSubst) Patch(t *InferScheme) *InferScheme {
-	result := &InferScheme{
-		Variables: t.Variables,
-		Type:      t.Type,
-	}
-	for typeVar, replacement := range s.tv {
-		v := &types.Type{
-			Enum:    types.EnumTypeVar,
-			TypeVar: typeVar,
-		}
-		switch result.Type.Enum {
-		case types.EnumLambda:
-			for i, arg := range result.Type.Args {
-				result.Type.Args[i] = replace(arg, v, replacement.Type)
-			}
-			if result.Type.Rest != nil {
-				result.Type.Rest = replace(result.Type.Rest, v,
-					replacement.Type)
-			}
-			result.Type.Return = replace(result.Type.Return, v,
-				replacement.Type)
-			if result.Type.Return == nil {
-				panic("Lambda return type is nil")
-			}
-
-		case types.EnumPair:
-			result.Type.Car = replace(result.Type.Car, v, replacement.Type)
-			result.Type.Cdr = replace(result.Type.Cdr, v, replacement.Type)
-
-		case types.EnumTypeVar:
-			result.Type = replace(result.Type, v, replacement.Type)
-		}
-	}
-
-	return result
-}
-
-// Apply applies substitution for the type and returns the result
-// type.
-func (s *InferSubst) Apply(t *InferScheme) *InferScheme {
-	// Replace any variable that appears in the scheme's variable
-	// list.
-	if t.Type == nil {
-		panic("InferSubst.Apply: nil type")
-	}
-	result := &InferScheme{
-		Variables: t.Variables,
-		Type:      t.Type,
-	}
-
-	for _, v := range t.Variables {
-		if v.Enum != types.EnumTypeVar {
-			panic(fmt.Sprintf("InferSubst.Apply: invalid type variable %v", v))
-		}
-		replacement, ok := s.tv[v.TypeVar]
-		if !ok {
-			continue
-		}
-		switch result.Type.Enum {
-		case types.EnumLambda:
-			for i, arg := range result.Type.Args {
-				result.Type.Args[i] = replace(arg, v, replacement.Type)
-			}
-			if result.Type.Rest != nil {
-				result.Type.Rest = replace(result.Type.Rest, v,
-					replacement.Type)
-			}
-			result.Type.Return = replace(result.Type.Return, v,
-				replacement.Type)
-			if result.Type.Return == nil {
-				panic("Lambda return type is nil")
-			}
-
-		case types.EnumTypeVar:
-			result.Type = replace(result.Type, v, replacement.Type)
-		}
-	}
-
-	return result
-}
-
-func replace(t, v, r *types.Type) *types.Type {
-	if v.IsA(t) {
-		return r
-	}
-	return t
-}
-
-// Compose composes type substitutions s and s2.
-func (s *InferSubst) Compose(s2 *InferSubst) *InferSubst {
-	result := NewInferSubst()
-	for id, t := range s2.tv {
-		result.tv[id] = s.Apply(t)
-	}
-	for id, t := range s.tv {
-		if _, ok := result.tv[id]; !ok {
-			result.tv[id] = t
-		}
-	}
-	for id, t := range s.id {
-		result.id[id] = t
-	}
-	return result
 }
 
 // Unify unifies type from to type to and returns the substitutions

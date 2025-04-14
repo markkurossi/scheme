@@ -15,41 +15,14 @@ import (
 )
 
 var instantiateTests = []struct {
-	scheme *InferScheme
+	t      *types.Type
 	result *types.Type
 }{
 	{
-		scheme: &InferScheme{
-			Type: types.InexactInteger,
-		},
+		t:      types.InexactInteger,
 		result: types.InexactInteger,
 	},
 	{},
-}
-
-func TestInstantiate(t *testing.T) {
-	scm := newTestScheme(t)
-	inferer := NewInferer(scm, nil)
-
-	scheme := &InferScheme{
-		Type: types.InexactInteger,
-	}
-	got := scheme.Instantiate(inferer)
-	if !got.IsA(types.InexactInteger) {
-		t.Errorf("expected %v, got %v\n", types.InexactInteger, got)
-	}
-
-	tv := inferer.newTypeVar()
-	scheme = &InferScheme{
-		Variables: []*types.Type{tv},
-		Type:      tv,
-	}
-	got = scheme.Instantiate(inferer)
-	if got.IsA(tv) {
-		t.Errorf("TypeVar %v not substituted\n", tv)
-	} else {
-		t.Logf("instantiate: %v => %v\n", scheme, got)
-	}
 }
 
 var inferenceTests = []struct {
