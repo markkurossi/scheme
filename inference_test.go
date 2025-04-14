@@ -52,48 +52,6 @@ func TestInstantiate(t *testing.T) {
 	}
 }
 
-func TestApply(t *testing.T) {
-	scm := newTestScheme(t)
-	inferer := NewInferer(scm, nil)
-	env := inferer.NewEnv()
-
-	subst := NewInferSubst()
-	scheme := &InferScheme{
-		Type: &types.Type{
-			Enum: types.EnumLambda,
-			Args: []*types.Type{
-				inferer.newTypeVar(),
-			},
-			Rest:   inferer.newTypeVar(),
-			Return: inferer.newTypeVar(),
-		},
-	}
-	scheme.Variables = []*types.Type{
-		scheme.Type.Args[0],
-		scheme.Type.Rest,
-		scheme.Type.Return,
-	}
-	types := []*InferScheme{
-		env.Generalize(types.ExactInteger),
-		env.Generalize(types.String),
-		env.Generalize(types.ExactFloat),
-	}
-	for i, t := range types {
-		subst.tv[scheme.Variables[i].TypeVar] = t
-	}
-
-	scheme = subst.Apply(scheme)
-	if !scheme.Type.Args[0].IsA(types[0].Type) {
-		t.Errorf("Args[0] type mismatch")
-	}
-	if !scheme.Type.Rest.IsA(types[1].Type) {
-		t.Errorf("Rest type mismatch")
-	}
-	if !scheme.Type.Return.IsA(types[2].Type) {
-		t.Errorf("Return type mismatch")
-	}
-}
-
 var inferenceTests = []struct {
 	d string
 	t *types.Type
@@ -205,12 +163,17 @@ func TestInference(t *testing.T) {
 		}
 		inferer := NewInferer(scm, lib.Body.Items)
 
-		_, typ, err := lib.Body.Infer(inferer.NewEnv())
+		_, _, err = lib.Body.Infer(inferer.NewEnv())
 		if err != nil {
 			t.Logf("%s: infer error in:", name)
 			t.Logf(" \u2502 %s", test.d)
 			t.Fatalf(" \u2570 %s", err)
 		}
+		err = lib.Body.Inferred(inferer.inferred)
+		if err != nil {
+			t.Fatalf("Infered failed: %s", err)
+		}
+		typ := lib.Body.Type()
 		if (test.t.Enum == types.EnumTypeVar &&
 			typ.Enum != types.EnumTypeVar) ||
 			(test.t.Enum != types.EnumTypeVar && !typ.IsA(test.t)) {

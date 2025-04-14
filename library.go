@@ -153,10 +153,17 @@ func (code Code) Print(w io.Writer) {
 // PrettyPrint formats the library Scheme code into the pp.Writer.
 func (lib *Library) PrettyPrint(w pp.Writer) error {
 	inferer := NewInferer(lib.scm, lib.Body.Items)
-	_, _, err := lib.Body.Infer(inferer.NewEnv())
+	env := inferer.NewEnv()
+	_, _, err := lib.Body.Infer(env)
 	if err != nil {
 		return err
 	}
+	err = lib.Body.Inferred(inferer.inferred)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("pp: %v\n", inferer.inferred)
+
 	w.Header()
 	last := 1
 	for _, item := range lib.Body.Items {
@@ -174,12 +181,22 @@ func (lib *Library) PrettyPrint(w pp.Writer) error {
 	return w.Error()
 }
 
+const infer = true
+
 // Compile compiles the library into bytecode.
 func (lib *Library) Compile() (Value, error) {
-	inferer := NewInferer(lib.scm, lib.Body.Items)
-	_, _, err := lib.Body.Infer(inferer.NewEnv())
-	if err != nil {
-		return nil, err
+	var err error
+
+	if infer {
+		inferer := NewInferer(lib.scm, lib.Body.Items)
+		_, _, err := lib.Body.Infer(inferer.NewEnv())
+		if err != nil {
+			return nil, err
+		}
+		err = lib.Body.Inferred(inferer.inferred)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = lib.Body.Bytecode(lib)
@@ -241,8 +258,13 @@ func (lib *Library) Compile() (Value, error) {
 				name = def.Name.Name
 			}
 			t := def.Self.Type()
-			if t.Enum != types.EnumLambda {
+			if t.Enum != types.EnumLambda && infer {
 				return nil, fmt.Errorf("invalid lambda type: %v", t)
+			} else {
+				t = &types.Type{
+					Enum:   types.EnumLambda,
+					Return: types.Unspecified,
+				}
 			}
 
 			instr.I = def.Start

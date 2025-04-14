@@ -171,22 +171,37 @@ func (p Point) To() Point {
 func (p Point) SetTo(point Point) {
 }
 
+func isTagged(msg string) bool {
+	return []rune(msg)[0] > 0xff
+}
+
 // Errorf implements Locator.Errorf.
 func (p Point) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
+	if isTagged(msg) {
+		return fmt.Errorf("%s: %s", p, msg)
+	}
 	return fmt.Errorf("%s: \u2260 %s", p, msg)
 }
 
 // Warningf implements Locator.Warningf.
 func (p Point) Warningf(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
-	fmt.Printf("%s: \u2260 warning: %s", p, msg)
+	if isTagged(msg) {
+		fmt.Printf("%s: warning: %s", p, msg)
+	} else {
+		fmt.Printf("%s: \u2260 warning: %s", p, msg)
+	}
 }
 
 // Infof implements Locator.Info.
 func (p Point) Infof(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
-	fmt.Printf("%s: \u2260 %s", p, msg)
+	if isTagged(msg) {
+		fmt.Printf("%s: %s", p, msg)
+	} else {
+		fmt.Printf("%s: \u2260 %s", p, msg)
+	}
 }
 
 // Locator interface a source location.

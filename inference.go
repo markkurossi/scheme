@@ -16,27 +16,27 @@ import (
 
 func errf(ast AST, format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
+	if ast.Locator() == nil {
+		return fmt.Errorf("\u22a2 %s", msg)
+	}
 	return ast.Locator().From().Errorf("\u22a2 %s", msg)
 }
 
 // Inferer implements type inference.
 type Inferer struct {
-	scm     *Scheme
-	defines []AST
-	nesting int
-	calls   map[AST]*inferred
-}
-
-type inferred struct {
-	subst *InferSubstCtx
-	t     *types.Type
+	scm      *Scheme
+	defines  []AST
+	nesting  int
+	calls    map[AST]*types.Type
+	inferred Inferred
 }
 
 // NewInferer creates a new type inferer.
 func NewInferer(scm *Scheme, toplevel []AST) *Inferer {
 	inferer := &Inferer{
-		scm:   scm,
-		calls: make(map[AST]*inferred),
+		scm:      scm,
+		calls:    make(map[AST]*types.Type),
+		inferred: make(Inferred),
 	}
 	for _, item := range toplevel {
 		switch ast := item.(type) {
@@ -51,6 +51,9 @@ func NewInferer(scm *Scheme, toplevel []AST) *Inferer {
 	}
 	return inferer
 }
+
+// XXX rethink the inferer API, now we must make two calls: Infer()
+// and Inferred().
 
 // Enter increases inferer debug nesting.
 func (inferer *Inferer) Enter(ast AST) {
@@ -133,6 +136,64 @@ func (inferer *Inferer) newTypeVar() *types.Type {
 	}
 }
 
+// Inferred stores type inference results.
+type Inferred map[int]*types.Type
+
+func (inferred Inferred) String() string {
+	result := "types=["
+	first := true
+
+	for k, v := range inferred {
+		if first {
+			first = false
+		} else {
+			result += ","
+		}
+		result += fmt.Sprintf("%v=%v", k, v)
+	}
+	return result + "]"
+}
+
+// Apply applies the type inference results for the argument type.
+func (inferred Inferred) Apply(t *types.Type) *types.Type {
+	if t == nil {
+		return nil
+	}
+	switch t.Enum {
+	case types.EnumLambda:
+		result := &types.Type{
+			Enum:   t.Enum,
+			Rest:   inferred.Apply(t.Rest),
+			Return: inferred.Apply(t.Return),
+		}
+		for _, arg := range t.Args {
+			result.Args = append(result.Args, inferred.Apply(arg))
+		}
+		return result
+
+	case types.EnumPair:
+		return &types.Type{
+			Enum: t.Enum,
+			Car:  inferred.Apply(t.Car),
+			Cdr:  inferred.Apply(t.Cdr),
+		}
+
+	case types.EnumVector:
+		return &types.Type{
+			Enum:    t.Enum,
+			Element: inferred.Apply(t.Element),
+		}
+
+	case types.EnumTypeVar:
+		mapped, ok := inferred[t.TypeVar]
+		if ok {
+			return mapped
+		}
+	}
+
+	return t
+}
+
 // InferScheme implements a type with list of type variables.
 type InferScheme struct {
 	Variables []*types.Type
@@ -160,51 +221,66 @@ func (scheme *InferScheme) Instantiate(inferer *Inferer) *types.Type {
 	return result.Type
 }
 
-// InferEnv implements type environment for Infer.
+// InferEnv implements environment for type inference.
 type InferEnv struct {
 	inferer  *Inferer
 	bindings map[string]InferEnvBinding
+
+	// XXX
 	argTypes []*types.Type
-	argSubst *InferSubstCtx
-}
-
-// InferEnvBinding defines known bindings in the inference
-// environment. In most cases these contain the resolved InferSchemes
-// but letrec environments contain forward declarations to initializer
-// ASTs.
-type InferEnvBinding struct {
-	scheme *InferScheme
-	ast    AST
-}
-
-func (ieb InferEnvBinding) String() string {
-	if ieb.scheme != nil {
-		return ieb.scheme.String()
-	}
-	return fmt.Sprintf("%v", ieb.ast)
 }
 
 func (env *InferEnv) String() string {
-	var result string
+	result := "bindings=["
+	first := true
 
 	for k, v := range env.bindings {
-		if len(result) > 0 {
+		if first {
+			first = false
+		} else {
 			result += ","
 		}
 		result += fmt.Sprintf("%v=%v", k, v)
 	}
-	return "[" + result + "]"
+
+	return result + "]"
 }
 
-// Copy creates a copy of the inference environment.
+// Copy creates a copy of the InferEnv.
 func (env *InferEnv) Copy() *InferEnv {
-	result := env.inferer.NewEnv()
-
-	// XXX should we clone InferScheme too in bindings?
-
+	result := &InferEnv{
+		inferer:  env.inferer,
+		bindings: make(map[string]InferEnvBinding),
+	}
 	for k, v := range env.bindings {
 		result.bindings[k] = v
 	}
+	return result
+}
+
+// Positive creates a copy of the InferEnv for a positive branch.
+func (env *InferEnv) Positive(branch *Branch) *InferEnv {
+	result := env.Copy()
+	if branch == nil || branch.pos == nil {
+		return result
+	}
+	for k, v := range branch.pos.bindings {
+		result.bindings[k] = v
+	}
+
+	return result
+}
+
+// Negative creates a copy of the InferEnv for a negative branch.
+func (env *InferEnv) Negative(branch *Branch) *InferEnv {
+	result := env.Copy()
+	if branch == nil || branch.neg == nil {
+		return result
+	}
+	for k, v := range branch.pos.bindings {
+		result.bindings[k] = v
+	}
+
 	return result
 }
 
@@ -212,14 +288,14 @@ func (env *InferEnv) Copy() *InferEnv {
 func (env *InferEnv) Get(name string) (*types.Type, bool) {
 	binding, ok := env.bindings[name]
 	if ok {
-		if binding.scheme != nil {
-			return binding.scheme.Instantiate(env.inferer), true
+		if binding.t != nil {
+			return env.follow(binding.t)
 		}
 		return env.resolve(binding.ast)
 	}
 	t := env.inferer.scm.Intern(name).GlobalType
 	if !t.IsA(types.Unspecified) {
-		return t, true
+		return env.follow(t)
 	}
 
 	// Lookup the name from the toplevel AST.
@@ -239,14 +315,34 @@ func (env *InferEnv) Get(name string) (*types.Type, bool) {
 	return types.Unspecified, false
 }
 
+func (env *InferEnv) follow(t *types.Type) (*types.Type, bool) {
+	for t.Enum == types.EnumTypeVar {
+		next, ok := env.inferer.inferred[t.TypeVar]
+		if !ok || next.Enum != types.EnumTypeVar {
+			break
+		}
+		t = next
+	}
+	return t, true
+}
+
+func (env *InferEnv) resolve(ast AST) (*types.Type, bool) {
+	_, t, err := ast.Infer(env)
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		return types.Unspecified, false
+	}
+	return env.follow(t)
+}
+
 // Define defines the name with its type scheme.
-func (env *InferEnv) Define(name string, scheme *InferScheme) error {
+func (env *InferEnv) Define(name string, t *types.Type) error {
 	_, ok := env.bindings[name]
 	if ok {
 		return fmt.Errorf("symbol already bound '%s'", name)
 	}
 	env.bindings[name] = InferEnvBinding{
-		scheme: scheme,
+		t: t,
 	}
 	return nil
 }
@@ -263,11 +359,11 @@ func (env *InferEnv) DefineAST(name string, ast AST) error {
 	return nil
 }
 
-// Set sets the name's type scheme in the environment. This overrides
-// any old binding the name might have.
-func (env *InferEnv) Set(name string, scheme *InferScheme) {
+// Set sets the name's type in the environment. This overrides any old
+// binding the name might have.
+func (env *InferEnv) Set(name string, t *types.Type) {
 	env.bindings[name] = InferEnvBinding{
-		scheme: scheme,
+		t: t,
 	}
 }
 
@@ -279,94 +375,52 @@ func (env *InferEnv) SetAST(name string, ast AST) {
 	}
 }
 
-func (env *InferEnv) resolve(ast AST) (*types.Type, bool) {
-	_, t, err := ast.Infer(env)
-	if err != nil {
-		fmt.Printf("%s\n", err)
-		return types.Unspecified, false
+// Learn updates the type variable v's type to t. The function panics
+// if the variable v is not a type variable.
+func (env *InferEnv) Learn(ast AST, v *types.Type, t *types.Type) error {
+	if v.Enum != types.EnumTypeVar {
+		panic("InferEnv.Learn: invalid variable")
 	}
-	return t, true
+	old, ok := env.inferer.inferred[v.TypeVar]
+	if ok {
+		if old.IsKindOf(t) {
+			// Old value is the same or more specific type.
+			return nil
+		}
+		if !t.IsKindOf(old) {
+			return fmt.Errorf("can't convert type %s to %s", old, t)
+		}
+	}
+	// env.inferer.Debugf(ast, "learn: %v=%v\n", v.TypeVar, t)
+	env.inferer.inferred[v.TypeVar] = t
+
+	return nil
 }
 
-// Generalize generalizes the type into a type scheme.
-func (env *InferEnv) Generalize(t *types.Type) *InferScheme {
-	if t == nil {
-		panic("InferEnv.Generalize: nil type")
-	}
-	return &InferScheme{
-		Type: t,
-	}
+// Branch defines the branch condition specific types.
+//
+// XXX These must hold the Inferred for positive and negative and we
+// must merge them when the branch is used. The branch learnings are
+// valid only on the respective branches, not globally.
+type Branch struct {
+	pos *InferEnv
+	neg *InferEnv
 }
 
-// InferSubstCtx defines context aware type substitutions.
-type InferSubstCtx struct {
-	def *InferSubst
-	pos *InferSubst
-	neg *InferSubst
+// InferEnvBinding defines known bindings in the inference
+// environment. In most cases these contain the resolved InferSchemes
+// but letrec environments contain forward declarations to initializer
+// ASTs.
+type InferEnvBinding struct {
+	t   *types.Type
+	ast AST
 }
 
-// NewInferSubstCtx creates a new type inference substitution context.
-func NewInferSubstCtx() *InferSubstCtx {
-	return &InferSubstCtx{
-		def: NewInferSubst(),
+func (ieb InferEnvBinding) String() string {
+	if ieb.t != nil {
+		return ieb.t.String()
 	}
-}
-
-func (ictx *InferSubstCtx) String() string {
-	result := "def: " + ictx.def.String()
-	if ictx.pos != nil {
-		result += ", pos: " + ictx.pos.String()
-	}
-	if ictx.neg != nil {
-		result += ", neg: " + ictx.neg.String()
-	}
-	return result
-}
-
-// Compose composes type substitutions ictx and ictx2.
-func (ictx *InferSubstCtx) Compose(ictx2 *InferSubstCtx) *InferSubstCtx {
-	return &InferSubstCtx{
-		def: compose(ictx.def, ictx2.def),
-		pos: compose(ictx.pos, ictx2.pos),
-		neg: compose(ictx.neg, ictx2.neg),
-	}
-}
-
-func compose(a, b *InferSubst) *InferSubst {
-	if a == nil {
-		return b
-	}
-	if b == nil {
-		return a
-	}
-	return a.Compose(b)
-}
-
-// ApplyEnv applies substitutions for the environment and returns a
-// new environment.
-func (ictx *InferSubstCtx) ApplyEnv(env *InferEnv) *InferEnv {
-	return ictx.def.ApplyEnv(env)
-}
-
-// Default returns the default substitutions.
-func (ictx *InferSubstCtx) Default() *InferSubst {
-	return ictx.def
-}
-
-// Positive returns the true-branch substitutions.
-func (ictx *InferSubstCtx) Positive() *InferSubst {
-	if ictx.pos != nil {
-		return ictx.pos
-	}
-	return ictx.def
-}
-
-// Negative returns the false-branch substitutions.
-func (ictx *InferSubstCtx) Negative() *InferSubst {
-	if ictx.neg != nil {
-		return ictx.neg
-	}
-	return ictx.def
+	return fmt.Sprintf("%v", ieb.ast)
 }
 
 // InferSubst implements type substitutions.
@@ -436,34 +490,6 @@ func (s *InferSubst) Patch(t *InferScheme) *InferScheme {
 	return result
 }
 
-// PatchEnv applies substitutions for the environment and returns a
-// new environment.
-func (s *InferSubst) PatchEnv(env *InferEnv) *InferEnv {
-	result := env.Copy()
-	for k, v := range env.bindings {
-		if v.scheme != nil {
-			result.bindings[k] = InferEnvBinding{
-				scheme: s.Patch(v.scheme),
-			}
-		} else {
-			result.bindings[k] = InferEnvBinding{
-				ast: v.ast,
-			}
-		}
-	}
-
-	for id, replacement := range s.id {
-		_, ok := result.bindings[id]
-		if ok {
-			result.bindings[id] = InferEnvBinding{
-				scheme: replacement,
-			}
-		}
-	}
-
-	return result
-}
-
 // Apply applies substitution for the type and returns the result
 // type.
 func (s *InferSubst) Apply(t *InferScheme) *InferScheme {
@@ -515,24 +541,6 @@ func replace(t, v, r *types.Type) *types.Type {
 	return t
 }
 
-// ApplyEnv applies substitutions for the environment and returns a
-// new environment.
-func (s *InferSubst) ApplyEnv(env *InferEnv) *InferEnv {
-	result := env.Copy()
-	for k, v := range env.bindings {
-		if v.scheme != nil {
-			result.bindings[k] = InferEnvBinding{
-				scheme: s.Apply(v.scheme),
-			}
-		} else {
-			result.bindings[k] = InferEnvBinding{
-				ast: v.ast,
-			}
-		}
-	}
-	return result
-}
-
 // Compose composes type substitutions s and s2.
 func (s *InferSubst) Compose(s2 *InferSubst) *InferSubst {
 	result := NewInferSubst()
@@ -552,20 +560,18 @@ func (s *InferSubst) Compose(s2 *InferSubst) *InferSubst {
 
 // Unify unifies type from to type to and returns the substitutions
 // that must be done to from.
-func Unify(from, to *types.Type) (*InferSubstCtx, *types.Type, error) {
-	return unify(from, to, NewInferSubstCtx())
+func Unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
+	return unify(ast, env, from, to)
 }
 
-func unify(from, to *types.Type, subst *InferSubstCtx) (
-	*InferSubstCtx, *types.Type, error) {
-
-	if from.IsKindOf(to) {
-		return subst, from, nil
-	}
+func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 	if from.Enum == types.EnumTypeVar {
-		return unifyTypeVar(from, to, subst)
+		return unifyTypeVar(ast, env, from, to)
 	} else if to.Enum == types.EnumTypeVar {
-		return unifyTypeVar(to, from, subst)
+		return unifyTypeVar(ast, env, to, from)
+	}
+	if from.IsKindOf(to) {
+		return from, nil
 	}
 
 	var t *types.Type
@@ -574,112 +580,124 @@ func unify(from, to *types.Type, subst *InferSubstCtx) (
 	switch from.Enum {
 	case types.EnumLambda:
 		if to.Enum != from.Enum {
-			return nil, nil, fmt.Errorf("can't unify %v with %v",
-				from, to)
+			return nil, fmt.Errorf("can't unify %v with %v", from, to)
 		}
 		if len(from.Args) < len(to.Args) {
-			return nil, nil, fmt.Errorf("too few arguments: got %v, need %v",
+			return nil, fmt.Errorf("too few arguments: got %v, need %v",
 				len(from.Args), len(to.Args))
 		}
 		if len(from.Args) > len(to.Args) {
-			return nil, nil, fmt.Errorf("too many arguments: got %v, need %v",
+			return nil, fmt.Errorf("too many arguments: got %v, need %v",
 				len(from.Args), len(to.Args))
 		}
 		result := &types.Type{
 			Enum: types.EnumLambda,
 		}
 		for idx, arg := range from.Args {
-			subst, t, err = unify(arg, to.Args[idx], subst)
+			t, err = unify(ast, env, arg, to.Args[idx])
 			if err != nil {
-				return nil, nil, fmt.Errorf("argument %d: %s", idx, err)
+				return nil, fmt.Errorf("argument %d: %s", idx, err)
 			}
 			result.Args = append(result.Args, t)
 		}
-		subst, t, err = unify(from.Return, to.Return, subst)
+
+		t, err = unify(ast, env, from.Return, to.Return)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		result.Return = t
-		return subst, result, nil
+
+		return result, nil
 
 	case types.EnumPair:
 		if to.Enum != from.Enum {
-			return nil, nil, fmt.Errorf("can't unify %v with %v",
-				from, to)
+			return nil, fmt.Errorf("can't unify %v with %v", from, to)
 		}
 		result := &types.Type{
 			Enum: types.EnumPair,
 		}
-		subst, t, err = unify(from.Car, to.Car, subst)
+		t, err = unify(ast, env, from.Car, to.Car)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		result.Car = t
 
-		subst, t, err = unify(from.Cdr, to.Cdr, subst)
+		t, err = unify(ast, env, from.Cdr, to.Cdr)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		result.Cdr = t
 
-		return subst, result, nil
+		return result, nil
+
+	case types.EnumVector:
+		if to.Enum != from.Enum {
+			return nil, fmt.Errorf("can't unify %v with %v", from, to)
+		}
+		result := &types.Type{
+			Enum: types.EnumVector,
+		}
+		t, err = unify(ast, env, from.Element, to.Element)
+		if err != nil {
+			return nil, err
+		}
+		result.Element = t
+
+		return result, nil
 
 	default:
-		return nil, nil, fmt.Errorf("can't unify %v with %v", from, to)
+		return nil, fmt.Errorf("can't unify %v with %v", from, to)
 	}
 }
 
-func unifyTypeVar(tv, to *types.Type, subst *InferSubstCtx) (
-	*InferSubstCtx, *types.Type, error) {
+func unifyTypeVar(ast AST, env *InferEnv, tv, to *types.Type) (
+	*types.Type, error) {
 
-	def := subst.Default()
-
-	old, ok := def.tv[tv.TypeVar]
-	if ok && !old.Type.IsA(to) {
-		return nil, nil, fmt.Errorf("unify, old %v != new %v", old, to)
-	}
 	if to == nil {
 		panic("unifyTypeVar: to=nil")
 	}
-	replacementScheme := def.Patch(&InferScheme{
-		Type: to,
-	})
-
-	def.tv[tv.TypeVar] = &InferScheme{
-		Type: replacementScheme.Type,
+	err := env.Learn(ast, tv, to)
+	if err != nil {
+		return nil, err
 	}
-	return subst, to, nil
+
+	return to, nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTSequence) Infer(env *InferEnv) (
-	*InferSubstCtx, *types.Type, error) {
-
-	subst := NewInferSubstCtx()
+func (ast *ASTSequence) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	var err error
 
 	for _, item := range ast.Items {
-		var s *InferSubstCtx
-		s, ast.t, err = item.Infer(env)
+		_, ast.t, err = item.Infer(env)
 		if err != nil {
 			return nil, nil, err
 		}
-		env = s.ApplyEnv(env)
-		subst = subst.Compose(s)
 	}
-	return subst, ast.t, nil
+	return nil, ast.t, nil
+}
+
+// Inferred implements AST.Inferred.
+func (ast *ASTSequence) Inferred(inferred Inferred) error {
+	for _, item := range ast.Items {
+		err := item.Inferred(inferred)
+		if err != nil {
+			return err
+		}
+	}
+	ast.t = inferred.Apply(ast.t)
+
+	return nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTDefine) Infer(env *InferEnv) (
-	*InferSubstCtx, *types.Type, error) {
-
+func (ast *ASTDefine) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	env.inferer.Enter(ast)
 	defer env.inferer.Exit(ast)
 
 	cached, ok := env.inferer.calls[ast]
 	if ok {
-		return cached.subst, cached.t, nil
+		return nil, cached, nil
 	}
 
 	// Infer initializer type.
@@ -694,10 +712,7 @@ func (ast *ASTDefine) Infer(env *InferEnv) (
 		return nil, nil, errf(ast, "redefining symbol '%s'", ast.Name)
 	}
 
-	env.inferer.calls[ast] = &inferred{
-		subst: subst,
-		t:     t,
-	}
+	env.inferer.calls[ast] = t
 
 	env.inferer.Debugf(ast, "%v=%v\n", ast.Name.Name, t)
 	sym.GlobalType = t
@@ -706,8 +721,18 @@ func (ast *ASTDefine) Infer(env *InferEnv) (
 	return subst, t, nil
 }
 
+// Inferred implements AST.Inferred.
+func (ast *ASTDefine) Inferred(inferred Inferred) error {
+	err := ast.Value.Inferred(inferred)
+	if err != nil {
+		return err
+	}
+	ast.t = inferred.Apply(ast.t)
+	return nil
+}
+
 // Infer implements AST.Infer.
-func (ast *ASTSet) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
+func (ast *ASTSet) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	// Infer initializer type.
 	subst, t, err := ast.Value.Infer(env)
 	if err != nil {
@@ -715,7 +740,7 @@ func (ast *ASTSet) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	}
 	if ast.Binding != nil {
 		// let-variables can be assigned with different value types.
-		env.Set(ast.Name, env.Generalize(t))
+		env.Set(ast.Name, t)
 		ast.t = t
 		return subst, ast.t, nil
 	}
@@ -725,9 +750,12 @@ func (ast *ASTSet) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	if sym.GlobalType.IsA(types.Unspecified) {
 		return nil, nil, errf(ast, "setting undefined symbol '%s'", ast.Name)
 	}
-	if !t.IsKindOf(sym.GlobalType) {
-		return nil, nil, errf(ast, "can't assign %s to variable of type %s",
-			t, sym.GlobalType)
+	if false {
+		// XXX this must be moved to inferred as we can learn the value later.
+		if !t.IsKindOf(sym.GlobalType) {
+			return nil, nil, errf(ast, "can't assign %s to variable of type %s",
+				t, sym.GlobalType)
+		}
 	}
 
 	ast.t = sym.GlobalType
@@ -735,11 +763,15 @@ func (ast *ASTSet) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	return subst, ast.t, nil
 }
 
+// Inferred implements AST.Inferred.
+func (ast *ASTSet) Inferred(inferred Inferred) error {
+	ast.t = inferred.Apply(ast.t)
+	return nil
+}
+
 // Infer implements AST.Infer.
-func (ast *ASTLet) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
+func (ast *ASTLet) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	initEnv := env.Copy()
-	bodyEnv := env.Copy()
-	var subst *InferSubstCtx
 	var err error
 
 	// Bind all names to their init ASTs with letrec.
@@ -749,40 +781,60 @@ func (ast *ASTLet) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 		}
 	}
 
+	bodyBindings := make(map[string]*types.Type)
+
 	// Resolve initializer types.
 	for _, b := range ast.Bindings {
 		var t *types.Type
-		subst, t, err = b.Init.Infer(initEnv)
+		_, t, err = b.Init.Infer(initEnv)
 		if err != nil {
 			return nil, nil, err
 		}
-		if ast.Kind != KwLet {
-			initEnv.Set(b.Name(), initEnv.Generalize(t))
-			initEnv = subst.ApplyEnv(initEnv)
+		if ast.Kind == KwLet {
+			bodyBindings[b.Name()] = t
+		} else {
+			initEnv.Set(b.Name(), t)
 		}
+	}
 
-		bodyEnv.Set(b.Name(), initEnv.Generalize(t))
-		bodyEnv = subst.ApplyEnv(bodyEnv)
+	bodyEnv := initEnv.Copy()
+	for name, t := range bodyBindings {
+		bodyEnv.Set(name, t)
 	}
 
 	for _, body := range ast.Body {
-		var s *InferSubstCtx
-		s, ast.t, err = body.Infer(bodyEnv)
+		_, ast.t, err = body.Infer(bodyEnv)
 		if err != nil {
 			return nil, nil, err
 		}
-		bodyEnv = s.ApplyEnv(bodyEnv)
-		subst = subst.Compose(s)
 	}
-	return subst, ast.t, nil
+	return nil, ast.t, nil
+}
+
+// Inferred implements AST.Inferred.
+func (ast *ASTLet) Inferred(inferred Inferred) error {
+	for _, b := range ast.Bindings {
+		err := b.Init.Inferred(inferred)
+		if err != nil {
+			return err
+		}
+	}
+	for _, body := range ast.Body {
+		err := body.Inferred(inferred)
+		if err != nil {
+			return err
+		}
+	}
+	ast.t = inferred.Apply(ast.t)
+	return nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTIf) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
+func (ast *ASTIf) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	env.inferer.Enter(ast)
 	defer env.inferer.Exit(ast)
 
-	subst, t, err := ast.Cond.Infer(env)
+	branch, t, err := ast.Cond.Infer(env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -791,20 +843,19 @@ func (ast *ASTIf) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 		ast.Cond.Locator().From().Warningf("if test is not boolean: %v\n", t)
 	}
 
-	env.inferer.Debugf(ast, "If: pos: %v\n", subst.Positive())
+	env.inferer.Debugf(ast, "If: pos: %v\n", branch)
 
-	trueEnv := subst.Positive().PatchEnv(env)
+	trueEnv := env.Positive(branch)
 	env.inferer.Debugf(ast, " => env: %v\n", trueEnv)
 
 	var tt, ft *types.Type
-	subst, tt, err = ast.True.Infer(trueEnv)
+	_, tt, err = ast.True.Infer(trueEnv)
 	if err != nil {
 		return nil, nil, err
 	}
-	env.inferer.Debugf(ast, " => subst: %v\n", subst)
 
 	if ast.False != nil {
-		subst, ft, err = ast.False.Infer(subst.Negative().ApplyEnv(env))
+		_, ft, err = ast.False.Infer(env.Negative(branch))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -813,16 +864,36 @@ func (ast *ASTIf) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	}
 	ast.t = types.Unify(tt, ft)
 
-	return subst, ast.t, nil
+	return nil, ast.t, nil
+}
+
+// Inferred implements AST.Inferred.
+func (ast *ASTIf) Inferred(inferred Inferred) error {
+	err := ast.Cond.Inferred(inferred)
+	if err != nil {
+		return err
+	}
+	err = ast.True.Inferred(inferred)
+	if err != nil {
+		return err
+	}
+	if ast.False != nil {
+		err = ast.False.Inferred(inferred)
+		if err != nil {
+			return err
+		}
+	}
+	ast.t = inferred.Apply(ast.t)
+	return nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTApply) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
+func (ast *ASTApply) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	env.inferer.Enter(ast)
 	defer env.inferer.Exit(ast)
 
 	// Resolve the type of the function.
-	fnSubst, fnType, err := ast.Lambda.Infer(env)
+	_, fnType, err := ast.Lambda.Infer(env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -831,8 +902,23 @@ func (ast *ASTApply) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	if fnType.Concrete() && fnType.Enum != types.EnumLambda {
 		return nil, nil, errf(ast, "invalid function: %v", fnType)
 	}
+	ast.t = fnType.Return
 
-	return fnSubst, fnType.Return, nil
+	return nil, ast.t, nil
+}
+
+// Inferred implements AST.Inferred.
+func (ast *ASTApply) Inferred(inferred Inferred) error {
+	err := ast.Lambda.Inferred(inferred)
+	if err != nil {
+		return err
+	}
+	err = ast.Args.Inferred(inferred)
+	if err != nil {
+		return err
+	}
+	ast.t = inferred.Apply(ast.t)
+	return nil
 }
 
 var typePredicates = map[string]*types.Type{
@@ -849,7 +935,7 @@ var typePredicates = map[string]*types.Type{
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
+func (ast *ASTCall) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	env.inferer.Enter(ast)
 	defer env.inferer.Exit(ast)
 
@@ -857,39 +943,35 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 
 	// Resolve call argument types.
 	env.inferer.Debugf(ast, "Call: argument types:\n")
-	argSubst := NewInferSubstCtx()
 	var argTypes []*types.Type
 	for idx, arg := range ast.Args {
-		s, t, err := arg.Infer(env)
+		_, t, err := arg.Infer(env)
 		if err != nil {
 			return nil, nil, err
 		}
 		argTypes = append(argTypes, t)
-		argSubst = argSubst.Compose(s)
 		env.inferer.Debugf(ast, " %v: %v\n", idx, t)
 	}
 	env.argTypes = argTypes
-	env.argSubst = argSubst
 
 	// Resolve the type of the function.
 
 	var fnName string
-	var fnSubst *InferSubstCtx // XXX sub1
-	var fnType *types.Type     // XXX type1
+	var fnType *types.Type // XXX type1
 	var err error
 
 	// XXX inlining should happen only after we know the argument
 	// types. I.e. if the LambdaImpl has Inlinable flag set and the
 	// argument types match the function.
 	if ast.Inline {
-		fnSubst, fnType, err = ast.inlineFuncType(env)
+		fnType, err = ast.inlineFuncType(env)
 		if err != nil {
 			return nil, nil, err
 		}
 		env.inferer.Debugf(ast, "Call: inline: fnType=%v\n", fnType)
 		fnName = ast.InlineOp.String()
 	} else {
-		fnSubst, fnType, err = ast.Func.Infer(env)
+		_, fnType, err = ast.Func.Infer(env)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -905,7 +987,7 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 		case types.EnumTypeVar:
 			env.inferer.Debugf(ast, "unspecified function %v => %v\n",
 				fnType, types.Unspecified)
-			return NewInferSubstCtx(), types.Unspecified, nil
+			return nil, types.Unspecified, nil
 
 		case types.EnumLambda:
 
@@ -972,8 +1054,7 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 		}
 	}
 
-	subst, retType, callType, a0TV, err := inferCall(ast, env, fnSubst, fnType,
-		ast.Args)
+	retType, callType, _, err := inferCall(ast, env, fnType, ast.Args)
 	if err != nil {
 		return nil, nil, errf(ast, "%s: %s", fnName, err)
 	}
@@ -985,62 +1066,72 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	ast.t = retType
 
 	// Check typecheck predicates.
+	var branch *Branch
 	id, ok := ast.Func.(*ASTIdentifier)
-	if ok && len(fnType.Args) == 1 && a0TV != nil {
+	if ok && len(fnType.Args) == 1 {
 		t, ok := typePredicates[id.Name]
 		if ok {
-			subst.pos = subst.def.Compose(NewInferSubst())
+			branch = &Branch{
+				pos: env.inferer.NewEnv(),
+			}
 
-			switch a0TV.Enum {
-			case types.EnumTypeVar:
-				env.inferer.Debugf(ast, "%s %v=%v\n", id.Name, a0TV, t)
-				subst.pos.tv[a0TV.TypeVar] = &InferScheme{
-					Variables: []*types.Type{a0TV},
-					Type:      t,
-				}
-
-			default:
-				argID, ok := ast.Args[0].(*ASTIdentifier)
-				if ok {
-					env.inferer.Debugf(ast, "%s: %v=%v\n", id.Name, argID, t)
-					subst.pos.id[argID.Name] = &InferScheme{
-						Type: t,
-					}
+			argID, ok := ast.Args[0].(*ASTIdentifier)
+			if ok {
+				env.inferer.Debugf(ast, "%s: %v=%v\n", id.Name, argID, t)
+				branch.pos.bindings[argID.Name] = InferEnvBinding{
+					t: t,
 				}
 			}
 		}
 	}
 
-	return subst, retType, nil
+	return branch, retType, nil
 }
 
-func inferCall(ast AST, env *InferEnv, fnSubst *InferSubstCtx,
-	fnType *types.Type, args []AST) (
-	*InferSubstCtx, *types.Type, *types.Type, *types.Type, error) {
+// Inferred implements AST.Inferred.
+func (ast *ASTCall) Inferred(inferred Inferred) error {
+	var err error
+
+	if ast.Func != nil {
+		err = ast.Func.Inferred(inferred)
+		if err != nil {
+			return err
+		}
+	}
+	for _, arg := range ast.Args {
+		err = arg.Inferred(inferred)
+		if err != nil {
+			return err
+		}
+	}
+	ast.t = inferred.Apply(ast.t)
+
+	return nil
+}
+
+func inferCall(ast AST, env *InferEnv, fnType *types.Type, args []AST) (
+	*types.Type, *types.Type, *types.Type, error) {
 
 	// Create a new type variable for the return type of the function.
 	rv := env.inferer.newTypeVar()
 
 	// Create a new type environment.
-	env1 := fnSubst.ApplyEnv(env)
+	env1 := env.Copy()
 
 	env.inferer.Debugf(ast, "Call: fnType=%v\n", fnType)
 
 	// Infer argument types.
-	argSubst := NewInferSubstCtx()
 	var argTypes []*types.Type // XXX type2
 	for idx, arg := range args {
-		s, t, err := arg.Infer(env1)
+		_, t, err := arg.Infer(env1)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, err
 		}
 		argTypes = append(argTypes, t)
-		argSubst = argSubst.Compose(s)
 
 		env.inferer.Debugf(ast, " %v: %v\n", idx, t)
 	}
 	if len(env.argTypes) > 0 {
-		argSubst = env.argSubst
 		argTypes = env.argTypes
 	}
 
@@ -1048,10 +1139,6 @@ func inferCall(ast AST, env *InferEnv, fnSubst *InferSubstCtx,
 	if len(args) > 0 {
 		a0TV = argTypes[0]
 	}
-
-	// Apply argSubst to fnType.
-	fnTypeSubst := argSubst.Default().Apply(env.Generalize(fnType))
-	env.inferer.Debugf(ast, "Call: fnTypeSubst=%v\n", fnTypeSubst)
 
 	// Create a function type for the called function.
 	callType := &types.Type{ // XXX type3
@@ -1061,27 +1148,18 @@ func inferCall(ast AST, env *InferEnv, fnSubst *InferSubstCtx,
 	}
 	env.inferer.Debugf(ast, "Call: calltype=%v, unify:\n", callType)
 	env.inferer.Debugf(ast, " \u256d\u2574 %v\n", callType)
-	env.inferer.Debugf(ast, " \u251c\u2574 %v\n", fnTypeSubst.Type)
+	env.inferer.Debugf(ast, " \u251c\u2574 %v\n", fnType)
 
 	// Unify fnTypeSubst with callType.
-	subst3, unified, err := Unify(callType, fnTypeSubst.Type)
+	unified, err := Unify(ast, env, callType, fnType)
 	if err != nil {
 		env.inferer.Warningf(ast, "Unify failed: %s:\n - %v\n - %v\n",
-			err, callType, fnTypeSubst.Type)
-		return nil, nil, nil, nil, err
+			err, callType, fnType)
+		return nil, nil, nil, err
 	}
 	env.inferer.Debugf(ast, " \u2570> %v\n", unified)
 
-	// Compose result substitutions.
-	subst := fnSubst.Compose(argSubst.Compose(subst3))
-
-	// Apply compositions to return variable.
-	retType := subst.Default().Apply(&InferScheme{
-		Variables: []*types.Type{rv},
-		Type:      rv,
-	}).Type
-
-	return subst, retType, unified, a0TV, nil
+	return rv, unified, a0TV, nil
 }
 
 var minArgCount = map[Operand]int{
@@ -1099,23 +1177,22 @@ var minArgCount = map[Operand]int{
 	OpCons: 2,
 }
 
-func (ast *ASTCall) inlineFuncType(env *InferEnv) (
-	*InferSubstCtx, *types.Type, error) {
+func (ast *ASTCall) inlineFuncType(env *InferEnv) (*types.Type, error) {
 
 	env.inferer.Enter(ast)
 	defer env.inferer.Exit(ast)
-
-	subst := NewInferSubstCtx()
 
 	minArgs, ok := minArgCount[ast.InlineOp]
 	if !ok {
 		panic(fmt.Sprintf("unknown inline function: %v", ast.InlineOp))
 	}
 	if len(ast.Args) < minArgs {
-		errf(ast, "too few arguments: got %v, need %v", len(ast.Args), minArgs)
+		return nil, errf(ast, "too few arguments: got %v, need %v",
+			len(ast.Args), minArgs)
 	}
 	if ast.InlineOp == OpCons && len(ast.Args) > 2 {
-		errf(ast, "too many arguments: got %v, need 2", len(ast.Args))
+		return nil, errf(ast, "too many arguments: got %v, need 2",
+			len(ast.Args))
 	}
 
 	env.inferer.Debugf(ast, "Call: inlineFuncType: %v\n", ast.InlineOp)
@@ -1131,7 +1208,7 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 			returnType = types.Number
 		}
 		if returnType.Concrete() && !returnType.IsKindOf(types.Number) {
-			return nil, nil, errf(ast, "invalid arguments: %v, expected %v",
+			return nil, errf(ast, "invalid arguments: %v, expected %v",
 				returnType, types.Number)
 		}
 
@@ -1144,7 +1221,7 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 			result.Args = append(result.Args, types.Number)
 		}
 
-		return subst, result, nil
+		return result, nil
 
 	case OpCons:
 		result := &types.Type{
@@ -1156,7 +1233,7 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 				Cdr:  env.argTypes[1],
 			},
 		}
-		return subst, result, nil
+		return result, nil
 
 	case OpEq, OpLt, OpGt, OpLe, OpGe:
 		result := &types.Type{
@@ -1168,33 +1245,29 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (
 			result.Args = append(result.Args, types.Number)
 		}
 
-		return subst, result, nil
+		return result, nil
 
 	default:
-		return nil, nil, errf(ast, "%s: unknown inline function", ast.InlineOp)
+		return nil, errf(ast, "%s: unknown inline function", ast.InlineOp)
 	}
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTCallUnary) Infer(env *InferEnv) (
-	*InferSubstCtx, *types.Type, error) {
-
+func (ast *ASTCallUnary) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	env.inferer.Enter(ast)
 	defer env.inferer.Exit(ast)
 
 	env.inferer.Debugf(ast, "CallUnary: %v\n", ast.Op)
 
 	// Resolve argument type.
-	argSubst, argType, err := ast.Arg.Infer(env)
+	_, argType, err := ast.Arg.Infer(env)
 	if err != nil {
 		return nil, nil, err
 	}
 	env.argTypes = []*types.Type{argType}
-	env.argSubst = argSubst
 
 	// Resolve the type of the function.
 
-	fnSubst := NewInferSubstCtx()
 	var fnType *types.Type
 
 	switch ast.Op {
@@ -1231,10 +1304,9 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 		return nil, nil, errf(ast, "%s: infer not implemented yet", ast.Op)
 	}
 
-	subst, retType, callType, a0TV, err := inferCall(ast, env, fnSubst, fnType,
-		[]AST{
-			ast.Arg,
-		})
+	retType, callType, a0TV, err := inferCall(ast, env, fnType, []AST{
+		ast.Arg,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1242,27 +1314,36 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 	ast.t = retType
 
 	// Check pair? predicate.
+	var branch *Branch
 	if ast.Op == OpPairp && a0TV != nil && a0TV.Enum == types.EnumTypeVar {
+		branch = &Branch{
+			pos: env.inferer.NewEnv(),
+		}
 		t := &types.Type{
 			Enum: types.EnumPair,
 			Car:  types.Any,
 			Cdr:  types.Any,
 		}
+		// XXX is this right?
 		env.inferer.Debugf(ast, "%s %v=%v\n", ast.Op, a0TV, t)
-		subst.pos = subst.def.Compose(NewInferSubst())
-		subst.pos.tv[a0TV.TypeVar] = &InferScheme{
-			Variables: []*types.Type{a0TV},
-			Type:      t,
-		}
+		branch.pos.Learn(ast, a0TV, t)
 	}
 
-	return subst, retType, nil
+	return branch, retType, nil
+}
+
+// Inferred implements AST.Inferred.
+func (ast *ASTCallUnary) Inferred(inferred Inferred) error {
+	err := ast.Arg.Inferred(inferred)
+	if err != nil {
+		return err
+	}
+	ast.t = inferred.Apply(ast.t)
+	return nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTLambda) Infer(env *InferEnv) (
-	*InferSubstCtx, *types.Type, error) {
-
+func (ast *ASTLambda) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	env.inferer.Enter(ast)
 	defer env.inferer.Exit(ast)
 
@@ -1271,56 +1352,46 @@ func (ast *ASTLambda) Infer(env *InferEnv) (
 
 	cached, ok := env.inferer.calls[ast]
 	if ok {
-		return cached.subst, cached.t, nil
+		return nil, cached, nil
 	}
-	subst := NewInferSubstCtx()
-	retScheme := &InferScheme{
-		Type: &types.Type{
-			Enum:   types.EnumLambda,
-			Return: env.inferer.newTypeVar(),
-		},
+	retType := &types.Type{
+		Enum:   types.EnumLambda,
+		Return: env.inferer.newTypeVar(),
 	}
-	retScheme.Variables = append(retScheme.Variables, retScheme.Type.Return)
-
-	env.inferer.calls[ast] = &inferred{
-		subst: subst,
-		t:     retScheme.Type,
-	}
+	env.inferer.calls[ast] = retType
 
 	if ast.Define {
 		sym := env.inferer.scm.Intern(ast.Name.Name)
 		if !sym.GlobalType.IsA(types.Unspecified) {
 			return nil, nil, errf(ast, "redefining symbol '%s'", ast.Name)
 		}
-		sym.GlobalType = retScheme.Type
-		env.inferer.Debugf(ast, "%v=%v\n", ast.Name, retScheme.Type)
+		sym.GlobalType = retType
+		env.inferer.Debugf(ast, "%v=%v\n", ast.Name, retType)
 	}
 
 	env = env.Copy()
 
-	var args []*InferScheme
+	var args []*types.Type
 	for idx, arg := range ast.Args.Fixed {
-		scheme := env.Generalize(env.inferer.newTypeVar())
+		t := env.inferer.newTypeVar()
 
-		env.inferer.Debugf(ast, "\u03bb: arg[%v]=%v\n", idx, scheme)
+		env.inferer.Debugf(ast, "\u03bb: arg[%v]=%v\n", idx, t)
 
-		args = append(args, scheme)
-		env.Set(arg.Name, scheme)
+		args = append(args, t)
+		env.Set(arg.Name, t)
 
-		retScheme.Variables = append(retScheme.Variables, scheme.Type)
-		retScheme.Type.Args = append(retScheme.Type.Args, scheme.Type)
+		retType.Args = append(retType.Args, t)
 	}
 	if ast.Args.Rest != nil {
-		scheme := env.Generalize(&types.Type{
+		t := &types.Type{
 			Enum: types.EnumPair,
 			Car:  env.inferer.newTypeVar(),
 			Cdr:  env.inferer.newTypeVar(),
-		})
-		args = append(args, scheme)
-		env.Set(ast.Args.Rest.Name, scheme)
+		}
+		args = append(args, t)
+		env.Set(ast.Args.Rest.Name, t)
 
-		// retScheme.Variables = append(retScheme.Variables, scheme.Type)
-		retScheme.Type.Rest = scheme.Type
+		retType.Rest = t
 	}
 	env.inferer.Debugf(ast, "\u03bb: env=%v\n", env)
 
@@ -1328,49 +1399,51 @@ func (ast *ASTLambda) Infer(env *InferEnv) (
 	var err error
 
 	for _, item := range ast.Body {
-		var s *InferSubstCtx
-		s, t, err = item.Infer(env)
+		_, t, err = item.Infer(env)
 		if err != nil {
 			return nil, nil, err
 		}
-		env = s.ApplyEnv(env)
-		subst = subst.Compose(s)
 	}
 	if t == nil {
 		t = types.Unspecified
 	}
-	subst.Default().tv[retScheme.Type.Return.TypeVar] = env.Generalize(t)
+	env.Learn(ast, retType.Return, t)
 
-	env.inferer.Debugf(ast, "\u03bb: return type: %v\n", retScheme)
+	env.inferer.Debugf(ast, "\u03bb: return type: %v\n", retType)
+	ast.t = retType
 
-	// Apply substitution to return type.
-	retScheme = subst.Default().Apply(retScheme)
-
-	env.inferer.Debugf(ast, "\u03bb: return type: %v\n", retScheme)
-	ast.t = retScheme.Type
-
-	return subst, ast.t, nil
+	return nil, ast.t, nil
 }
 
-// Infer implements AST.Infer.
-func (ast *ASTConstant) Infer(env *InferEnv) (
-	*InferSubstCtx, *types.Type, error) {
-
-	subst := NewInferSubstCtx()
-	if ast.Value == nil {
-		return subst, types.Nil, nil
+// Inferred implements AST.Inferred.
+func (ast *ASTLambda) Inferred(inferred Inferred) error {
+	for _, item := range ast.Body {
+		err := item.Inferred(inferred)
+		if err != nil {
+			return err
+		}
 	}
-	return subst, ast.Value.Type(), nil
+	ast.t = inferred.Apply(ast.t)
+	return nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTIdentifier) Infer(env *InferEnv) (
-	*InferSubstCtx, *types.Type, error) {
+func (ast *ASTConstant) Infer(env *InferEnv) (*Branch, *types.Type, error) {
+	if ast.Value == nil {
+		return nil, types.Nil, nil
+	}
+	return nil, ast.Value.Type(), nil
+}
 
+// Inferred implements AST.Inferred.
+func (ast *ASTConstant) Inferred(inferred Inferred) error {
+	return nil
+}
+
+// Infer implements AST.Infer.
+func (ast *ASTIdentifier) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	env.inferer.Enter(ast)
 	defer env.inferer.Exit(ast)
-
-	result := NewInferSubstCtx()
 
 	var ok bool
 	ast.t, ok = env.Get(ast.Name)
@@ -1390,21 +1463,28 @@ func (ast *ASTIdentifier) Infer(env *InferEnv) (
 		ast.t.Return = t
 	}
 
-	return result, ast.t, nil
+	return nil, ast.t, nil
+}
+
+// Inferred implements AST.Inferred.
+func (ast *ASTIdentifier) Inferred(inferred Inferred) error {
+	ast.t = inferred.Apply(ast.t)
+	return nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTCond) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
+func (ast *ASTCond) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	var result *types.Type
 	var err error
 
 	for _, choice := range ast.Choices {
-		var choiceSubst *InferSubstCtx
+		var choiceBranch *Branch
 		var choiceType *types.Type
+
 		if choice.Cond == nil {
 			choiceType = types.Boolean
 		} else {
-			choiceSubst, choiceType, err = choice.Cond.Infer(env)
+			choiceBranch, choiceType, err = choice.Cond.Infer(env)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1415,6 +1495,7 @@ func (ast *ASTCond) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 					Warningf("choice is not boolean: %v\n", choiceType)
 			}
 		}
+
 		if choice.Func != nil {
 			_, fnType, err := choice.Func.Infer(env)
 			if err != nil {
@@ -1435,32 +1516,51 @@ func (ast *ASTCond) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 		} else if len(choice.Exprs) == 0 {
 			result = types.Unify(result, choiceType)
 		} else {
-			choiceEnv := env.Copy()
-			if choiceSubst != nil {
-				choiceEnv = choiceSubst.Positive().PatchEnv(choiceEnv)
-			}
-			subst := NewInferSubstCtx()
+			choiceEnv := env.Positive(choiceBranch)
 			var choiceType *types.Type
 
 			for _, expr := range choice.Exprs {
-				var s *InferSubstCtx
-				s, choiceType, err = expr.Infer(choiceEnv)
+				_, choiceType, err = expr.Infer(choiceEnv)
 				if err != nil {
 					return nil, nil, err
 				}
-				choiceEnv = s.ApplyEnv(choiceEnv)
-				subst = subst.Compose(s)
 			}
 			result = types.Unify(result, choiceType)
 		}
 	}
 	ast.t = result
 
-	return NewInferSubstCtx(), result, nil
+	return nil, result, nil
+}
+
+// Inferred implements AST.Inferred.
+func (ast *ASTCond) Inferred(inferred Inferred) error {
+	for _, choice := range ast.Choices {
+		if choice.Cond != nil {
+			err := choice.Cond.Inferred(inferred)
+			if err != nil {
+				return err
+			}
+		}
+		if choice.Func != nil {
+			err := choice.Func.Inferred(inferred)
+			if err != nil {
+				return nil
+			}
+		}
+		for _, expr := range choice.Exprs {
+			err := expr.Inferred(inferred)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	ast.t = inferred.Apply(ast.t)
+	return nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTCase) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
+func (ast *ASTCase) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	var result *types.Type
 
 	_, _, err := ast.Expr.Infer(env)
@@ -1470,28 +1570,42 @@ func (ast *ASTCase) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 
 	for _, choice := range ast.Choices {
 		choiceEnv := env.Copy()
-		subst := NewInferSubstCtx()
 		var choiceType *types.Type
 
 		for _, expr := range choice.Exprs {
-			var s *InferSubstCtx
-			s, choiceType, err = expr.Infer(choiceEnv)
+			_, choiceType, err = expr.Infer(choiceEnv)
 			if err != nil {
 				return nil, nil, err
 			}
-			choiceEnv = s.ApplyEnv(choiceEnv)
-			subst = subst.Compose(s)
 		}
+		// XXX check tail call
 		result = types.Unify(result, choiceType)
 	}
 	ast.t = result
 
-	return NewInferSubstCtx(), result, nil
+	return nil, result, nil
+}
+
+// Inferred implements AST.Inferred.
+func (ast *ASTCase) Inferred(inferred Inferred) error {
+	err := ast.Expr.Inferred(inferred)
+	if err != nil {
+		return err
+	}
+	for _, choice := range ast.Choices {
+		for _, expr := range choice.Exprs {
+			err = expr.Inferred(inferred)
+			if err != nil {
+				return nil
+			}
+		}
+	}
+	ast.t = inferred.Apply(ast.t)
+	return nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTAnd) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
-	subst := NewInferSubstCtx()
+func (ast *ASTAnd) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	result := types.Boolean
 
 	for _, expr := range ast.Exprs {
@@ -1507,12 +1621,24 @@ func (ast *ASTAnd) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	}
 	ast.t = result
 
-	return subst, ast.t, nil
+	return nil, ast.t, nil
+}
+
+// Inferred implements AST.Inferred.
+func (ast *ASTAnd) Inferred(inferred Inferred) error {
+	for _, expr := range ast.Exprs {
+		err := expr.Inferred(inferred)
+		if err != nil {
+			return err
+		}
+	}
+	ast.t = inferred.Apply(ast.t)
+
+	return nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTOr) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
-	subst := NewInferSubstCtx()
+func (ast *ASTOr) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	result := types.Boolean
 
 	for _, expr := range ast.Exprs {
@@ -1528,13 +1654,24 @@ func (ast *ASTOr) Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error) {
 	}
 	ast.t = result
 
-	return subst, ast.t, nil
+	return nil, ast.t, nil
+}
+
+// Inferred implements AST.Inferred.
+func (ast *ASTOr) Inferred(inferred Inferred) error {
+	for _, expr := range ast.Exprs {
+		err := expr.Inferred(inferred)
+		if err != nil {
+			return err
+		}
+	}
+	ast.t = inferred.Apply(ast.t)
+
+	return nil
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTPragma) Infer(env *InferEnv) (
-	*InferSubstCtx, *types.Type, error) {
-
+func (ast *ASTPragma) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	for _, d := range ast.Directives {
 		if len(d) != 2 {
 			return nil, nil, errf(ast, "invalid directive: %v", d)
@@ -1566,5 +1703,10 @@ func (ast *ASTPragma) Infer(env *InferEnv) (
 		}
 	}
 
-	return NewInferSubstCtx(), types.Unspecified, nil
+	return nil, types.Unspecified, nil
+}
+
+// Inferred implements AST.Inferred.
+func (ast *ASTPragma) Inferred(inferred Inferred) error {
+	return nil
 }

@@ -19,7 +19,8 @@ type AST interface {
 	Equal(o AST) bool
 	SetType(t *types.Type)
 	Type() *types.Type
-	Infer(env *InferEnv) (*InferSubstCtx, *types.Type, error)
+	Infer(env *InferEnv) (*Branch, *types.Type, error)
+	Inferred(i Inferred) error
 	Bytecode(lib *Library) error
 	PP(w pp.Writer)
 }
