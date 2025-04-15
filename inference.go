@@ -364,7 +364,6 @@ func (env *InferEnv) Learn(ast AST, v *types.Type, t *types.Type) error {
 			return fmt.Errorf("can't convert type %s to %s", old, t)
 		}
 	}
-	// env.inferer.Debugf(ast, "learn: %v=%v\n", v.TypeVar, t)
 	env.inferer.inferred[v.TypeVar] = t
 
 	return nil
@@ -588,9 +587,10 @@ func (ast *ASTSet) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	if sym.GlobalType.IsA(types.Unspecified) {
 		return nil, nil, errf(ast, "setting undefined symbol '%s'", ast.Name)
 	}
-	if false {
-		// XXX this must be moved to inferred as we can learn the value later.
-		if !t.IsKindOf(sym.GlobalType) {
+
+	if !t.IsKindOf(sym.GlobalType) {
+		_, err := Unify(ast, env, t, sym.GlobalType)
+		if err != nil {
 			return nil, nil, errf(ast, "can't assign %s to variable of type %s",
 				t, sym.GlobalType)
 		}
@@ -603,7 +603,12 @@ func (ast *ASTSet) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 
 // Inferred implements AST.Inferred.
 func (ast *ASTSet) Inferred(inferred Inferred) error {
-	ast.t = inferred.Apply(ast.t)
+	err := ast.Value.Inferred(inferred)
+	if err != nil {
+		return err
+	}
+	ast.t = ast.Value.Type()
+
 	return nil
 }
 

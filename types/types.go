@@ -173,7 +173,7 @@ func Parse(arg string) (*Type, string, error) {
 			Enum: EnumPair,
 			Kind: kind,
 			Car:  Character,
-			Cdr:  Any,
+			Cdr:  Unspecified,
 		}, name, nil
 	} else if strings.HasPrefix(typeName, "char") {
 		return &Type{
