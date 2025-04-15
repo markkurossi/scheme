@@ -395,8 +395,7 @@ func (ieb InferEnvBinding) String() string {
 	return fmt.Sprintf("%v", ieb.ast)
 }
 
-// Unify unifies type from to type to and returns the substitutions
-// that must be done to from.
+// Unify unifies type from to type to and returns the resulting type.
 func Unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 	return unify(ast, env, from, to)
 }
@@ -538,7 +537,7 @@ func (ast *ASTDefine) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	}
 
 	// Infer initializer type.
-	subst, t, err := ast.Value.Infer(env)
+	_, t, err := ast.Value.Infer(env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -555,7 +554,7 @@ func (ast *ASTDefine) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	sym.GlobalType = t
 	ast.t = t
 
-	return subst, t, nil
+	return nil, t, nil
 }
 
 // Inferred implements AST.Inferred.
@@ -571,7 +570,7 @@ func (ast *ASTDefine) Inferred(inferred Inferred) error {
 // Infer implements AST.Infer.
 func (ast *ASTSet) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	// Infer initializer type.
-	subst, t, err := ast.Value.Infer(env)
+	_, t, err := ast.Value.Infer(env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -579,7 +578,7 @@ func (ast *ASTSet) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 		// let-variables can be assigned with different value types.
 		env.Set(ast.Name, t)
 		ast.t = t
-		return subst, ast.t, nil
+		return nil, ast.t, nil
 	}
 
 	// Check the current type of the name.
@@ -598,7 +597,7 @@ func (ast *ASTSet) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 
 	ast.t = sym.GlobalType
 
-	return subst, ast.t, nil
+	return nil, ast.t, nil
 }
 
 // Inferred implements AST.Inferred.
