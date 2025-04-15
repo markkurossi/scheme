@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2023 Markku Rossi
+;;; Copyright (c) 2023, 2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -424,7 +424,7 @@
         (lambda () (eq? (apply - '(#e3.0 #e4)) #e-1.0))
         (lambda () (eq? (apply - '(#e3.0 #e4.0)) #e-1.0))
 
-        ;; Resul type checks.
+        ;; Result type checks.
 
         (lambda () (inexact? (- 4 2)))
         (lambda () (inexact? (- 4 2.0)))
