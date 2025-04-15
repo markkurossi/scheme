@@ -135,18 +135,12 @@ func TestInference(t *testing.T) {
 			t.Fatalf("%s: invalid library: %v", name, library)
 		}
 		inferer := NewInferer(scm, lib.Body.Items)
-
-		_, _, err = lib.Body.Infer(inferer.NewEnv())
+		typ, err := inferer.Infer(lib.Body)
 		if err != nil {
 			t.Logf("%s: infer error in:", name)
 			t.Logf(" \u2502 %s", test.d)
 			t.Fatalf(" \u2570 %s", err)
 		}
-		err = lib.Body.Inferred(inferer.inferred)
-		if err != nil {
-			t.Fatalf("Infered failed: %s", err)
-		}
-		typ := lib.Body.Type()
 		if (test.t.Enum == types.EnumTypeVar &&
 			typ.Enum != types.EnumTypeVar) ||
 			(test.t.Enum != types.EnumTypeVar && !typ.IsA(test.t)) {

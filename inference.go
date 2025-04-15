@@ -52,8 +52,18 @@ func NewInferer(scm *Scheme, toplevel []AST) *Inferer {
 	return inferer
 }
 
-// XXX rethink the inferer API, now we must make two calls: Infer()
-// and Inferred().
+// Infer does type inference for the ast element.
+func (inferer *Inferer) Infer(ast AST) (*types.Type, error) {
+	_, _, err := ast.Infer(inferer.NewEnv())
+	if err != nil {
+		return nil, err
+	}
+	err = ast.Inferred(inferer.inferred)
+	if err != nil {
+		return nil, err
+	}
+	return ast.Type(), nil
+}
 
 // Enter increases inferer debug nesting.
 func (inferer *Inferer) Enter(ast AST) {
