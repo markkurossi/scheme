@@ -22,6 +22,30 @@ func errf(ast AST, format string, a ...interface{}) error {
 	return ast.Locator().From().Errorf("\u22a2 %s", msg)
 }
 
+func infererPrefix(loc Locator) string {
+	var prefix string
+
+	if loc != nil {
+		var pad int
+		p := loc.From()
+		if p.Line < 10 {
+			pad += 2
+		} else if p.Line < 100 {
+			pad += 1
+		}
+		if p.Col < 10 {
+			pad += 1
+		}
+
+		prefix = fmt.Sprintf("%s:%d:%d:", p.Source, p.Line, p.Col)
+		for i := 0; i < pad; i++ {
+			prefix += " "
+		}
+	}
+
+	return prefix + " \u22a2 "
+}
+
 // Inferer implements type inference.
 type Inferer struct {
 	scm      *Scheme
@@ -88,19 +112,13 @@ func (inferer *Inferer) astName(ast AST) string {
 
 // Print prints an inferer debug message.
 func (inferer *Inferer) Print(ast AST, lead, msg string) {
-	var prefix string
-	var indent string
-	if len(msg) > 0 && unicode.IsSpace(rune(msg[0])) {
-		prefix = "\u22a2 "
-		indent = "\u2502 "
-	} else {
-		prefix = "\u22a2 "
-		indent = "\u2502 "
-	}
+	prefix := infererPrefix(ast.Locator())
+	indent := "\u2502 "
+
 	for i := 0; i < inferer.nesting; i++ {
 		prefix += indent
 	}
-	ast.Locator().From().Infof("%s%s%s", prefix, lead, msg)
+	inferer.scm.Stdout.Printf("%s%s%s", prefix, lead, msg)
 }
 
 // Warningf prints a warning message about type inference.
@@ -113,7 +131,7 @@ func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
 	if len(msg) > 0 && unicode.IsSpace(rune(msg[0])) {
 		lead = ""
 	} else {
-		lead = "\u22a2 warning: "
+		lead = "warning: "
 	}
 	inferer.Print(ast, lead, msg)
 }
@@ -150,7 +168,7 @@ func (inferer *Inferer) newTypeVar() *types.Type {
 type Inferred map[int]*types.Type
 
 func (inferred Inferred) String() string {
-	result := "types=["
+	result := "["
 	first := true
 
 	for k, v := range inferred {
@@ -987,8 +1005,10 @@ func inferCall(ast AST, env *InferEnv, fnType *types.Type, args []AST) (
 	// Unify fnTypeSubst with callType.
 	unified, err := Unify(ast, env, callType, fnType)
 	if err != nil {
-		env.inferer.Warningf(ast, "Unify failed: %s:\n - %v\n - %v\n - %v\n",
-			err, callType, fnType, env.inferer.inferred)
+		env.inferer.Warningf(ast, "Unify: %s:\n", err)
+		env.inferer.Warningf(ast, " - %v\n", callType)
+		env.inferer.Warningf(ast, " - %v\n", fnType)
+		env.inferer.Warningf(ast, " - %v\n", env.inferer.inferred)
 		return nil, nil, err
 	}
 	env.inferer.Debugf(ast, " \u2570> %v\n", unified)
@@ -1239,7 +1259,7 @@ func (ast *ASTLambda) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	env.Learn(ast, retType.Return, t)
 
 	env.inferer.Debugf(ast, "\u03bb: return type: %v\n", retType)
-	env.inferer.Debugf(ast, "\u03bb: inferred: %v\n", env.inferer.inferred)
+	env.inferer.Debugf(ast, "\u03bb: inferred=%v\n", env.inferer.inferred)
 	ast.t = retType
 
 	ast.Inferred(env.inferer.inferred)
@@ -1540,7 +1560,7 @@ func (ast *ASTPragma) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 			env.inferer.scm.Params.Pragma.VerboseTypecheck = bool(v)
 
 		default:
-			return nil, nil, errf(ast, "\u22a2 unknown pragma '%s'", id.Name)
+			return nil, nil, errf(ast, "unknown pragma '%s'", id.Name)
 		}
 	}
 

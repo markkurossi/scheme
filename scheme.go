@@ -134,7 +134,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 
 func (scm *Scheme) verbosef(format string, a ...interface{}) {
 	if scm.Params.Verbose {
-		fmt.Printf(format, a...)
+		scm.Stdout.Printf(format, a...)
 	}
 }
 
