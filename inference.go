@@ -31,10 +31,10 @@ func infererPrefix(loc Locator) string {
 		if p.Line < 10 {
 			pad += 2
 		} else if p.Line < 100 {
-			pad += 1
+			pad++
 		}
 		if p.Col < 10 {
-			pad += 1
+			pad++
 		}
 
 		prefix = fmt.Sprintf("%s:%d:%d:", p.Source, p.Line, p.Col)
