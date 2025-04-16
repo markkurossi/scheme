@@ -171,28 +171,18 @@ func (inferred Inferred) Apply(t *types.Type) *types.Type {
 	}
 	switch t.Enum {
 	case types.EnumLambda:
-		result := &types.Type{
-			Enum:   t.Enum,
-			Rest:   inferred.Apply(t.Rest),
-			Return: inferred.Apply(t.Return),
+		for idx, arg := range t.Args {
+			t.Args[idx] = inferred.Apply(arg)
 		}
-		for _, arg := range t.Args {
-			result.Args = append(result.Args, inferred.Apply(arg))
-		}
-		return result
+		t.Rest = inferred.Apply(t.Rest)
+		t.Return = inferred.Apply(t.Return)
 
 	case types.EnumPair:
-		return &types.Type{
-			Enum: t.Enum,
-			Car:  inferred.Apply(t.Car),
-			Cdr:  inferred.Apply(t.Cdr),
-		}
+		t.Car = inferred.Apply(t.Car)
+		t.Cdr = inferred.Apply(t.Cdr)
 
 	case types.EnumVector:
-		return &types.Type{
-			Enum:    t.Enum,
-			Element: inferred.Apply(t.Element),
-		}
+		t.Element = inferred.Apply(t.Element)
 
 	case types.EnumTypeVar:
 		mapped, ok := inferred[t.TypeVar]
@@ -413,8 +403,6 @@ func Unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 	if from.Enum == types.EnumTypeVar {
 		return unifyTypeVar(ast, env, from, to)
-	} else if to.Enum == types.EnumTypeVar {
-		return unifyTypeVar(ast, env, to, from)
 	}
 	if from.IsKindOf(to) {
 		return from, nil
@@ -906,7 +894,7 @@ func (ast *ASTCall) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 		}
 	}
 
-	retType, callType, _, err := inferCall(ast, env, fnType, ast.Args)
+	retType, callType, err := inferCall(ast, env, fnType, ast.Args)
 	if err != nil {
 		return nil, nil, errf(ast, "%s: %s", fnName, err)
 	}
@@ -923,12 +911,11 @@ func (ast *ASTCall) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	if ok && len(fnType.Args) == 1 {
 		t, ok := typePredicates[id.Name]
 		if ok {
-			branch = &Branch{
-				pos: env.inferer.NewEnv(),
-			}
-
 			argID, ok := ast.Args[0].(*ASTIdentifier)
 			if ok {
+				branch = &Branch{
+					pos: env.inferer.NewEnv(),
+				}
 				env.inferer.Debugf(ast, "%s: %v=%v\n", id.Name, argID, t)
 				branch.pos.bindings[argID.Name] = InferEnvBinding{
 					t: t,
@@ -962,7 +949,7 @@ func (ast *ASTCall) Inferred(inferred Inferred) error {
 }
 
 func inferCall(ast AST, env *InferEnv, fnType *types.Type, args []AST) (
-	*types.Type, *types.Type, *types.Type, error) {
+	*types.Type, *types.Type, error) {
 
 	// Create a new type variable for the return type of the function.
 	rv := env.inferer.newTypeVar()
@@ -977,7 +964,7 @@ func inferCall(ast AST, env *InferEnv, fnType *types.Type, args []AST) (
 	for idx, arg := range args {
 		_, t, err := arg.Infer(env1)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 		argTypes = append(argTypes, t)
 
@@ -985,11 +972,6 @@ func inferCall(ast AST, env *InferEnv, fnType *types.Type, args []AST) (
 	}
 	if len(env.argTypes) > 0 {
 		argTypes = env.argTypes
-	}
-
-	var a0TV *types.Type
-	if len(args) > 0 {
-		a0TV = argTypes[0]
 	}
 
 	// Create a function type for the called function.
@@ -1005,13 +987,13 @@ func inferCall(ast AST, env *InferEnv, fnType *types.Type, args []AST) (
 	// Unify fnTypeSubst with callType.
 	unified, err := Unify(ast, env, callType, fnType)
 	if err != nil {
-		env.inferer.Warningf(ast, "Unify failed: %s:\n - %v\n - %v\n",
-			err, callType, fnType)
-		return nil, nil, nil, err
+		env.inferer.Warningf(ast, "Unify failed: %s:\n - %v\n - %v\n - %v\n",
+			err, callType, fnType, env.inferer.inferred)
+		return nil, nil, err
 	}
 	env.inferer.Debugf(ast, " \u2570> %v\n", unified)
 
-	return rv, unified, a0TV, nil
+	return rv, unified, nil
 }
 
 var minArgCount = map[Operand]int{
@@ -1156,7 +1138,7 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 		return nil, nil, errf(ast, "%s: infer not implemented yet", ast.Op)
 	}
 
-	retType, callType, a0TV, err := inferCall(ast, env, fnType, []AST{
+	retType, callType, err := inferCall(ast, env, fnType, []AST{
 		ast.Arg,
 	})
 	if err != nil {
@@ -1167,18 +1149,22 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 
 	// Check pair? predicate.
 	var branch *Branch
-	if ast.Op == OpPairp && a0TV != nil && a0TV.Enum == types.EnumTypeVar {
-		branch = &Branch{
-			pos: env.inferer.NewEnv(),
+	if ast.Op == OpPairp {
+		id, ok := ast.Arg.(*ASTIdentifier)
+		if ok {
+			branch = &Branch{
+				pos: env.inferer.NewEnv(),
+			}
+			t := &types.Type{
+				Enum: types.EnumPair,
+				Car:  types.Any,
+				Cdr:  types.Any,
+			}
+			env.inferer.Debugf(ast, "%s %v=%v\n", ast.Op, id, t)
+			branch.pos.bindings[id.Name] = InferEnvBinding{
+				t: t,
+			}
 		}
-		t := &types.Type{
-			Enum: types.EnumPair,
-			Car:  types.Any,
-			Cdr:  types.Any,
-		}
-		// XXX is this right?
-		env.inferer.Debugf(ast, "%s %v=%v\n", ast.Op, a0TV, t)
-		branch.pos.Learn(ast, a0TV, t)
 	}
 
 	return branch, retType, nil
@@ -1211,15 +1197,6 @@ func (ast *ASTLambda) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 		Return: env.inferer.newTypeVar(),
 	}
 	env.inferer.calls[ast] = retType
-
-	if ast.Define {
-		sym := env.inferer.scm.Intern(ast.Name.Name)
-		if !sym.GlobalType.IsA(types.Unspecified) {
-			return nil, nil, errf(ast, "redefining symbol '%s'", ast.Name)
-		}
-		sym.GlobalType = retType
-		env.inferer.Debugf(ast, "%v=%v\n", ast.Name, retType)
-	}
 
 	env = env.Copy()
 
@@ -1262,7 +1239,19 @@ func (ast *ASTLambda) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	env.Learn(ast, retType.Return, t)
 
 	env.inferer.Debugf(ast, "\u03bb: return type: %v\n", retType)
+	env.inferer.Debugf(ast, "\u03bb: inferred: %v\n", env.inferer.inferred)
 	ast.t = retType
+
+	ast.Inferred(env.inferer.inferred)
+
+	if ast.Define {
+		sym := env.inferer.scm.Intern(ast.Name.Name)
+		if !sym.GlobalType.IsA(types.Unspecified) {
+			return nil, nil, errf(ast, "redefining symbol '%s'", ast.Name)
+		}
+		sym.GlobalType = ast.t
+		env.inferer.Debugf(ast, "%v=%v\n", ast.Name, ast.t)
+	}
 
 	return nil, ast.t, nil
 }
