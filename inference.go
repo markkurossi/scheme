@@ -805,7 +805,7 @@ func (ast *ASTIf) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	}
 
 	ast.t = types.Unify(tt, ft)
-	env.inferer.Debugf(ast, "If types.Unify(%v,%v)=>%v\n", tt, ft, ast.t)
+	env.inferer.Debugf(ast, "if types.Unify(%v,%v)=>%v\n", tt, ft, ast.t)
 
 	return nil, ast.t, nil
 }
@@ -1482,7 +1482,7 @@ func (ast *ASTCond) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 				choiceType = expr.Type()
 			}
 			tt := types.Unify(result, choiceType)
-			env.inferer.Debugf(ast, "Cond types.Unify(%v,%v)=>%v\n",
+			env.inferer.Debugf(ast, "cond types.Unify(%v,%v)=>%v\n",
 				result, choiceType, tt)
 
 			if choice.Cond == nil {
