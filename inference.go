@@ -22,30 +22,6 @@ func errf(ast AST, format string, a ...interface{}) error {
 	return ast.Locator().From().Errorf("\u22a2 %s", msg)
 }
 
-func infererPrefix(loc Locator) string {
-	var prefix string
-
-	if loc != nil {
-		var pad int
-		p := loc.From()
-		if p.Line < 10 {
-			pad += 2
-		} else if p.Line < 100 {
-			pad++
-		}
-		if p.Col < 10 {
-			pad++
-		}
-
-		prefix = fmt.Sprintf("%s:%d:%d:", p.Source, p.Line, p.Col)
-		for i := 0; i < pad; i++ {
-			prefix += " "
-		}
-	}
-
-	return prefix + " \u22a2 "
-}
-
 // Inferer implements type inference.
 type Inferer struct {
 	scm      *Scheme
@@ -121,6 +97,30 @@ func (inferer *Inferer) Print(ast AST, lead, msg string) {
 	inferer.scm.Stdout.Printf("%s%s%s", prefix, lead, msg)
 }
 
+func infererPrefix(loc Locator) string {
+	var prefix string
+
+	if loc != nil {
+		var pad int
+		p := loc.From()
+		if p.Line < 10 {
+			pad += 2
+		} else if p.Line < 100 {
+			pad++
+		}
+		if p.Col < 10 {
+			pad++
+		}
+
+		prefix = fmt.Sprintf("%s:%d:%d:", p.Source, p.Line, p.Col)
+		for i := 0; i < pad; i++ {
+			prefix += " "
+		}
+	}
+
+	return prefix + " \u22a2 "
+}
+
 // Warningf prints a warning message about type inference.
 func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
 	if !inferer.scm.Params.Verbose {
@@ -182,6 +182,47 @@ func (inferred Inferred) String() string {
 	return result + "]"
 }
 
+// Copy creates a copy of the Inferred.
+func (inferred Inferred) Copy() Inferred {
+	if inferred == nil {
+		return nil
+	}
+	result := make(Inferred)
+	for k, v := range inferred {
+		result[k] = v
+	}
+	return result
+}
+
+// Merge merges the learned types from the argument Inferred into
+// this Inferred.
+func (inferred Inferred) Merge(o Inferred) {
+	for k, v := range o {
+		inferred[k] = types.Unify(inferred[k], v)
+	}
+}
+
+// Learn updates the type variable v's type to t. The function panics
+// if the variable v is not a type variable.
+func (inferred Inferred) Learn(v, t *types.Type) error {
+	if v.Enum != types.EnumTypeVar {
+		panic("InferEnv.Learn: invalid variable")
+	}
+	old, ok := inferred[v.TypeVar]
+	if ok {
+		if old.IsKindOf(t) {
+			// Old value is the same or more specific type.
+			return nil
+		}
+		if !t.IsKindOf(old) {
+			return fmt.Errorf("can't convert type %s to %s", old, t)
+		}
+	}
+	inferred[v.TypeVar] = t
+
+	return nil
+}
+
 // Apply applies the type inference results for the argument type.
 func (inferred Inferred) Apply(t *types.Type) *types.Type {
 	if t == nil {
@@ -216,6 +257,7 @@ func (inferred Inferred) Apply(t *types.Type) *types.Type {
 type InferEnv struct {
 	inferer  *Inferer
 	bindings map[string]InferEnvBinding
+	inferred Inferred
 
 	// XXX
 	argTypes []*types.Type
@@ -233,8 +275,13 @@ func (env *InferEnv) String() string {
 		}
 		result += fmt.Sprintf("%v=%v", k, v)
 	}
+	result += "]"
+	if env.inferred != nil {
+		result += ", inferred="
+		result += env.inferred.String()
+	}
 
-	return result + "]"
+	return result
 }
 
 // Copy creates a copy of the InferEnv.
@@ -246,12 +293,18 @@ func (env *InferEnv) Copy() *InferEnv {
 	for k, v := range env.bindings {
 		result.bindings[k] = v
 	}
+	result.inferred = env.inferred
 	return result
 }
 
 // Positive creates a copy of the InferEnv for a positive branch.
 func (env *InferEnv) Positive(branch *Branch) *InferEnv {
 	result := env.Copy()
+	if result.inferred == nil {
+		result.inferred = make(Inferred)
+	} else {
+		result.inferred = result.inferred.Copy()
+	}
 	if branch == nil || branch.pos == nil {
 		return result
 	}
@@ -265,6 +318,11 @@ func (env *InferEnv) Positive(branch *Branch) *InferEnv {
 // Negative creates a copy of the InferEnv for a negative branch.
 func (env *InferEnv) Negative(branch *Branch) *InferEnv {
 	result := env.Copy()
+	if result.inferred == nil {
+		result.inferred = make(Inferred)
+	} else {
+		result.inferred = result.inferred.Copy()
+	}
 	if branch == nil || branch.neg == nil {
 		return result
 	}
@@ -273,6 +331,14 @@ func (env *InferEnv) Negative(branch *Branch) *InferEnv {
 	}
 
 	return result
+}
+
+// Inferred returns the Inferred, used by this environment.
+func (env *InferEnv) Inferred() Inferred {
+	if env.inferred != nil {
+		return env.inferred
+	}
+	return env.inferer.inferred
 }
 
 // Get gets the name's type from the environment.
@@ -368,23 +434,11 @@ func (env *InferEnv) SetAST(name string, ast AST) {
 
 // Learn updates the type variable v's type to t. The function panics
 // if the variable v is not a type variable.
-func (env *InferEnv) Learn(ast AST, v *types.Type, t *types.Type) error {
-	if v.Enum != types.EnumTypeVar {
-		panic("InferEnv.Learn: invalid variable")
+func (env *InferEnv) Learn(v, t *types.Type) error {
+	if env.inferred != nil {
+		return env.inferred.Learn(v, t)
 	}
-	old, ok := env.inferer.inferred[v.TypeVar]
-	if ok {
-		if old.IsKindOf(t) {
-			// Old value is the same or more specific type.
-			return nil
-		}
-		if !t.IsKindOf(old) {
-			return fmt.Errorf("can't convert type %s to %s", old, t)
-		}
-	}
-	env.inferer.inferred[v.TypeVar] = t
-
-	return nil
+	return env.inferer.inferred.Learn(v, t)
 }
 
 // Branch defines the branch condition specific types.
@@ -420,7 +474,7 @@ func Unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 
 func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 	if from.Enum == types.EnumTypeVar {
-		return unifyTypeVar(ast, env, from, to)
+		return unifyTypeVar(env, from, to)
 	}
 	if from.IsKindOf(to) {
 		return from, nil
@@ -502,13 +556,11 @@ func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 	}
 }
 
-func unifyTypeVar(ast AST, env *InferEnv, tv, to *types.Type) (
-	*types.Type, error) {
-
+func unifyTypeVar(env *InferEnv, tv, to *types.Type) (*types.Type, error) {
 	if to == nil {
 		panic("unifyTypeVar: to=nil")
 	}
-	err := env.Learn(ast, tv, to)
+	err := env.Learn(tv, to)
 	if err != nil {
 		return nil, err
 	}
@@ -701,26 +753,50 @@ func (ast *ASTIf) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 		ast.Cond.Locator().From().Warningf("if test is not boolean: %v\n", t)
 	}
 
-	env.inferer.Debugf(ast, "If: pos: %v\n", branch)
+	env.inferer.Debugf(ast, "If: branch=%v\n", branch)
 
 	trueEnv := env.Positive(branch)
-	env.inferer.Debugf(ast, " => env: %v\n", trueEnv)
-
-	var tt, ft *types.Type
-	_, tt, err = ast.True.Infer(trueEnv)
+	_, _, err = ast.True.Infer(trueEnv)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if ast.False != nil {
-		_, ft, err = ast.False.Infer(env.Negative(branch))
+		falseEnv := env.Negative(branch)
+		_, _, err = ast.False.Infer(falseEnv)
 		if err != nil {
 			return nil, nil, err
 		}
+
+		// The if expression is conclusive. Merge learnings into
+		// global curriculum.
+		env.inferer.Debugf(ast, " => true  : %v\n", trueEnv.inferred)
+		env.inferer.Debugf(ast, " => false : %v\n", falseEnv.inferred)
+		trueEnv.inferred.Merge(falseEnv.inferred)
+		env.inferer.Debugf(ast, " => merged: %v\n", trueEnv.inferred)
+
+		env.Inferred().Merge(trueEnv.inferred)
+	}
+
+	err = ast.True.Inferred(env.Inferred())
+	if err != nil {
+		return nil, nil, err
+	}
+	tt := ast.True.Type()
+
+	var ft *types.Type
+	if ast.False != nil {
+		err = ast.False.Inferred(env.Inferred())
+		if err != nil {
+			return nil, nil, err
+		}
+		ft = ast.False.Type()
 	} else {
 		ft = types.Boolean
 	}
+
 	ast.t = types.Unify(tt, ft)
+	env.inferer.Debugf(ast, "if types.Unify(%v,%v)=>%v\n", tt, ft, ast.t)
 
 	return nil, ast.t, nil
 }
@@ -1256,7 +1332,7 @@ func (ast *ASTLambda) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	if t == nil {
 		t = types.Unspecified
 	}
-	env.Learn(ast, retType.Return, t)
+	env.Learn(retType.Return, t)
 
 	env.inferer.Debugf(ast, "\u03bb: return type: %v\n", retType)
 	env.inferer.Debugf(ast, "\u03bb: inferred=%v\n", env.inferer.inferred)
