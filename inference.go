@@ -570,6 +570,9 @@ func unifyTypeVar(env *InferEnv, tv, to *types.Type) (*types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTSequence) Infer(env *InferEnv) (*Branch, *types.Type, error) {
+	env.inferer.Enter(ast)
+	defer env.inferer.Exit(ast)
+
 	var err error
 
 	for _, item := range ast.Items {
@@ -637,6 +640,9 @@ func (ast *ASTDefine) Inferred(inferred Inferred) error {
 
 // Infer implements AST.Infer.
 func (ast *ASTSet) Infer(env *InferEnv) (*Branch, *types.Type, error) {
+	env.inferer.Enter(ast)
+	defer env.inferer.Exit(ast)
+
 	// Infer initializer type.
 	_, t, err := ast.Value.Infer(env)
 	if err != nil {
@@ -681,6 +687,9 @@ func (ast *ASTSet) Inferred(inferred Inferred) error {
 
 // Infer implements AST.Infer.
 func (ast *ASTLet) Infer(env *InferEnv) (*Branch, *types.Type, error) {
+	env.inferer.Enter(ast)
+	defer env.inferer.Exit(ast)
+
 	initEnv := env.Copy()
 	var err error
 
@@ -796,7 +805,7 @@ func (ast *ASTIf) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	}
 
 	ast.t = types.Unify(tt, ft)
-	env.inferer.Debugf(ast, "if types.Unify(%v,%v)=>%v\n", tt, ft, ast.t)
+	env.inferer.Debugf(ast, "If types.Unify(%v,%v)=>%v\n", tt, ft, ast.t)
 
 	return nil, ast.t, nil
 }
@@ -1387,7 +1396,7 @@ func (ast *ASTIdentifier) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	if !ok {
 		return nil, nil, errf(ast, "undefined symbol '%s'", ast.Name)
 	}
-	env.inferer.Debugf(ast, "Identifier: name=%v, t=%v\n", ast.Name, ast.t)
+	env.inferer.Debugf(ast, "name=%v, t=%v\n", ast.Name, ast.t)
 	if ast.t.Parametrizer != nil && len(env.argTypes) > 0 {
 		env.inferer.Debugf(ast, "calling parametrizer\n")
 		ctx := make(map[interface{}]bool)
@@ -1411,6 +1420,9 @@ func (ast *ASTIdentifier) Inferred(inferred Inferred) error {
 
 // Infer implements AST.Infer.
 func (ast *ASTCond) Infer(env *InferEnv) (*Branch, *types.Type, error) {
+	env.inferer.Enter(ast)
+	defer env.inferer.Exit(ast)
+
 	var result *types.Type
 	var err error
 
@@ -1498,6 +1510,9 @@ func (ast *ASTCond) Inferred(inferred Inferred) error {
 
 // Infer implements AST.Infer.
 func (ast *ASTCase) Infer(env *InferEnv) (*Branch, *types.Type, error) {
+	env.inferer.Enter(ast)
+	defer env.inferer.Exit(ast)
+
 	var result *types.Type
 
 	_, _, err := ast.Expr.Infer(env)
@@ -1543,6 +1558,9 @@ func (ast *ASTCase) Inferred(inferred Inferred) error {
 
 // Infer implements AST.Infer.
 func (ast *ASTAnd) Infer(env *InferEnv) (*Branch, *types.Type, error) {
+	env.inferer.Enter(ast)
+	defer env.inferer.Exit(ast)
+
 	result := types.Boolean
 
 	for _, expr := range ast.Exprs {
@@ -1576,6 +1594,9 @@ func (ast *ASTAnd) Inferred(inferred Inferred) error {
 
 // Infer implements AST.Infer.
 func (ast *ASTOr) Infer(env *InferEnv) (*Branch, *types.Type, error) {
+	env.inferer.Enter(ast)
+	defer env.inferer.Exit(ast)
+
 	result := types.Boolean
 
 	for _, expr := range ast.Exprs {
@@ -1609,6 +1630,9 @@ func (ast *ASTOr) Inferred(inferred Inferred) error {
 
 // Infer implements AST.Infer.
 func (ast *ASTPragma) Infer(env *InferEnv) (*Branch, *types.Type, error) {
+	env.inferer.Enter(ast)
+	defer env.inferer.Exit(ast)
+
 	for _, d := range ast.Directives {
 		if len(d) != 2 {
 			return nil, nil, errf(ast, "invalid directive: %v", d)
