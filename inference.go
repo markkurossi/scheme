@@ -1469,17 +1469,34 @@ func (ast *ASTCond) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 			var choiceType *types.Type
 
 			for _, expr := range choice.Exprs {
-				_, choiceType, err = expr.Infer(choiceEnv)
+				_, _, err = expr.Infer(choiceEnv)
 				if err != nil {
 					return nil, nil, err
 				}
 			}
-			result = types.Unify(result, choiceType)
+			for _, expr := range choice.Exprs {
+				err = expr.Inferred(choiceEnv.Inferred())
+				if err != nil {
+					return nil, nil, err
+				}
+				choiceType = expr.Type()
+			}
+			tt := types.Unify(result, choiceType)
+			env.inferer.Debugf(ast, "Cond types.Unify(%v,%v)=>%v\n",
+				result, choiceType, tt)
+
+			if choice.Cond == nil {
+				// The cond expression is conclusive. Merge learnings
+				// into global curriculum.
+				env.Inferred().Merge(choiceEnv.inferred)
+			}
+
+			result = tt
 		}
 	}
 	ast.t = result
 
-	return nil, result, nil
+	return nil, ast.t, nil
 }
 
 // Inferred implements AST.Inferred.
