@@ -175,6 +175,16 @@ func (lib *Library) PrettyPrint(w pp.Writer) error {
 	return w.Error()
 }
 
+// Vet checks the library for errors.
+func (lib *Library) Vet() error {
+	inferer := NewInferer(lib.scm, lib.Body.Items)
+	_, err := inferer.Infer(lib.Body)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Compile compiles the library into bytecode.
 func (lib *Library) Compile() (Value, error) {
 	inferer := NewInferer(lib.scm, lib.Body.Items)

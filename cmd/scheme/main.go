@@ -10,8 +10,10 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime/pprof"
 	"strings"
 
@@ -123,16 +125,27 @@ func main() {
 		return
 	}
 
-	for _, arg := range flag.Args() {
-		if *bc {
-			err = bytecode(scm, arg)
-		} else if len(*pp) > 0 {
-			err = prettyPrint(scm, *pp, arg)
-		} else {
-			_, err = scm.EvalFile(arg)
-		}
-		if err != nil {
-			log.Fatalf("%s\n", err)
+	for idx, arg := range flag.Args() {
+		switch arg {
+		case "vet":
+			err = vet(scm, flag.Args()[idx+1:])
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+
+		default:
+			// Process argument as scheme file.
+			if *bc {
+				err = bytecode(scm, arg)
+			} else if len(*pp) > 0 {
+				err = prettyPrint(scm, *pp, arg)
+			} else {
+				_, err = scm.EvalFile(arg)
+			}
+			if err != nil {
+				log.Fatalf("%s\n", err)
+			}
 		}
 	}
 	if *replp || len(flag.Args()) == 0 {
@@ -148,6 +161,51 @@ func main() {
 			log.Fatal("could not write memory profile: ", err)
 		}
 	}
+}
+
+func vet(scm *scheme.Scheme, files []string) error {
+	if len(files) == 0 {
+		const root = "."
+		err := filepath.WalkDir(root,
+			func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if path != root && d.IsDir() && false {
+					return fs.SkipDir
+				}
+				if strings.HasSuffix(path, ".scm") {
+					files = append(files, path)
+				}
+				return nil
+			})
+		if err != nil {
+			return err
+		}
+	}
+	for _, file := range files {
+		err := vetFile(scm, file)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func vetFile(scm *scheme.Scheme, file string) error {
+	in, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	c := scheme.NewParser(scm)
+
+	library, err := c.Parse(file, in)
+	if err != nil {
+		return err
+	}
+	return library.Vet()
 }
 
 func bytecode(scm *scheme.Scheme, file string) error {

@@ -154,7 +154,7 @@ func init() {
 type Point struct {
 	Source string
 	Line   int // 1-based
-	Col    int // 0-based
+	Col    int // 1-based
 }
 
 // From returns the point.
@@ -329,7 +329,7 @@ func NewLexer(source string, in io.Reader) *Lexer {
 		point: Point{
 			Source: source,
 			Line:   1,
-			Col:    0,
+			Col:    1,
 		},
 		history: make(map[int][]rune),
 	}
@@ -357,7 +357,7 @@ func (l *Lexer) ReadRune() (rune, int, error) {
 	l.unreadPoint = l.point
 	if r == '\n' {
 		l.point.Line++
-		l.point.Col = 0
+		l.point.Col = 1
 	} else {
 		l.point.Col++
 		l.history[l.point.Line] = append(l.history[l.point.Line], r)
