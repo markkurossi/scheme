@@ -844,6 +844,7 @@ func (p *Parser) parseCond(env *Env, list []Pair,
 					clause[0].Errorf("cond: else must be the last clause")
 			}
 			isElse = true
+			ast.Conclusive = true
 		}
 
 		choice := &ASTCondChoice{
@@ -942,6 +943,7 @@ func (p *Parser) parseCase(env *Env, list []Pair,
 					clause[0].Errorf("case: else must be the last clause")
 			}
 			isElse = true
+			ast.Conclusive = true
 		}
 
 		choice := &ASTCaseChoice{

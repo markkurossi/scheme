@@ -586,9 +586,6 @@ func unifyTypeVar(env *InferEnv, tv, to *types.Type) (*types.Type, error) {
 
 // Infer implements AST.Infer.
 func (ast *ASTSequence) Infer(env *InferEnv) (*Branch, *types.Type, error) {
-	env.inferer.Enter(ast)
-	defer env.inferer.Exit(ast)
-
 	var err error
 
 	for _, item := range ast.Items {
@@ -1439,8 +1436,13 @@ func (ast *ASTCond) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	env.inferer.Enter(ast)
 	defer env.inferer.Exit(ast)
 
-	var result *types.Type
 	var err error
+	var branches []Inferred
+	var result *types.Type
+
+	if !ast.Conclusive {
+		result = types.Boolean
+	}
 
 	for _, choice := range ast.Choices {
 		var choiceBranch *Branch
@@ -1500,16 +1502,23 @@ func (ast *ASTCond) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 			tt := types.Unify(result, choiceType)
 			env.inferer.Debugf(ast, "cond types.Unify(%v,%v)=>%v\n",
 				result, choiceType, tt)
-
-			if choice.Cond == nil {
-				// The cond expression is conclusive. Merge learnings
-				// into global curriculum.
-				env.Inferred().Merge(choiceEnv.inferred)
-			}
-
 			result = tt
+
+			if ast.Conclusive {
+				branches = append(branches, choiceEnv.inferred)
+			}
 		}
 	}
+
+	if ast.Conclusive {
+		// The cond expression is conclusive. Merge learnings into
+		// global curriculum.
+		for idx, branch := range branches {
+			env.inferer.Debugf(ast, "cond: %v: learned=%v\n", idx, branch)
+			env.Inferred().Merge(branch)
+		}
+	}
+
 	ast.t = result
 
 	return nil, ast.t, nil
@@ -1546,7 +1555,11 @@ func (ast *ASTCase) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	env.inferer.Enter(ast)
 	defer env.inferer.Exit(ast)
 
+	var branches []Inferred
 	var result *types.Type
+	if !ast.Conclusive {
+		result = types.Boolean
+	}
 
 	_, _, err := ast.Expr.Infer(env)
 	if err != nil {
@@ -1554,21 +1567,44 @@ func (ast *ASTCase) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 	}
 
 	for _, choice := range ast.Choices {
-		choiceEnv := env.Copy()
+		choiceEnv := env.Positive(nil)
 		var choiceType *types.Type
 
 		for _, expr := range choice.Exprs {
-			_, choiceType, err = expr.Infer(choiceEnv)
+			_, _, err = expr.Infer(choiceEnv)
 			if err != nil {
 				return nil, nil, err
 			}
 		}
-		// XXX check tail call
-		result = types.Unify(result, choiceType)
+		for _, expr := range choice.Exprs {
+			err = expr.Inferred(choiceEnv.Inferred())
+			if err != nil {
+				return nil, nil, err
+			}
+			choiceType = expr.Type()
+		}
+		tt := types.Unify(result, choiceType)
+		env.inferer.Debugf(ast, "case types.Unify(%v,%v)=>%v\n",
+			result, choiceType, tt)
+		result = tt
+
+		if ast.Conclusive {
+			branches = append(branches, choiceEnv.inferred)
+		}
 	}
+
+	if ast.Conclusive {
+		// The case expression is conclusive. Merge learnings into
+		// global curriculum.
+		for idx, branch := range branches {
+			env.inferer.Debugf(ast, "case: %v: learned=%v\n", idx, branch)
+			env.Inferred().Merge(branch)
+		}
+	}
+
 	ast.t = result
 
-	return nil, result, nil
+	return nil, ast.t, nil
 }
 
 // Inferred implements AST.Inferred.

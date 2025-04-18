@@ -703,10 +703,11 @@ func (ast *ASTIdentifier) Bytecode(lib *Library) error {
 // ASTCond implements cond syntax.
 type ASTCond struct {
 	Typed
-	From     Locator
-	Choices  []*ASTCondChoice
-	Tail     bool
-	Captures bool
+	From       Locator
+	Choices    []*ASTCondChoice
+	Conclusive bool
+	Tail       bool
+	Captures   bool
 }
 
 // ASTCondChoice implements a cond choice.
@@ -842,6 +843,7 @@ type ASTCase struct {
 	ValueFrame  *EnvFrame
 	EqvArgFrame *EnvFrame
 	Expr        AST
+	Conclusive  bool
 	Tail        bool
 	Captures    bool
 }
