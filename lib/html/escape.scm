@@ -1,3 +1,4 @@
+;;; -*- compile-command: "scheme vet"; -*-
 ;;;
 ;;; Copyright (c) 2025 Markku Rossi
 ;;;
