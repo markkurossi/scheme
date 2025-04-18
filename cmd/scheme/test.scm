@@ -1,12 +1,9 @@
-(import (go format))
+(import (html escape))
 
 (pragma (verbose-typecheck #t))
 
-(define (foo l base)
-  (number->string l base))
+(define msg "<&foo&>")
 
-(define x (lambda () 42))
-(define y (lambda () "foo"))
+(display (html-escape msg)) (newline)
 
-(foo (type 1) 10)
-;;(foo y)
+(display (html-unescape (html-escape msg))) (newline)
