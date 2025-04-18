@@ -198,7 +198,7 @@ func (inferred Inferred) Copy() Inferred {
 // this Inferred.
 func (inferred Inferred) Merge(o Inferred) {
 	for k, v := range o {
-		inferred[k] = types.Unify(inferred[k], v)
+		inferred.link(k, types.Unify(inferred[k], v))
 	}
 }
 
@@ -218,9 +218,25 @@ func (inferred Inferred) Learn(v, t *types.Type) error {
 			return fmt.Errorf("can't convert type %s to %s", old, t)
 		}
 	}
-	inferred[v.TypeVar] = t
+	inferred.link(v.TypeVar, t)
 
 	return nil
+}
+
+func (inferred Inferred) link(k int, t *types.Type) {
+	if t.Enum == types.EnumTypeVar {
+		if t.TypeVar == k {
+			return
+		}
+		if t.TypeVar > k {
+			inferred[t.TypeVar] = &types.Type{
+				Enum:    types.EnumTypeVar,
+				TypeVar: k,
+			}
+			return
+		}
+	}
+	inferred[k] = t
 }
 
 // Apply applies the type inference results for the argument type.
