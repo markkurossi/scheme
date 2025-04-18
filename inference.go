@@ -228,13 +228,6 @@ func (inferred Inferred) link(k int, t *types.Type) {
 		if t.TypeVar == k {
 			return
 		}
-		if t.TypeVar > k {
-			inferred[t.TypeVar] = &types.Type{
-				Enum:    types.EnumTypeVar,
-				TypeVar: k,
-			}
-			return
-		}
 	}
 	inferred[k] = t
 }
