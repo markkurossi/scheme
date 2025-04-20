@@ -266,7 +266,7 @@ func (scm *Scheme) evalRuntime(source string, in io.Reader) (Value, error) {
 	}
 	sym := scm.Intern("scheme::init-library")
 
-	return scm.Apply(sym.Global, []Value{library})
+	return scm.Apply(sym.Global, []Value{library, Boolean(true)})
 }
 
 func (scm *Scheme) eval(source string, in io.Reader) (Value, error) {
@@ -289,6 +289,18 @@ func (scm *Scheme) eval(source string, in io.Reader) (Value, error) {
 	}
 
 	return scm.Apply(init, nil)
+}
+
+// Vet checks the source for errors.
+func (scm *Scheme) Vet(source string, in io.Reader) error {
+	library, err := scm.Load(source, in)
+	if err != nil {
+		return err
+	}
+	sym := scm.Intern("scheme::init-library")
+
+	_, err = scm.Apply(sym.Global, []Value{library, Boolean(false)})
+	return err
 }
 
 // Global returns the global value of the symbol.

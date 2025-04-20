@@ -199,13 +199,7 @@ func vetFile(scm *scheme.Scheme, file string) error {
 	}
 	defer in.Close()
 
-	c := scheme.NewParser(scm)
-
-	library, err := c.Parse(file, in)
-	if err != nil {
-		return err
-	}
-	return library.Vet()
+	return scm.Vet(file, in)
 }
 
 func bytecode(scm *scheme.Scheme, file string) error {

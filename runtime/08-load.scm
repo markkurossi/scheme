@@ -59,7 +59,7 @@
 (define (load filename)
   (let* ((stack (scheme::stack-trace))
          (library (scheme::load (caadr stack) filename)))
-    (scheme::init-library library)))
+    (scheme::init-library library #t)))
 
 (define scheme::libraries
   '(
@@ -71,7 +71,7 @@
     ((rnrs mutable-strings) (6) initialized)
     ))
 
-(define (scheme::init-library library)
+(define (scheme::init-library library init-self)
   (letrec ((main?
             (lambda (name)
               (equal? name '(main))))
@@ -164,7 +164,10 @@
             (if (importer lib-imports)
                 (begin
                   ;; Imports loaded, now init this module.
-                  (set! result ((scheme::compile lib-library)))
+                  (let ((init (scheme::compile lib-library)))
+                    (if init-self
+                        (set! result (init))
+                        (set! result #t)))
                   (set-lib-status! this 'initialized))
                 (set-lib-status! this 'error))
 
