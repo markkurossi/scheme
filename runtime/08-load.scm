@@ -47,13 +47,15 @@
             (lambda (path)
               (if (null? path)
                   (error 'load-library
-                         (string-append "library '("
+                         "library not found"
+                         (string-append "("
                                         (strings-join name-string-list " ")
-                                        ")' not found"))
+                                        ")"))
                   (let ((filename (make-path (car path))))
                     (if (file-exists? filename)
                         (load filename)
-                        (iter (cdr path))))))))
+                        (iter (cdr path)))))))
+           )
     (iter load-path)))
 
 (define (load filename)

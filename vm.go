@@ -977,7 +977,14 @@ var vmBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("invalid message: %v", args[1])
 			}
-			return nil, fmt.Errorf("%v: %v", args[0], message)
+			var irritants string
+			for i := 2; i < len(args); i++ {
+				if len(irritants) != 0 {
+					irritants += ","
+				}
+				irritants += fmt.Sprintf("%v", args[i])
+			}
+			return nil, fmt.Errorf("%v: %v: %v", args[0], message, irritants)
 		},
 	},
 	{

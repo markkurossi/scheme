@@ -194,6 +194,21 @@ func (inferred Inferred) Copy() Inferred {
 	return result
 }
 
+// CopyFacts creates a copy of the Inferred with definitive types
+// copied.
+func (inferred Inferred) CopyFacts() Inferred {
+	if inferred == nil {
+		return nil
+	}
+	result := make(Inferred)
+	for k, v := range inferred {
+		if v.Concrete() {
+			result[k] = v
+		}
+	}
+	return result
+}
+
 // Merge merges the learned types from the argument Inferred into
 // this Inferred.
 func (inferred Inferred) Merge(o Inferred) {
@@ -310,7 +325,7 @@ func (env *InferEnv) Copy() *InferEnv {
 func (env *InferEnv) Positive(branch *Branch) *InferEnv {
 	result := env.Copy()
 	if result.inferred == nil {
-		result.inferred = make(Inferred)
+		result.inferred = result.inferer.inferred.CopyFacts()
 	} else {
 		result.inferred = result.inferred.Copy()
 	}
@@ -328,7 +343,7 @@ func (env *InferEnv) Positive(branch *Branch) *InferEnv {
 func (env *InferEnv) Negative(branch *Branch) *InferEnv {
 	result := env.Copy()
 	if result.inferred == nil {
-		result.inferred = make(Inferred)
+		result.inferred = result.inferer.inferred.CopyFacts()
 	} else {
 		result.inferred = result.inferred.Copy()
 	}
@@ -991,10 +1006,11 @@ func (ast *ASTCall) Infer(env *InferEnv) (*Branch, *types.Type, error) {
 			}
 
 		} else if al > len(ast.Args) {
-			// Check if the extra argument Kind are Optional.
+			// Check if the extra argument Kind are Optional or Rest.
 			for i := len(ast.Args); i < al; i++ {
-				if fnType.Args[i].Kind != types.Optional {
-					errf(ast, "too few arguments got %v, need %v",
+				if fnType.Args[i].Kind == types.Fixed {
+					return nil, nil, errf(ast,
+						"too few arguments got %v, need %v",
 						len(ast.Args), al)
 				}
 			}
