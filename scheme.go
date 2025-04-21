@@ -303,17 +303,6 @@ func (scm *Scheme) Vet(source string, in io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if false {
-		values, ok := ListValues(library)
-		if !ok || len(values) != 5 {
-			return fmt.Errorf("invalid library: %v", library)
-		}
-		lib, ok := values[4].(*Library)
-		if !ok {
-			return fmt.Errorf("invalid library: %T", values[4])
-		}
-		_, err = lib.Compile()
-	}
 	return err
 }
 
