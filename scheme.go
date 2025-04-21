@@ -16,6 +16,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/markkurossi/scheme/pp"
 	"github.com/markkurossi/scheme/types"
 )
 
@@ -304,6 +305,31 @@ func (scm *Scheme) Vet(source string, in io.Reader) error {
 		return err
 	}
 	return err
+}
+
+// PrettyPrint formats the souce code into the pp.Writer.
+func (scm *Scheme) PrettyPrint(source string, in io.Reader,
+	w pp.Writer) error {
+
+	library, err := scm.Load(source, in)
+	if err != nil {
+		return err
+	}
+	sym := scm.Intern("scheme::init-library")
+
+	_, err = scm.Apply(sym.Global, []Value{library, Boolean(false)})
+	if err != nil {
+		return err
+	}
+	values, ok := ListValues(library)
+	if !ok || len(values) != 5 {
+		return fmt.Errorf("invalid library: %v", library)
+	}
+	lib, ok := values[4].(*Library)
+	if !ok {
+		return fmt.Errorf("invalid library: %T", values[4])
+	}
+	return lib.PrettyPrint(w)
 }
 
 // Global returns the global value of the symbol.

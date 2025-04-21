@@ -268,13 +268,7 @@ func prettyPrint(scm *scheme.Scheme, format string, file string) error {
 		return fmt.Errorf("unknown pretty-print format '%s'", format)
 	}
 
-	c := scheme.NewParser(scm)
-
-	library, err := c.Parse(file, in)
-	if err != nil {
-		return err
-	}
-	return library.PrettyPrint(w)
+	return scm.PrettyPrint(file, in, w)
 }
 
 func repl(scm *scheme.Scheme) {
