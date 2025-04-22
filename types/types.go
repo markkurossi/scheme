@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023-2024 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -35,6 +35,7 @@ const (
 	EnumLambda
 	EnumPair
 	EnumVector
+	EnumTypeVar
 )
 
 var enumNames = map[Enum]string{
@@ -52,9 +53,10 @@ var enumNames = map[Enum]string{
 	EnumExactFloat:     "#efloat",
 	EnumInexactFloat:   "float",
 	EnumPort:           "port",
-	EnumLambda:         "lambda",
+	EnumLambda:         "\u03bb",
 	EnumPair:           "pair",
 	EnumVector:         "vector",
+	EnumTypeVar:        "t",
 }
 
 func (e Enum) String() string {
@@ -84,6 +86,9 @@ func (e Enum) Super() Enum {
 	case EnumInexactFloat:
 		return EnumExactFloat
 
+	case EnumTypeVar:
+		return EnumAny
+
 	default:
 		panic(fmt.Sprintf("unknown Enum %d", e))
 	}
@@ -94,6 +99,12 @@ func (e Enum) Super() Enum {
 func (e Enum) Unify(o Enum) Enum {
 	if e == EnumUnspecified || o == EnumUnspecified {
 		return EnumUnspecified
+	}
+	if e == EnumTypeVar {
+		return o
+	}
+	if o == EnumTypeVar {
+		return e
 	}
 
 	for eIter := e; ; eIter = eIter.Super() {
@@ -162,7 +173,7 @@ func Parse(arg string) (*Type, string, error) {
 			Enum: EnumPair,
 			Kind: kind,
 			Car:  Character,
-			Cdr:  Any,
+			Cdr:  Unspecified,
 		}, name, nil
 	} else if strings.HasPrefix(typeName, "char") {
 		return &Type{
@@ -255,11 +266,42 @@ type Type struct {
 	Cdr          *Type
 	Element      *Type
 	Parametrizer Parametrizer
+	TypeVar      int
+}
+
+// Clone creates a deep copy of the type.
+func (t *Type) Clone() *Type {
+	result := &Type{
+		Enum:         t.Enum,
+		Kind:         t.Kind,
+		Parametrizer: t.Parametrizer,
+		TypeVar:      t.TypeVar,
+	}
+	for _, arg := range t.Args {
+		result.Args = append(result.Args, arg.Clone())
+	}
+	if t.Rest != nil {
+		result.Rest = t.Rest.Clone()
+	}
+	if t.Return != nil {
+		result.Return = t.Return.Clone()
+	}
+	if t.Car != nil {
+		result.Car = t.Car.Clone()
+	}
+	if t.Cdr != nil {
+		result.Cdr = t.Cdr.Clone()
+	}
+	if t.Element != nil {
+		result.Element = t.Element.Clone()
+	}
+
+	return result
 }
 
 // Parametrizer implements type parametrization.
 type Parametrizer interface {
-	Parametrize(ctx Ctx, params []*Type) *Type
+	Parametrize(ctx Ctx, params []*Type) (*Type, error)
 }
 
 // Ctx defines context for type parametrization.
@@ -273,7 +315,7 @@ func (t *Type) String() string {
 		result += "("
 		for idx, arg := range t.Args {
 			if idx > 0 {
-				result += ","
+				result += " "
 			}
 			result += arg.String()
 		}
@@ -284,10 +326,13 @@ func (t *Type) String() string {
 		result = result + ")" + t.Return.String()
 
 	case EnumPair:
-		result = result + "(" + t.Car.String() + "," + t.Cdr.String() + ")"
+		result = result + "(" + t.Car.String() + " " + t.Cdr.String() + ")"
 
 	case EnumVector:
 		result = result + "(" + t.Element.String() + ")"
+
+	case EnumTypeVar:
+		result = fmt.Sprintf("%s%v", result, t.TypeVar)
 
 	default:
 	}
@@ -351,7 +396,22 @@ var (
 		Car:  Any,
 		Cdr:  Any,
 	}
+	Vector = &Type{
+		Enum:    EnumVector,
+		Element: Any,
+	}
 )
+
+// Concrete tests if the type is concrete.
+func (t *Type) Concrete() bool {
+	switch t.Enum {
+	case EnumUnspecified, EnumTypeVar:
+		return false
+
+	default:
+		return true
+	}
+}
 
 // IsA tests if type is the same as the argument type.
 func (t *Type) IsA(o *Type) bool {
@@ -384,6 +444,9 @@ func (t *Type) IsA(o *Type) bool {
 	case EnumVector:
 		return t.Element.IsA(o.Element)
 
+	case EnumTypeVar:
+		return t.TypeVar == o.TypeVar
+
 	default:
 		return true
 	}
@@ -395,6 +458,9 @@ func (t *Type) IsKindOf(o *Type) bool {
 		return true
 	}
 	if o.Enum == EnumPair && t.Enum == EnumNil {
+		return true
+	}
+	if o.Enum == EnumTypeVar {
 		return true
 	}
 

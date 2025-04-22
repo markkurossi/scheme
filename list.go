@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2024 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -62,12 +62,31 @@ func (pair *PlainPair) SetTo(p Point) {
 
 // Errorf implements Locator.Errorf.
 func (pair *PlainPair) Errorf(format string, a ...interface{}) error {
-	return fmt.Errorf(format, a...)
+	msg := fmt.Sprintf(format, a...)
+	if isTagged(msg) {
+		return fmt.Errorf("%s", msg)
+	}
+	return fmt.Errorf("\u2260 %s", msg)
+}
+
+// Warningf implements Locator.Warningf.
+func (pair *PlainPair) Warningf(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	if isTagged(msg) {
+		fmt.Printf("warning: %s", msg)
+	} else {
+		fmt.Printf("\u2260 warning: %s", msg)
+	}
 }
 
 // Infof implements Locator.Infof.
 func (pair *PlainPair) Infof(format string, a ...interface{}) {
-	fmt.Printf(format, a...)
+	msg := fmt.Sprintf(format, a...)
+	if isTagged(msg) {
+		fmt.Printf("%s", msg)
+	} else {
+		fmt.Printf("\u2260 %s", msg)
+	}
 }
 
 // Car returns the pair's car value.
@@ -221,13 +240,30 @@ func (pair *LocationPair) Eq(o Value) bool {
 // Errorf implements Locator.Errorf.
 func (pair *LocationPair) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
-	return fmt.Errorf("%s: %s", pair.from, msg)
+	if isTagged(msg) {
+		return fmt.Errorf("%s: %s", pair.from, msg)
+	}
+	return fmt.Errorf("%s: \u2260 %s", pair.from, msg)
+}
+
+// Warningf implements Locator.Warningf.
+func (pair *LocationPair) Warningf(format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	if isTagged(msg) {
+		fmt.Printf("%s: warning: %s", pair.from, msg)
+	} else {
+		fmt.Printf("%s: \u2260 warning: %s", pair.from, msg)
+	}
 }
 
 // Infof implements Locator.Infof.
 func (pair *LocationPair) Infof(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
-	fmt.Printf("%s: %s", pair.from, msg)
+	if isTagged(msg) {
+		fmt.Printf("%s: %s", pair.from, msg)
+	} else {
+		fmt.Printf("%s: \u2260 %s", pair.from, msg)
+	}
 }
 
 func (pair *LocationPair) String() string {
@@ -387,6 +423,18 @@ var listBuiltins = []Builtin{
 		Flags: FlagConst,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return NewPair(args[0], args[1]), nil
+		},
+		Parametrize: func(args []*types.Type) (*types.Type, error) {
+			if len(args) != 2 {
+				return nil, fmt.Errorf(
+					"invalid amount of arguments: got %v, expected 2",
+					len(args))
+			}
+			return &types.Type{
+				Enum: types.EnumPair,
+				Car:  args[0],
+				Cdr:  args[1],
+			}, nil
 		},
 	},
 	{

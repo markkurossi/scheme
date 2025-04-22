@@ -1,9 +1,9 @@
 ;;;
-;;; Copyright (c) 2023 Markku Rossi
+;;; Copyright (c) 2023-2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
-;;; Tests for the r6rs lists library.
+;;; Tests for the Go language library.
 ;;;
 
 (library (main)

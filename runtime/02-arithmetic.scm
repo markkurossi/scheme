@@ -1,15 +1,8 @@
 ;;;
-;;; Copyright (c) 2023 Markku Rossi
+;;; Copyright (c) 2023, 2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
-
-(define (scheme::compare pred x1 x2 rest)
-  (if (pred x1 x2)
-      (if (null? rest)
-          #t
-          (scheme::compare pred x2 (car rest) (cdr rest)))
-      #f))
 
 (define (= z1 z2 . rest)
   (scheme::compare scheme::= z1 z2 rest))

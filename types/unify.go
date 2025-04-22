@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -29,6 +29,9 @@ func Unify(a *Type, b *Type) *Type {
 	}
 	e := a.Enum.Unify(b.Enum)
 	switch e {
+	case EnumUnspecified:
+		return Unspecified
+
 	case EnumAny, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
 		EnumBytevector, EnumNumber, EnumExactInteger, EnumInexactInteger,
 		EnumExactFloat, EnumInexactFloat, EnumPort:
@@ -65,8 +68,11 @@ func Unify(a *Type, b *Type) *Type {
 			Element: Unify(a.Element, b.Element),
 		}
 
+	case EnumNil:
+		return Nil
+
 	default:
-		panic(fmt.Sprintf("unknown Enum: %d", e))
+		panic(fmt.Sprintf("unknown Enum: %v[%v]", e, e))
 	}
 }
 

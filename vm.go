@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2024 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -62,55 +62,51 @@ const (
 	OpGt
 	OpLe
 	OpGe
-	OpCastNumber
-	OpCastSymbol
 )
 
 var operands = map[Operand]string{
-	OpConst:      "const",
-	OpDefine:     "define",
-	OpLambda:     "lambda",
-	OpLabel:      "label",
-	OpLocal:      "local",
-	OpEnv:        "env",
-	OpGlobal:     "global",
-	OpLocalSet:   "local!",
-	OpEnvSet:     "env!",
-	OpGlobalSet:  "global!",
-	OpPushF:      "pushf",
-	OpPushS:      "pushs",
-	OpPushE:      "pushe",
-	OpPopS:       "pops",
-	OpPopE:       "pope",
-	OpPushA:      "pusha",
-	OpCall:       "call",
-	OpIf:         "if",
-	OpIfNot:      "ifnot",
-	OpJmp:        "jmp",
-	OpReturn:     "return",
-	OpPairp:      "pair?",
-	OpCons:       "cons",
-	OpCar:        "car",
-	OpCdr:        "cdr",
-	OpNullp:      "null?",
-	OpZerop:      "zero?",
-	OpNot:        "not",
-	OpAdd:        "+",
-	OpAddI64:     "+<int64>",
-	OpAddConst:   "+const",
-	OpSub:        "-",
-	OpSubI64:     "-<int64>",
-	OpSubConst:   "-const",
-	OpMul:        "*",
-	OpMulConst:   "*const",
-	OpDiv:        "/",
-	OpEq:         "=",
-	OpLt:         "<",
-	OpGt:         ">",
-	OpLe:         "<=",
-	OpGe:         ">=",
-	OpCastNumber: "number!",
-	OpCastSymbol: "symbol!",
+	OpConst:     "const",
+	OpDefine:    "define",
+	OpLambda:    "lambda",
+	OpLabel:     "label",
+	OpLocal:     "local",
+	OpEnv:       "env",
+	OpGlobal:    "global",
+	OpLocalSet:  "local!",
+	OpEnvSet:    "env!",
+	OpGlobalSet: "global!",
+	OpPushF:     "pushf",
+	OpPushS:     "pushs",
+	OpPushE:     "pushe",
+	OpPopS:      "pops",
+	OpPopE:      "pope",
+	OpPushA:     "pusha",
+	OpCall:      "call",
+	OpIf:        "if",
+	OpIfNot:     "ifnot",
+	OpJmp:       "jmp",
+	OpReturn:    "return",
+	OpPairp:     "pair?",
+	OpCons:      "cons",
+	OpCar:       "car",
+	OpCdr:       "cdr",
+	OpNullp:     "null?",
+	OpZerop:     "zero?",
+	OpNot:       "not",
+	OpAdd:       "+",
+	OpAddI64:    "+<int64>",
+	OpAddConst:  "+const",
+	OpSub:       "-",
+	OpSubI64:    "-<int64>",
+	OpSubConst:  "-const",
+	OpMul:       "*",
+	OpMulConst:  "*const",
+	OpDiv:       "/",
+	OpEq:        "=",
+	OpLt:        "<",
+	OpGt:        ">",
+	OpLe:        "<=",
+	OpGe:        ">=",
 }
 
 func (op Operand) String() string {
@@ -675,18 +671,6 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			}
 			accu = Boolean(!IsTrue(accu))
 
-		case OpCastNumber:
-			if accu == nil || !accu.Type().IsKindOf(types.Number) {
-				return nil, scm.Breakf("%s: cannot cast %v", instr.Op,
-					ToScheme(accu))
-			}
-
-		case OpCastSymbol:
-			if accu == nil || !accu.Type().IsA(types.Symbol) {
-				return nil, scm.Breakf("%s: cannot cast %v", instr.Op,
-					ToScheme(accu))
-			}
-
 		default:
 			return nil, scm.Breakf("%s: not implemented", instr.Op)
 		}
@@ -746,11 +730,11 @@ func (scm *Scheme) VMWarningf(format string, a ...interface{}) {
 
 	source, line, err := scm.Location()
 	if err != nil || line == 0 || len(source) == 0 {
-		fmt.Printf("warning: %v\n", msg)
+		scm.Stderr.Printf("\u22a5 warning: %v\n", msg)
 	} else if line == 0 {
-		fmt.Printf("%s: warning: %v\n", source, msg)
+		scm.Stderr.Printf("%s: \u22a5 warning: %v\n", source, msg)
 	} else {
-		fmt.Printf("%s:%v: %s\n", source, line, msg)
+		scm.Stderr.Printf("%s:%v: \u22a5 warning: %s\n", source, line, msg)
 	}
 }
 
@@ -762,9 +746,9 @@ func (scm *Scheme) VMErrorf(format string, a ...interface{}) error {
 	if err != nil || line == 0 || len(source) == 0 {
 		return errors.New(msg)
 	} else if line == 0 {
-		return fmt.Errorf("%s: %s", source, msg)
+		return fmt.Errorf("%s: \u22a5 %s", source, msg)
 	}
-	return fmt.Errorf("%s:%v: %s", source, line, msg)
+	return fmt.Errorf("%s:%v: \u22a5 %s", source, line, msg)
 }
 
 func (scm *Scheme) popToplevel() {
@@ -809,10 +793,9 @@ func (scm *Scheme) PrintStack() {
 		} else {
 			fmt.Printf("???")
 		}
-		fmt.Printf(" at ")
 		source, line := frame.MapPC(pc)
 		if line > 0 {
-			fmt.Printf("%s:%d", source, line)
+			fmt.Printf(" at %s:%d", source, line)
 		}
 		fmt.Println()
 
@@ -994,7 +977,14 @@ var vmBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("invalid message: %v", args[1])
 			}
-			return nil, fmt.Errorf("%v: %v", args[0], message)
+			var irritants string
+			for i := 2; i < len(args); i++ {
+				if len(irritants) != 0 {
+					irritants += ","
+				}
+				irritants += fmt.Sprintf("%v", args[i])
+			}
+			return nil, fmt.Errorf("%v: %v: %v", args[0], message, irritants)
 		},
 	},
 	{

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -102,14 +102,13 @@ var typecheckTests = []struct {
 
 func TestTypecheck(t *testing.T) {
 	for idx, test := range typecheckTests {
-		scm, err := New()
-		if err != nil {
-			t.Fatal(err)
-		}
+		scm := newTestScheme(t)
+
 		scm.Params.Quiet = true
 
-		_, err = scm.Eval(fmt.Sprintf("test-%d", idx),
+		_, err := scm.Eval(fmt.Sprintf("test-%d", idx),
 			strings.NewReader(test.data))
+
 		if err == nil {
 			t.Errorf("test-%d: error %s not detected", idx, test.name)
 		}

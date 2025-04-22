@@ -1,12 +1,18 @@
-(import (go format))
+(import (html unescape))
 
-(pragma (verbose-typecheck #t))
+(pragma (verbose-typecheck #f))
 
-(define (foo l base)
-  (number->string l base))
+(define (test-entities pos)
+  (if (>= pos (vector-length html-entities))
+      #t
+      (let* ((entity (vector-ref html-entities pos))
+             (input (string-append "&" (car entity) " "))
+             (result (html-unescape input)))
+        (if (> (string-length result) 3)
+            (begin
+              (display "entity ") (display pos) (display ": ")
+              (display input) (display "=> ") (display result)
+              (newline)))
+        (test-entities (+ pos 1)))))
 
-(define x (lambda () 42))
-(define y (lambda () "foo"))
-
-(foo (type 1) 10)
-;;(foo y)
+(test-entities 0)

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -153,7 +153,7 @@ var characterBuiltins = []Builtin{
 	},
 	{
 		Name:   "char->integer",
-		Args:   []string{"obj"},
+		Args:   []string{"char"},
 		Return: types.InexactInteger,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			ch, ok := args[0].(Character)
@@ -165,7 +165,7 @@ var characterBuiltins = []Builtin{
 	},
 	{
 		Name:   "integer->char",
-		Args:   []string{"obj"},
+		Args:   []string{"int"},
 		Return: types.Character,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			n, err := Int64(args[0])

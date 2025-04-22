@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2024 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -16,6 +16,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/markkurossi/scheme/pp"
 	"github.com/markkurossi/scheme/types"
 )
 
@@ -30,11 +31,10 @@ type Scheme struct {
 	Stdout  *Port
 	Stderr  *Port
 	Parsing bool
-	verbose bool
 
 	hasRuntime bool
 
-	pragmaVerboseTypecheck bool
+	nextTypeVar int
 
 	pc      int
 	sp      int
@@ -58,6 +58,34 @@ type Params struct {
 
 	// Do not warn when redefining global symbols.
 	NoWarnDefine bool
+
+	// Pragmas.
+	Pragma  Pragmas
+	pragmas []Pragmas
+}
+
+// PushScope push a new compilation scope and saves the current
+// parameters.
+func (p *Params) PushScope() {
+	p.pragmas = append(p.pragmas, p.Pragma)
+}
+
+// PopScope pops a compilation scope and restores saved parameters.
+func (p *Params) PopScope() {
+	if len(p.pragmas) == 0 {
+		panic("scope stack underflow")
+	}
+	p.Pragma = p.pragmas[len(p.pragmas)-1]
+	p.pragmas = p.pragmas[:len(p.pragmas)-1]
+}
+
+// Pragmas define compilation pragmas.
+type Pragmas struct {
+	// Do not check boolean expressions in boolean contexts.
+	NoCheckBooleanExprs bool
+
+	// Enable verbose typechecks.
+	VerboseTypecheck bool
 }
 
 // New creates a new Scheme interpreter.
@@ -106,8 +134,8 @@ func NewWithParams(params Params) (*Scheme, error) {
 }
 
 func (scm *Scheme) verbosef(format string, a ...interface{}) {
-	if scm.verbose {
-		fmt.Printf(format, a...)
+	if scm.Params.Verbose {
+		scm.Stdout.Printf(format, a...)
 	}
 }
 
@@ -186,10 +214,11 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 
 	lambda := &Lambda{
 		Impl: &LambdaImpl{
-			Name:   builtin.Name,
-			Args:   args,
-			Return: builtin.Return,
-			Native: builtin.Native,
+			Name:         builtin.Name,
+			Args:         args,
+			Return:       builtin.Return,
+			Native:       builtin.Native,
+			Parametrizer: builtin.Parametrize,
 		},
 	}
 	sym := scm.Intern(builtin.Name)
@@ -238,7 +267,7 @@ func (scm *Scheme) evalRuntime(source string, in io.Reader) (Value, error) {
 	}
 	sym := scm.Intern("scheme::init-library")
 
-	return scm.Apply(sym.Global, []Value{library})
+	return scm.Apply(sym.Global, []Value{library, Boolean(true)})
 }
 
 func (scm *Scheme) eval(source string, in io.Reader) (Value, error) {
@@ -261,6 +290,46 @@ func (scm *Scheme) eval(source string, in io.Reader) (Value, error) {
 	}
 
 	return scm.Apply(init, nil)
+}
+
+// Vet checks the source for errors.
+func (scm *Scheme) Vet(source string, in io.Reader) error {
+	library, err := scm.Load(source, in)
+	if err != nil {
+		return err
+	}
+	sym := scm.Intern("scheme::init-library")
+
+	_, err = scm.Apply(sym.Global, []Value{library, Boolean(false)})
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+// PrettyPrint formats the souce code into the pp.Writer.
+func (scm *Scheme) PrettyPrint(source string, in io.Reader,
+	w pp.Writer) error {
+
+	library, err := scm.Load(source, in)
+	if err != nil {
+		return err
+	}
+	sym := scm.Intern("scheme::init-library")
+
+	_, err = scm.Apply(sym.Global, []Value{library, Boolean(false)})
+	if err != nil {
+		return err
+	}
+	values, ok := ListValues(library)
+	if !ok || len(values) != 5 {
+		return fmt.Errorf("invalid library: %v", library)
+	}
+	lib, ok := values[4].(*Library)
+	if !ok {
+		return fmt.Errorf("invalid library: %T", values[4])
+	}
+	return lib.PrettyPrint(w)
 }
 
 // Global returns the global value of the symbol.

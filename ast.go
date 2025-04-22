@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023-2024 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -9,6 +9,7 @@ package scheme
 import (
 	"fmt"
 
+	"github.com/markkurossi/scheme/pp"
 	"github.com/markkurossi/scheme/types"
 )
 
@@ -16,9 +17,12 @@ import (
 type AST interface {
 	Locator() Locator
 	Equal(o AST) bool
-	Type(ctx types.Ctx) *types.Type
-	Typecheck(lib *Library, round int) error
+	SetType(t *types.Type)
+	Type() *types.Type
+	Infer(env *InferEnv) (*Branch, *types.Type, error)
+	Inferred(i Inferred) error
 	Bytecode(lib *Library) error
+	PP(w pp.Writer)
 }
 
 var (
@@ -40,8 +44,27 @@ var (
 	_ AST = &ASTPragma{}
 )
 
+// Typed implements AST type information.
+type Typed struct {
+	t *types.Type
+}
+
+// SetType implements AST.SetType.
+func (t *Typed) SetType(typ *types.Type) {
+	t.t = typ
+}
+
+// Type implements AST.Type.
+func (t *Typed) Type() *types.Type {
+	if t.t == nil {
+		return types.Unspecified
+	}
+	return t.t
+}
+
 // ASTSequence implements a (begin ...) sequence.
 type ASTSequence struct {
+	Typed
 	From  Locator
 	Items []AST
 }
@@ -73,25 +96,6 @@ func (ast *ASTSequence) Equal(o AST) bool {
 	return true
 }
 
-// Type implements AST.Type.
-func (ast *ASTSequence) Type(ctx types.Ctx) *types.Type {
-	if len(ast.Items) == 0 {
-		return types.Unspecified
-	}
-	return ast.Items[len(ast.Items)-1].Type(ctx)
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTSequence) Typecheck(lib *Library, round int) error {
-	for _, item := range ast.Items {
-		err := item.Typecheck(lib, round)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTSequence) Bytecode(lib *Library) error {
 	for _, item := range ast.Items {
@@ -105,6 +109,7 @@ func (ast *ASTSequence) Bytecode(lib *Library) error {
 
 // ASTDefine implements (define name value).
 type ASTDefine struct {
+	Typed
 	From  Locator
 	Name  *Identifier
 	Flags Flags
@@ -127,38 +132,6 @@ func (ast *ASTDefine) Equal(o AST) bool {
 		ast.Value.Equal(oast.Value)
 }
 
-// Type implements AST.Type.
-func (ast *ASTDefine) Type(ctx types.Ctx) *types.Type {
-	return ast.Value.Type(ctx)
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTDefine) Typecheck(lib *Library, round int) error {
-	err := ast.Value.Typecheck(lib, round)
-	if err != nil {
-		return err
-	}
-
-	sym := lib.scm.Intern(ast.Name.Name)
-	ctx := make(types.Ctx)
-	nt := ast.Value.Type(ctx)
-
-	if round == 0 {
-		if !sym.GlobalType.IsA(types.Unspecified) {
-			return ast.From.Errorf("redefining symbol '%s'", ast.Name.Name)
-		}
-		sym.GlobalType = nt
-		lib.recheck = true
-	} else {
-		if !nt.IsA(sym.GlobalType) {
-			sym.GlobalType = nt
-			lib.recheck = true
-		}
-	}
-
-	return nil
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTDefine) Bytecode(lib *Library) error {
 	err := ast.Value.Bytecode(lib)
@@ -170,6 +143,7 @@ func (ast *ASTDefine) Bytecode(lib *Library) error {
 
 // ASTSet implements (set name value).
 type ASTSet struct {
+	Typed
 	From    Locator
 	Name    string
 	Binding *EnvBinding
@@ -196,31 +170,6 @@ func (ast *ASTSet) Equal(o AST) bool {
 	return ast.Name == oast.Name && ast.Value.Equal(oast.Value)
 }
 
-// Type implements AST.Type.
-func (ast *ASTSet) Type(ctx types.Ctx) *types.Type {
-	return ast.Value.Type(ctx)
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTSet) Typecheck(lib *Library, round int) error {
-	ctx := make(types.Ctx)
-	vtype := ast.Value.Type(ctx)
-
-	if ast.Binding != nil {
-		// let-variables can be assigned with different value types.
-		return nil
-	}
-	sym := lib.scm.Intern(ast.Name)
-	if sym.GlobalType.IsA(types.Unspecified) {
-		return ast.From.Errorf("setting undefined symbol '%s'", ast.Name)
-	}
-	if !vtype.IsKindOf(sym.GlobalType) {
-		return ast.From.Errorf("can't assign %s to variable of type %s",
-			vtype, sym.GlobalType)
-	}
-	return nil
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTSet) Bytecode(lib *Library) error {
 	err := ast.Value.Bytecode(lib)
@@ -240,6 +189,7 @@ func (ast *ASTSet) Bytecode(lib *Library) error {
 
 // ASTLet implements let syntaxes.
 type ASTLet struct {
+	Typed
 	From     Locator
 	Kind     Keyword
 	Captures bool
@@ -253,6 +203,16 @@ type ASTLetBinding struct {
 	From    Locator
 	Binding *EnvBinding
 	Init    AST
+}
+
+// Name returns the variable name of the let binding.
+func (b *ASTLetBinding) Name() string {
+	for k, v := range b.Binding.Frame.Bindings {
+		if v == b.Binding {
+			return k
+		}
+	}
+	panic(fmt.Sprintf("let binding's name not found"))
 }
 
 // Locator implements AST.Locator.
@@ -285,42 +245,6 @@ func (ast *ASTLet) Equal(o AST) bool {
 	return true
 }
 
-// Type implements AST.Type.
-func (ast *ASTLet) Type(ctx types.Ctx) *types.Type {
-	return ast.Body[len(ast.Body)-1].Type(ctx)
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTLet) Typecheck(lib *Library, round int) error {
-	ctx := make(types.Ctx)
-
-	for _, b := range ast.Bindings {
-		err := b.Init.Typecheck(lib, round)
-		if err != nil {
-			return err
-		}
-		nt := b.Init.Type(ctx)
-		if round == 0 {
-			b.Binding.Type = nt
-			if ast.Kind == KwLetrec {
-				lib.recheck = true
-			}
-		} else {
-			if !nt.IsKindOf(b.Binding.Type) {
-				b.Binding.Type = nt
-				lib.recheck = true
-			}
-		}
-	}
-	for _, body := range ast.Body {
-		err := body.Typecheck(lib, round)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTLet) Bytecode(lib *Library) error {
 	lib.addPushS(ast.From, len(ast.Bindings), ast.Captures)
@@ -348,6 +272,7 @@ func (ast *ASTLet) Bytecode(lib *Library) error {
 
 // ASTIf implements if syntax.
 type ASTIf struct {
+	Typed
 	From  Locator
 	Cond  AST
 	True  AST
@@ -382,33 +307,6 @@ func (ast *ASTIf) Equal(o AST) bool {
 	}
 
 	return true
-}
-
-// Type implements AST.Type.
-func (ast *ASTIf) Type(ctx types.Ctx) *types.Type {
-	if ast.False == nil {
-		return types.Unify(ast.Cond.Type(ctx), ast.True.Type(ctx))
-	}
-	return types.Unify(ast.True.Type(ctx), ast.False.Type(ctx))
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTIf) Typecheck(lib *Library, round int) error {
-	err := ast.Cond.Typecheck(lib, round)
-	if err != nil {
-		return err
-	}
-	err = ast.True.Typecheck(lib, round)
-	if err != nil {
-		return err
-	}
-	if ast.False != nil {
-		err = ast.False.Typecheck(lib, round)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -455,6 +353,7 @@ func (ast *ASTIf) Bytecode(lib *Library) error {
 
 // ASTApply implements apply syntax.
 type ASTApply struct {
+	Typed
 	From   Locator
 	Lambda AST
 	Args   AST
@@ -475,24 +374,6 @@ func (ast *ASTApply) Equal(o AST) bool {
 	return ast.Lambda.Equal(oast.Lambda) &&
 		ast.Args.Equal(oast.Args) &&
 		ast.Tail == oast.Tail
-}
-
-// Type implements AST.Type.
-func (ast *ASTApply) Type(ctx types.Ctx) *types.Type {
-	t := ast.Lambda.Type(ctx)
-	if t.Enum != types.EnumLambda {
-		return types.Unspecified
-	}
-	return t.Return
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTApply) Typecheck(lib *Library, round int) error {
-	err := ast.Lambda.Typecheck(lib, round)
-	if err != nil {
-		return err
-	}
-	return ast.Args.Typecheck(lib, round)
 }
 
 // Bytecode implements AST.Bytecode.
@@ -521,6 +402,7 @@ func (ast *ASTApply) Bytecode(lib *Library) error {
 
 // ASTCall implements function call syntax.
 type ASTCall struct {
+	Typed
 	From     Locator
 	Inline   bool
 	InlineOp Operand
@@ -567,161 +449,6 @@ func (ast *ASTCall) Equal(o AST) bool {
 		}
 	}
 	return ast.Tail == oast.Tail
-}
-
-var inlineCallTypes = map[Operand]inlineParametrizer{
-	OpCons: inlineParametrizerCons,
-	OpAdd:  inlineParametrizerNumber,
-	OpSub:  inlineParametrizerNumber,
-	OpMul:  inlineParametrizerNumber,
-	OpDiv:  inlineParametrizerNumber,
-	OpEq:   inlineParametrizerBoolean,
-	OpLt:   inlineParametrizerBoolean,
-	OpGt:   inlineParametrizerBoolean,
-	OpLe:   inlineParametrizerBoolean,
-	OpGe:   inlineParametrizerBoolean,
-}
-
-type inlineParametrizer func(params []*types.Type) *types.Type
-
-func inlineParametrizerCons(params []*types.Type) *types.Type {
-	return &types.Type{
-		Enum: types.EnumPair,
-		Car:  types.Unspecified,
-		Cdr:  types.Unspecified,
-	}
-}
-
-func inlineParametrizerNumber(params []*types.Type) *types.Type {
-	var result *types.Type
-	for _, param := range params {
-		result = types.Coerce(result, param)
-	}
-	return result
-}
-
-func inlineParametrizerBoolean(params []*types.Type) *types.Type {
-	return types.Boolean
-}
-
-func inlineParametrizerUnspecified(params []*types.Type) *types.Type {
-	return types.Unspecified
-}
-
-func inlineParametrizerCastNumber(params []*types.Type) *types.Type {
-	return types.Number
-}
-
-func inlineParametrizerCastSymbol(params []*types.Type) *types.Type {
-	return types.Symbol
-}
-
-// Type implements AST.Type.
-func (ast *ASTCall) Type(ctx types.Ctx) *types.Type {
-	var params []*types.Type
-	for _, arg := range ast.Args {
-		params = append(params, arg.Type(ctx))
-	}
-
-	if ast.Inline {
-		parametrizer, ok := inlineCallTypes[ast.InlineOp]
-		if !ok {
-			panic(fmt.Sprintf("unknown inline operand: %v", ast.InlineOp))
-		}
-		return parametrizer(params)
-	}
-	t := ast.Func.Type(ctx)
-	if t.Enum != types.EnumLambda {
-		return types.Unspecified
-	}
-	if t.Parametrizer == nil {
-		return t.Return
-	}
-	return t.Parametrizer.Parametrize(ctx, params)
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTCall) Typecheck(lib *Library, round int) error {
-	ctx := make(types.Ctx)
-	var ft *types.Type
-	if ast.Inline {
-		sym := lib.scm.Intern(ast.InlineOp.String())
-		ft = sym.GlobalType
-		if ft.IsA(types.Unspecified) {
-			return ast.From.Errorf("unknown inline operand: %v", ast.InlineOp)
-		}
-	} else {
-		err := ast.Func.Typecheck(lib, round)
-		if err != nil {
-			return err
-		}
-		ft = ast.Func.Type(ctx)
-	}
-	if ft.IsA(types.Unspecified) || ft.IsA(types.Any) {
-		return nil
-	}
-	if ft.Enum != types.EnumLambda {
-		return ast.Func.Locator().Errorf("invalid procedure: %s", ft)
-	}
-	if len(ast.Args) < ft.MinArgs() {
-		return ast.From.Errorf("too few arguments: got %v, need %v",
-			len(ast.Args), ft.MinArgs())
-	}
-	if len(ast.Args) > ft.MaxArgs() {
-		return ast.From.Errorf("too many arguments: got %v, max %v",
-			len(ast.Args), ft.MaxArgs())
-	}
-	if lib.scm.pragmaVerboseTypecheck {
-		var argOfs []int
-		sig := fmt.Sprintf("(%v", ast.Func)
-		for _, arg := range ft.Args {
-			sig += " "
-			argOfs = append(argOfs, len(sig))
-			sig += fmt.Sprintf("%v", arg)
-		}
-		sig += ")"
-
-		ast.From.Infof("typecheck: calling (%s", ast.Func)
-		for _, arg := range ast.Args {
-			fmt.Printf(" %v", arg)
-		}
-		fmt.Println(")")
-
-		var prefix string
-		var prefixes []string
-		for idx, arg := range ast.Args {
-			for len(prefix) < argOfs[idx] {
-				prefix += " "
-			}
-			prefixes = append(prefixes, prefix)
-			fmt.Printf("%s%s\n", prefix, arg)
-			prefix += "|"
-		}
-		fmt.Println(prefix)
-		fmt.Println(sig)
-		fmt.Println(prefix)
-
-		for i := len(ast.Args) - 1; i >= 0; i-- {
-			arg := ast.Args[i]
-			at := arg.Type(ctx)
-			if i < len(ft.Args) {
-				fmt.Printf("%s%v IsKindOf %v: %v\n", prefixes[i], at,
-					ft.Args[i], at.IsKindOf(ft.Args[i]))
-			}
-		}
-	}
-
-	// Check argument types.
-	for idx, arg := range ast.Args {
-		at := arg.Type(ctx)
-		if idx < len(ft.Args) {
-			if !at.IsKindOf(ft.Args[idx]) {
-				return arg.Locator().Errorf("invalid argument %v, expected %v",
-					at, ft.Args[idx])
-			}
-		}
-	}
-	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -783,6 +510,7 @@ func (ast *ASTCall) Bytecode(lib *Library) error {
 
 // ASTCallUnary implements inlined unary function calls.
 type ASTCallUnary struct {
+	Typed
 	From Locator
 	Op   Operand
 	I    int
@@ -803,66 +531,6 @@ func (ast *ASTCallUnary) Equal(o AST) bool {
 	return ast.Op == oast.Op && ast.Arg.Equal(oast.Arg)
 }
 
-var inlineUnaryTypes = map[Operand]inlineParametrizer{
-	OpPairp:      inlineParametrizerBoolean,
-	OpNullp:      inlineParametrizerBoolean,
-	OpZerop:      inlineParametrizerBoolean,
-	OpNot:        inlineParametrizerBoolean,
-	OpCar:        inlineParametrizerUnspecified,
-	OpCdr:        inlineParametrizerUnspecified,
-	OpAddConst:   inlineParametrizerNumber,
-	OpSubConst:   inlineParametrizerNumber,
-	OpMulConst:   inlineParametrizerNumber,
-	OpCastNumber: inlineParametrizerCastNumber,
-	OpCastSymbol: inlineParametrizerCastSymbol,
-}
-
-// Type implements AST.Type.
-func (ast *ASTCallUnary) Type(ctx types.Ctx) *types.Type {
-	params := []*types.Type{
-		ast.Arg.Type(ctx),
-		types.InexactInteger,
-	}
-
-	parametrizer, ok := inlineUnaryTypes[ast.Op]
-	if !ok {
-		panic(fmt.Sprintf("unknown inline unary operand: %v", ast.Op))
-	}
-	return parametrizer(params)
-}
-
-var inlineUnaryArgTypes = map[Operand]*types.Type{
-	OpPairp:      types.Any,
-	OpCar:        types.Pair,
-	OpCdr:        types.Pair,
-	OpNullp:      types.Any,
-	OpZerop:      types.Any,
-	OpNot:        types.Any,
-	OpAddConst:   types.Number,
-	OpSubConst:   types.Number,
-	OpMulConst:   types.Number,
-	OpCastNumber: types.Any,
-	OpCastSymbol: types.Any,
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTCallUnary) Typecheck(lib *Library, round int) error {
-	ctx := make(types.Ctx)
-	err := ast.Arg.Typecheck(lib, round)
-	if err != nil {
-		return err
-	}
-	at, ok := inlineUnaryArgTypes[ast.Op]
-	if !ok {
-		panic(fmt.Sprintf("unknown inline unary operand: %v", ast.Op))
-	}
-	t := ast.Arg.Type(ctx)
-	if !t.IsKindOf(at) {
-		return ast.From.Errorf("invalid argument %v, expected %v", t, at)
-	}
-	return nil
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTCallUnary) Bytecode(lib *Library) error {
 	err := ast.Arg.Bytecode(lib)
@@ -876,6 +544,7 @@ func (ast *ASTCallUnary) Bytecode(lib *Library) error {
 
 // ASTLambda implements lambda syntax.
 type ASTLambda struct {
+	Typed
 	From        Locator
 	Name        *Identifier
 	Args        Args
@@ -912,94 +581,6 @@ func (ast *ASTLambda) Equal(o AST) bool {
 	return ast.Captures == oast.Captures && ast.Flags == oast.Flags
 }
 
-// Type implements AST.Type.
-func (ast *ASTLambda) Type(ctx types.Ctx) *types.Type {
-	t := &types.Type{
-		Enum:         types.EnumLambda,
-		Return:       ast.Body[len(ast.Body)-1].Type(ctx),
-		Parametrizer: ast,
-	}
-	for _, arg := range ast.Args.Fixed {
-		t.Args = append(t.Args, arg.Type)
-	}
-	if ast.Args.Rest != nil {
-		t.Rest = ast.Args.Rest.Type
-	}
-	return t
-}
-
-// Parametrize implements types.Parametrizer.
-func (ast *ASTLambda) Parametrize(ctx types.Ctx,
-	params []*types.Type) *types.Type {
-
-	if ctx[ast] {
-		return types.Unspecified
-	}
-	ctx[ast] = true
-	defer func() {
-		ctx[ast] = false
-	}()
-
-	// Bind argument types.
-	if len(params) < ast.Args.Min || len(params) > ast.Args.Max {
-		return types.Unspecified
-	}
-	for i := 0; i < len(ast.Args.Fixed); i++ {
-		ast.ArgBindings[i].Type = params[i]
-	}
-	if len(params) > len(ast.Args.Fixed) {
-		// Rest.
-		var rt *types.Type
-		for i := len(ast.Args.Fixed); i < len(params); i++ {
-			rt = types.Unify(rt, params[i])
-		}
-		ast.ArgBindings[len(ast.Args.Fixed)].Type = &types.Type{
-			Enum: types.EnumPair,
-			Car:  rt,
-			Cdr:  types.Unspecified,
-		}
-	}
-
-	result := types.Unspecified
-	for _, a := range ast.Body {
-		result = a.Type(ctx)
-	}
-
-	return result
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTLambda) Typecheck(lib *Library, round int) error {
-	for _, body := range ast.Body {
-		err := body.Typecheck(lib, round)
-		if err != nil {
-			return err
-		}
-	}
-	if ast.Name == nil {
-		return nil
-	}
-
-	ctx := make(types.Ctx)
-	sym := lib.scm.Intern(ast.Name.Name)
-	nt := ast.Type(ctx)
-
-	if round == 0 {
-		if !sym.GlobalType.IsA(types.Unspecified) {
-			return ast.From.Errorf("redefining symbol '%s'", ast.Name.Name)
-		}
-		sym.GlobalType = nt
-		lib.recheck = true
-	} else {
-		if !nt.IsA(sym.GlobalType) {
-			sym.GlobalType = nt
-			lib.recheck = true
-		}
-	}
-
-	return nil
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTLambda) Bytecode(lib *Library) error {
 	lib.addInstr(ast.From, OpLambda, nil, len(lib.lambdas))
@@ -1024,8 +605,9 @@ func (ast *ASTLambda) Bytecode(lib *Library) error {
 
 // ASTConstant implements contant values.
 type ASTConstant struct {
-	From  Locator
-	Value Value
+	From   Locator
+	Quoted bool
+	Value  Value
 }
 
 func (ast *ASTConstant) String() string {
@@ -1046,17 +628,16 @@ func (ast *ASTConstant) Equal(o AST) bool {
 	return ast.Value.Equal(oast.Value)
 }
 
-// Type implements AST.Type.
-func (ast *ASTConstant) Type(ctx types.Ctx) *types.Type {
-	if ast.Value == nil {
-		return types.Nil
-	}
-	return ast.Value.Type()
+// SetType implements AST.SetType
+func (ast *ASTConstant) SetType(t *types.Type) {
 }
 
-// Typecheck implements AST.Typecheck.
-func (ast *ASTConstant) Typecheck(lib *Library, round int) error {
-	return nil
+// Type implements AST.Type.
+func (ast *ASTConstant) Type() *types.Type {
+	if ast.Value == nil {
+		return types.Unspecified
+	}
+	return ast.Value.Type()
 }
 
 // Bytecode implements AST.Bytecode.
@@ -1067,6 +648,7 @@ func (ast *ASTConstant) Bytecode(lib *Library) error {
 
 // ASTIdentifier implements identifer references.
 type ASTIdentifier struct {
+	Typed
 	From    Locator
 	Name    string
 	Binding *EnvBinding
@@ -1101,19 +683,6 @@ func (ast *ASTIdentifier) Equal(o AST) bool {
 	return true
 }
 
-// Type implements AST.Type.
-func (ast *ASTIdentifier) Type(ctx types.Ctx) *types.Type {
-	if ast.Binding != nil {
-		return ast.Binding.Type
-	}
-	return ast.Global.GlobalType
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTIdentifier) Typecheck(lib *Library, round int) error {
-	return nil
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTIdentifier) Bytecode(lib *Library) error {
 	if ast.Binding != nil {
@@ -1133,10 +702,12 @@ func (ast *ASTIdentifier) Bytecode(lib *Library) error {
 
 // ASTCond implements cond syntax.
 type ASTCond struct {
-	From     Locator
-	Choices  []*ASTCondChoice
-	Tail     bool
-	Captures bool
+	Typed
+	From       Locator
+	Choices    []*ASTCondChoice
+	Conclusive bool
+	Tail       bool
+	Captures   bool
 }
 
 // ASTCondChoice implements a cond choice.
@@ -1183,56 +754,6 @@ func (ast *ASTCond) Equal(o AST) bool {
 		}
 	}
 	return ast.Tail == oast.Tail && ast.Captures == oast.Captures
-}
-
-// Type implements AST.Type.
-func (ast *ASTCond) Type(ctx types.Ctx) *types.Type {
-	var t *types.Type
-	var hadDefault bool
-
-	for _, choice := range ast.Choices {
-		if choice.Cond == nil {
-			hadDefault = true
-		}
-		if len(choice.Exprs) == 0 {
-			if hadDefault {
-				return types.Boolean
-			}
-			return choice.Cond.Type(ctx)
-		}
-		t = types.Unify(t, choice.Exprs[len(choice.Exprs)-1].Type(ctx))
-	}
-	if !hadDefault {
-		// No default so value of the last cond (false) is one valid
-		// return value.
-		t = types.Unify(t, types.Boolean)
-	}
-	return t
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTCond) Typecheck(lib *Library, round int) error {
-	for _, choice := range ast.Choices {
-		if choice.Cond != nil {
-			err := choice.Cond.Typecheck(lib, round)
-			if err != nil {
-				return err
-			}
-		}
-		if choice.Func != nil {
-			err := choice.Func.Typecheck(lib, round)
-			if err != nil {
-				return err
-			}
-		}
-		for _, expr := range choice.Exprs {
-			err := expr.Typecheck(lib, round)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -1293,7 +814,7 @@ func (ast *ASTCond) Bytecode(lib *Library) error {
 			lib.addCall(nil, 1, ast.Tail)
 			if !ast.Tail {
 				// Pop value scope.
-				lib.addPopS(choice.From, 1, ast.Captures)
+				lib.addPopS(choice.From, 1, false)
 			}
 		} else {
 			// Compile expressions.
@@ -1316,11 +837,13 @@ func (ast *ASTCond) Bytecode(lib *Library) error {
 
 // ASTCase implements case syntax.
 type ASTCase struct {
+	Typed
 	From        Locator
 	Choices     []*ASTCaseChoice
 	ValueFrame  *EnvFrame
 	EqvArgFrame *EnvFrame
 	Expr        AST
+	Conclusive  bool
 	Tail        bool
 	Captures    bool
 }
@@ -1375,43 +898,6 @@ func (ast *ASTCase) Equal(o AST) bool {
 	}
 	return ast.Expr.Equal(oast.Expr) && ast.Tail == oast.Tail &&
 		ast.Captures == oast.Captures
-}
-
-// Type implements AST.Type.
-func (ast *ASTCase) Type(ctx types.Ctx) *types.Type {
-	var t *types.Type
-	var hadDefault bool
-
-	for _, choice := range ast.Choices {
-		// Else branch has empty list of datums.
-		if len(choice.Datums) == 0 {
-			hadDefault = true
-		}
-		t = types.Unify(t, choice.Exprs[len(choice.Exprs)-1].Type(ctx))
-	}
-	if !hadDefault {
-		// No default so value of the last eqv? (false) is one valid
-		// return value.
-		t = types.Unify(t, types.Boolean)
-	}
-	return t
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTCase) Typecheck(lib *Library, round int) error {
-	err := ast.Expr.Typecheck(lib, round)
-	if err != nil {
-		return err
-	}
-	for _, choice := range ast.Choices {
-		for _, expr := range choice.Exprs {
-			err = expr.Typecheck(lib, round)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -1511,6 +997,7 @@ func (ast *ASTCase) Bytecode(lib *Library) error {
 
 // ASTAnd implements (and ...) syntax.
 type ASTAnd struct {
+	Typed
 	From  Locator
 	Exprs []AST
 }
@@ -1532,29 +1019,6 @@ func (ast *ASTAnd) Equal(o AST) bool {
 		}
 	}
 	return true
-}
-
-// Type implements AST.Type.
-func (ast *ASTAnd) Type(ctx types.Ctx) *types.Type {
-	if len(ast.Exprs) == 0 {
-		return types.Boolean
-	}
-	var t *types.Type
-	for _, expr := range ast.Exprs {
-		t = types.Unify(t, expr.Type(ctx))
-	}
-	return t
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTAnd) Typecheck(lib *Library, round int) error {
-	for _, expr := range ast.Exprs {
-		err := expr.Typecheck(lib, round)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -1587,6 +1051,7 @@ func (ast *ASTAnd) Bytecode(lib *Library) error {
 
 // ASTOr implements (or ...) syntax.
 type ASTOr struct {
+	Typed
 	From  Locator
 	Exprs []AST
 }
@@ -1608,33 +1073,6 @@ func (ast *ASTOr) Equal(o AST) bool {
 		}
 	}
 	return true
-}
-
-// Type implements AST.Type.
-func (ast *ASTOr) Type(ctx types.Ctx) *types.Type {
-	if len(ast.Exprs) == 0 {
-		return types.Boolean
-	}
-	var t *types.Type
-	for _, expr := range ast.Exprs {
-		t = types.Unify(t, expr.Type(ctx))
-		if t != nil && !t.IsA(types.Boolean) {
-			// The first non-boolean value is the value of or.
-			return t
-		}
-	}
-	return t
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTOr) Typecheck(lib *Library, round int) error {
-	for _, expr := range ast.Exprs {
-		err := expr.Typecheck(lib, round)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // Bytecode implements AST.Bytecode.
@@ -1667,6 +1105,7 @@ func (ast *ASTOr) Bytecode(lib *Library) error {
 
 // ASTPragma implements compiler pragmas.
 type ASTPragma struct {
+	Typed
 	From       Locator
 	Directives [][]Value
 }
@@ -1679,41 +1118,6 @@ func (ast *ASTPragma) Locator() Locator {
 // Equal implements AST.Equal.
 func (ast *ASTPragma) Equal(o AST) bool {
 	return false
-}
-
-// Type implements AST.Type.
-func (ast *ASTPragma) Type(ctx types.Ctx) *types.Type {
-	return types.Unspecified
-}
-
-// Typecheck implements AST.Typecheck.
-func (ast *ASTPragma) Typecheck(lib *Library, round int) error {
-	if round > 0 {
-		return nil
-	}
-	for _, d := range ast.Directives {
-		if len(d) != 2 {
-			return ast.From.Errorf("invalid directive: %v", d)
-		}
-		id, ok := d[0].(*Identifier)
-		if !ok {
-			return ast.From.Errorf(
-				"invalid directive '%v': expected identifier", d[0])
-		}
-		switch id.Name {
-		case "verbose-typecheck":
-			v, ok := d[1].(Boolean)
-			if !ok {
-				return ast.From.Errorf("pragma %s: invalid argument: %v",
-					id, d[1])
-			}
-			lib.scm.pragmaVerboseTypecheck = bool(v)
-
-		default:
-			return ast.From.Errorf("unknown pragma '%s'", id.Name)
-		}
-	}
-	return nil
 }
 
 // Bytecode implements AST.Bytecode.

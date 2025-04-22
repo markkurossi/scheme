@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2022-2023 Markku Rossi
+;;; Copyright (c) 2022-2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -106,6 +106,8 @@
 
 (load "test-go-lang.scm")
 (load "test-go-format.scm")
+
+(load "test-html.scm")
 
 (runner 'stats)
 (runner 'status)

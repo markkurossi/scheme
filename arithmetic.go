@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -147,7 +147,7 @@ func (v *BigInt) String() string {
 
 // Scheme implements Value.Scheme.
 func (v *BigInt) Scheme() string {
-	return v.String()
+	return "#e" + v.String()
 }
 
 // Eq implements Value.Eq.
@@ -884,6 +884,22 @@ func bit(z Value, i int) (uint, error) {
 	}
 }
 
+func parametrizeNumber(args []*types.Type) (*types.Type, error) {
+	var returnType *types.Type
+
+	for _, t := range args {
+		returnType = types.Unify(returnType, t)
+	}
+	if returnType == nil {
+		returnType = types.Number
+	}
+	if returnType.Concrete() && !returnType.IsKindOf(types.Number) {
+		return nil, fmt.Errorf("invalid arguments: %v, expected %v",
+			returnType, types.Number)
+	}
+	return returnType, nil
+}
+
 var numberBuiltins = []Builtin{
 	{
 		Name:   "number?",
@@ -1058,6 +1074,7 @@ var numberBuiltins = []Builtin{
 			}
 			return sum, nil
 		},
+		Parametrize: parametrizeNumber,
 	},
 	{
 		Name:   "scheme::*",
@@ -1066,6 +1083,7 @@ var numberBuiltins = []Builtin{
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return numMul(args[0], args[1])
 		},
+		Parametrize: parametrizeNumber,
 	},
 	{
 		Name:   "-",
@@ -1115,6 +1133,7 @@ var numberBuiltins = []Builtin{
 
 			return diff, nil
 		},
+		Parametrize: parametrizeNumber,
 	},
 	{
 		Name:   "scheme::/",
@@ -1123,6 +1142,7 @@ var numberBuiltins = []Builtin{
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return numDiv(args[0], args[1])
 		},
+		Parametrize: parametrizeNumber,
 	},
 	{
 		Name:    "mod",

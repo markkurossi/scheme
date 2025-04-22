@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/markkurossi/scheme/pp"
 	"github.com/markkurossi/scheme/types"
 )
 
@@ -31,6 +32,10 @@ type Library struct {
 	exported  map[string]*export
 	recheck   bool
 	current   *lambdaCompilation
+}
+
+func (lib *Library) String() string {
+	return fmt.Sprintf("(library %v %v)", lib.Name, lib.Source)
 }
 
 // Scheme implements Value.Scheme.
@@ -145,18 +150,34 @@ func (code Code) Print(w io.Writer) {
 	}
 }
 
+// PrettyPrint formats the library Scheme code into the pp.Writer.
+func (lib *Library) PrettyPrint(w pp.Writer) error {
+	w.Header()
+	last := 1
+	for _, item := range lib.Body.Items {
+		line := item.Locator().From().Line
+		if line > last+1 {
+			w.Println()
+		}
+		last = line
+
+		item.PP(w)
+		w.Println()
+	}
+	w.Trailer()
+
+	return w.Error()
+}
+
 // Compile compiles the library into bytecode.
 func (lib *Library) Compile() (Value, error) {
-	lib.recheck = true
-	for round := 0; lib.recheck; round++ {
-		lib.recheck = false
-		err := lib.Body.Typecheck(lib, round)
-		if err != nil {
-			return nil, err
-		}
+	inferer := NewInferer(lib.scm, lib.Body.Items)
+	_, err := inferer.Infer(lib.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	err := lib.Body.Bytecode(lib)
+	err = lib.Body.Bytecode(lib)
 	if err != nil {
 		return nil, err
 	}
@@ -214,15 +235,17 @@ func (lib *Library) Compile() (Value, error) {
 			if def.Name != nil {
 				name = def.Name.Name
 			}
-
-			ctx := make(types.Ctx)
+			t := def.Self.Type()
+			if t.Enum != types.EnumLambda {
+				return nil, fmt.Errorf("invalid lambda type: %v", t)
+			}
 
 			instr.I = def.Start
 			instr.J = def.End
 			instr.V = &LambdaImpl{
 				Name:     name,
 				Args:     def.Args,
-				Return:   def.Body[len(def.Body)-1].Type(ctx),
+				Return:   t.Return,
 				Captures: def.Captures,
 				Source:   lib.Source,
 				Code:     lib.Init[def.Start:def.End],

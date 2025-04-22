@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2024 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -118,7 +118,17 @@ func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 			}
 		}
 
-		ast, err := p.parseValue(env, Point{}, v, false, true)
+		var from Point
+		locator, ok := v.(Locator)
+		if ok {
+			from = locator.From()
+		} else {
+			id, ok := v.(*Identifier)
+			if ok {
+				from = id.Point
+			}
+		}
+		ast, err := p.parseValue(env, from, v, false, true)
 		if err != nil {
 			return nil, err
 		}
@@ -193,8 +203,9 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 				return nil, v.Errorf("invalid quote: %v", v)
 			}
 			return &ASTConstant{
-				From:  loc,
-				Value: quoted,
+				From:   loc,
+				Quoted: true,
+				Value:  quoted,
 			}, nil
 		}
 		if isKeyword(v.Car(), KwSchemeApply) {
@@ -315,14 +326,12 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 }
 
 var inlineUnary = map[string]Operand{
-	"pair?":   OpPairp,
-	"car":     OpCar,
-	"cdr":     OpCdr,
-	"null?":   OpNullp,
-	"zero?":   OpZerop,
-	"not":     OpNot,
-	"number!": OpCastNumber,
-	"symbol!": OpCastSymbol,
+	"pair?": OpPairp,
+	"car":   OpCar,
+	"cdr":   OpCdr,
+	"null?": OpNullp,
+	"zero?": OpZerop,
+	"not":   OpNot,
 }
 
 var inlineUnaryBinary = map[string]Operand{
@@ -835,6 +844,7 @@ func (p *Parser) parseCond(env *Env, list []Pair,
 					clause[0].Errorf("cond: else must be the last clause")
 			}
 			isElse = true
+			ast.Conclusive = true
 		}
 
 		choice := &ASTCondChoice{
@@ -869,7 +879,7 @@ func (p *Parser) parseCond(env *Env, list []Pair,
 			choice.Func = funcAST
 
 			// Create call frame.
-			env.PushCaptureFrame(captures, FUFrame, 1)
+			env.PushCaptureFrame(false, FUFrame, 1)
 
 			// Push argument scope.
 			choice.FuncArgsFrame = env.PushCaptureFrame(false, FUArgs, 1)
@@ -933,6 +943,7 @@ func (p *Parser) parseCase(env *Env, list []Pair,
 					clause[0].Errorf("case: else must be the last clause")
 			}
 			isElse = true
+			ast.Conclusive = true
 		}
 
 		choice := &ASTCaseChoice{

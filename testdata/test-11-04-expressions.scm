@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2022-2023 Markku Rossi
+;;; Copyright (c) 2022-2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -102,7 +102,9 @@
 (runner 'test "and"
         (lambda () (eq? (and (= 2 2) (> 2 1)) #t))
         (lambda () (eq? (and (= 2 2) (< 2 1)) #f))
-        (lambda () (equal? (and 1 2 'c '(f g)) '(f g)))
+        (lambda ()
+          (pragma (check-boolean-exprs #f))
+          (equal? (and 1 2 'c '(f g)) '(f g)))
         (lambda () (eq? (and) #t))
         )
 
@@ -111,7 +113,9 @@
         (lambda () (eq? (or (= 2 2) (> 2 1)) #t))
         (lambda () (eq? (or (= 2 2) (< 2 1)) #t))
         (lambda () (eq? (or #f #f #f) #f))
-        (lambda () (equal? (or '(b c) (/ 3 0)) '(b c)))
+        (lambda ()
+          (pragma (check-boolean-exprs #f))
+          (equal? (or '(b c) (/ 3 0)) '(b c)))
         )
 
 ;; 11.4.6. Binding constructs
