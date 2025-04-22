@@ -152,12 +152,6 @@ func (code Code) Print(w io.Writer) {
 
 // PrettyPrint formats the library Scheme code into the pp.Writer.
 func (lib *Library) PrettyPrint(w pp.Writer) error {
-	inferer := NewInferer(lib.scm, lib.Body.Items)
-	_, err := inferer.Infer(lib.Body)
-	if err != nil {
-		return err
-	}
-
 	w.Header()
 	last := 1
 	for _, item := range lib.Body.Items {
