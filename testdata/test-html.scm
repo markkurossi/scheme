@@ -8,7 +8,7 @@
 
 (library (main)
   (export)
-  (import (html escape))
+  (import (html escape) (html unescape))
 
   (runner 'sub-section "HTML library")
 
@@ -20,5 +20,9 @@
           (lambda () (eq? (html-escape "'") "&#39;"))
           (lambda () (eq? (html-escape "\"Hello<World>!''\"")
                           "&#34;Hello&lt;World&gt;!&#39;&#39;&#34;"))
+          )
+
+  (runner 'test "unescape"
+          (lambda () (eq? (html-unescape "&lt;") "<"))
           )
   )
