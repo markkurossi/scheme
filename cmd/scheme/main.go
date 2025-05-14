@@ -227,7 +227,7 @@ func bytecode(scm *scheme.Scheme, file string) error {
 	if err != nil {
 		return err
 	}
-	v, err := library.Compile()
+	v, err := library.Compile(true)
 	if err != nil {
 		return err
 	}

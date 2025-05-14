@@ -87,7 +87,7 @@ func (e Enum) Super() Enum {
 		return EnumExactFloat
 
 	case EnumTypeVar:
-		return EnumAny
+		return EnumTypeVar
 
 	default:
 		panic(fmt.Sprintf("unknown Enum %d", e))
@@ -323,7 +323,12 @@ func (t *Type) String() string {
 			result += " . "
 			result += t.Rest.String()
 		}
-		result = result + ")" + t.Return.String()
+		result = result + ")"
+		if t.Return == nil {
+			result += "~nil~"
+		} else {
+			result += t.Return.String()
+		}
 
 	case EnumPair:
 		result = result + "(" + t.Car.String() + " " + t.Cdr.String() + ")"
@@ -460,9 +465,6 @@ func (t *Type) IsKindOf(o *Type) bool {
 	if o.Enum == EnumPair && t.Enum == EnumNil {
 		return true
 	}
-	if o.Enum == EnumTypeVar {
-		return true
-	}
 
 	e := t.Enum
 	for {
@@ -504,6 +506,9 @@ func (t *Type) IsKindOf(o *Type) bool {
 
 	case EnumVector:
 		return t.Element.IsKindOf(o.Element)
+
+	case EnumTypeVar:
+		return t.TypeVar == o.TypeVar
 
 	default:
 		return true

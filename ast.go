@@ -17,9 +17,11 @@ import (
 type AST interface {
 	Locator() Locator
 	Equal(o AST) bool
+	SetInferTypes(it *InferTypes)
+	InferTypes() *InferTypes
 	SetType(t *types.Type)
 	Type() *types.Type
-	Infer(env *InferEnv) (*Branch, *types.Type, error)
+	Infer(env *InferEnv) (*InferBranch, *InferTypes, error)
 	Inferred(i Inferred) error
 	Bytecode(lib *Library) error
 	PP(w pp.Writer)
@@ -46,7 +48,8 @@ var (
 
 // Typed implements AST type information.
 type Typed struct {
-	t *types.Type
+	t  *types.Type
+	it *InferTypes
 }
 
 // SetType implements AST.SetType.
@@ -60,6 +63,16 @@ func (t *Typed) Type() *types.Type {
 		return types.Unspecified
 	}
 	return t.t
+}
+
+// SetInferTypes implements AST.SetInferTypes.
+func (t *Typed) SetInferTypes(it *InferTypes) {
+	t.it = it
+}
+
+// InferTypes implements AST.InferTypes.
+func (t *Typed) InferTypes() *InferTypes {
+	return t.it
 }
 
 // ASTSequence implements a (begin ...) sequence.
@@ -626,6 +639,18 @@ func (ast *ASTConstant) Equal(o AST) bool {
 		return false
 	}
 	return ast.Value.Equal(oast.Value)
+}
+
+// SetInferTypes implements AST.SetInferTypes.
+func (ast *ASTConstant) SetInferTypes(it *InferTypes) {
+}
+
+// InferTypes implements AST.InferTypes.
+func (ast *ASTConstant) InferTypes() *InferTypes {
+	return &InferTypes{
+		Conclusive: true,
+		Types:      []*types.Type{ast.Type()},
+	}
 }
 
 // SetType implements AST.SetType

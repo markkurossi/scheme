@@ -114,6 +114,19 @@ var inferenceTests = []struct {
 		d: `(cond ((> 3 2) "greater") ((< 3 2) "less") (else "equal"))`,
 		t: types.String,
 	},
+	{
+		d: `
+(define (fact n)
+  (if (< n 2)
+      1
+      (* n (fact (- n 1)))))
+`,
+		t: &types.Type{
+			Enum:   types.EnumLambda,
+			Args:   []*types.Type{types.Number},
+			Return: types.Number,
+		},
+	},
 }
 
 func TestInference(t *testing.T) {

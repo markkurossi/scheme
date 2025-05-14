@@ -139,6 +139,8 @@ func (scm *Scheme) verbosef(format string, a ...interface{}) {
 	}
 }
 
+const typeInferRuntime = false
+
 func (scm *Scheme) loadRuntime(dir string) error {
 	entries, err := runtime.ReadDir(dir)
 	if err != nil {
@@ -156,7 +158,7 @@ func (scm *Scheme) loadRuntime(dir string) error {
 		if err != nil {
 			return err
 		}
-		_, err = scm.eval(file, bytes.NewReader(data))
+		_, err = scm.eval(file, bytes.NewReader(data), typeInferRuntime)
 		if err != nil {
 			return err
 		}
@@ -257,7 +259,7 @@ func (scm *Scheme) Eval(source string, in io.Reader) (Value, error) {
 	if scm.hasRuntime {
 		return scm.evalRuntime(source, in)
 	}
-	return scm.eval(source, in)
+	return scm.eval(source, in, true)
 }
 
 func (scm *Scheme) evalRuntime(source string, in io.Reader) (Value, error) {
@@ -270,7 +272,9 @@ func (scm *Scheme) evalRuntime(source string, in io.Reader) (Value, error) {
 	return scm.Apply(sym.Global, []Value{library, Boolean(true)})
 }
 
-func (scm *Scheme) eval(source string, in io.Reader) (Value, error) {
+func (scm *Scheme) eval(source string, in io.Reader, typeInfer bool) (
+	Value, error) {
+
 	library, err := scm.Load(source, in)
 	if err != nil {
 		return nil, err
@@ -284,7 +288,7 @@ func (scm *Scheme) eval(source string, in io.Reader) (Value, error) {
 		return nil, fmt.Errorf("invalid library: %T", values[4])
 	}
 
-	init, err := lib.Compile()
+	init, err := lib.Compile(typeInfer)
 	if err != nil {
 		return nil, err
 	}
