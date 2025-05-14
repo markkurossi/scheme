@@ -966,7 +966,9 @@ func (ast *ASTIf) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 
 	env.inferer.Debugf(ast, "If: branch=%v\n", branch)
 
-	ast.it = new(InferTypes)
+	ast.it = &InferTypes{
+		Conclusive: true,
+	}
 
 	trueEnv := env.Positive(branch)
 	_, _, err = ast.True.Infer(trueEnv)
@@ -991,7 +993,6 @@ func (ast *ASTIf) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		ast.it.Conclusive = true
 		ast.it.Add(ast.False.Type())
 
 		// The if expression is conclusive. Merge learnings into
@@ -1002,7 +1003,7 @@ func (ast *ASTIf) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		env.inferer.Debugf(ast, " => merged: %v\n", env.Inferred())
 	}
 
-	env.inferer.Debugf(ast, "if types=%v\n", ast.it)
+	env.inferer.Debugf(ast, "If: it=%v\n", ast.it)
 
 	return nil, ast.it, nil
 }
