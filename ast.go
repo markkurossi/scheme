@@ -569,6 +569,17 @@ type ASTLambda struct {
 	Flags       Flags
 }
 
+func (ast *ASTLambda) String() string {
+	result := "\u03bb"
+
+	if ast.Name != nil {
+		result += fmt.Sprintf("[%s]", ast.Name)
+	}
+	result += ast.Args.String()
+
+	return result + "?"
+}
+
 // Locator implements AST.Locator.
 func (ast *ASTLambda) Locator() Locator {
 	return ast.From
