@@ -33,7 +33,7 @@ var loadBuiltins = []Builtin{
 			if !path.IsAbs(file) {
 				file = path.Join(path.Dir(string(caller)), file)
 			}
-			if scm.Params.Verbose {
+			if scm.Params.Verbose() {
 				fmt.Printf("load: %v\n", file)
 			}
 			return scm.LoadFile(file)

@@ -46,8 +46,8 @@ type Scheme struct {
 
 // Params define the configuration parameters for Scheme.
 type Params struct {
-	// Verbose output.
-	Verbose bool
+	// Verbosity level.
+	Verbosity int
 
 	// Quiet output.
 	Quiet bool
@@ -62,6 +62,16 @@ type Params struct {
 	// Pragmas.
 	Pragma  Pragmas
 	pragmas []Pragmas
+}
+
+// Verbose returns true if verbose output is enabled.
+func (p *Params) Verbose() bool {
+	return p.Verbosity > 0
+}
+
+// Verbose2 returns true if verbosity is 2 or more.
+func (p *Params) Verbose2() bool {
+	return p.Verbosity >= 2
 }
 
 // PushScope push a new compilation scope and saves the current
@@ -134,7 +144,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 }
 
 func (scm *Scheme) verbosef(format string, a ...interface{}) {
-	if scm.Params.Verbose {
+	if scm.Params.Verbose() {
 		scm.Stdout.Printf(format, a...)
 	}
 }

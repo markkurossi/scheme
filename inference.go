@@ -133,7 +133,7 @@ func infererPrefix(loc Locator) string {
 
 // Warningf prints a warning message about type inference.
 func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
-	if !inferer.scm.Params.Verbose {
+	if !inferer.scm.Params.Verbose() {
 		return
 	}
 	msg := fmt.Sprintf(format, a...)
@@ -149,6 +149,16 @@ func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
 // Debugf prints debugging information about type inference.
 func (inferer *Inferer) Debugf(ast AST, format string, a ...interface{}) {
 	if !inferer.scm.Params.Pragma.VerboseTypecheck {
+		return
+	}
+	msg := fmt.Sprintf(format, a...)
+	inferer.Print(ast, "", msg)
+}
+
+// Debug2f prints debugging information about type inference.
+func (inferer *Inferer) Debug2f(ast AST, format string, a ...interface{}) {
+	if !inferer.scm.Params.Pragma.VerboseTypecheck ||
+		!inferer.scm.Params.Verbose2() {
 		return
 	}
 	msg := fmt.Sprintf(format, a...)
@@ -630,7 +640,7 @@ func Unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 }
 
 func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
-	env.inferer.Debugf(ast, " \u251c\u254c\u254c\u254c unify(%v,%v)\n",
+	env.inferer.Debug2f(ast, " \u251c\u254c\u254c\u254c unify(%v,%v)\n",
 		from, to)
 	if from.Enum == types.EnumTypeVar {
 		return unifyTypeVar(ast, env, from, to)
@@ -737,7 +747,7 @@ func unifyTypeVar(ast AST, env *InferEnv, tv, to *types.Type) (
 	if err != nil {
 		return nil, err
 	}
-	env.inferer.Debugf(ast, " \u251c\u254c\u254c\u254c\u254c> %v=%v\n", tv, to)
+	env.inferer.Debug2f(ast, " \u251c\u254c\u254c\u254c\u254c> %v=%v\n", tv, to)
 
 	return to, nil
 }
@@ -1328,9 +1338,9 @@ func inferCall(ast AST, env *InferEnv, fnType *types.Type, args []AST) (
 	unified, err := Unify(ast, env, callType, fnType)
 	if err != nil {
 		env.inferer.Warningf(ast, "Unify: %s:\n", err)
-		env.inferer.Warningf(ast, " - %v\n", callType)
-		env.inferer.Warningf(ast, " - %v\n", fnType)
-		env.inferer.Warningf(ast, " - %v\n", env.Inferred())
+		env.inferer.Warningf(ast, " \u251c\u2574\u22a5 %v\n", callType)
+		env.inferer.Warningf(ast, " \u251c\u2574\u22a5 %v\n", fnType)
+		env.inferer.Warningf(ast, " \u2514\u2574\u22a5 %v\n", env.Inferred())
 		return nil, nil, err
 	}
 	env.inferer.Debugf(ast, " \u2570> %v\n", unified)

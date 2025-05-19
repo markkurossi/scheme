@@ -76,15 +76,35 @@ func (p *pragma) Set(value string) error {
 
 var pragmas pragma
 
+type verbosity int
+
+func (v *verbosity) String() string {
+	if v == nil {
+		return "0"
+	}
+	return fmt.Sprintf("%v", *v)
+}
+
+func (v *verbosity) Set(value string) error {
+	*v++
+	return nil
+}
+
+func (v *verbosity) IsBoolFlag() bool {
+	return true
+}
+
+var verbose verbosity
+
 func init() {
 	flag.Var(&pragmas, "pragma", "define pragma where value is: key=value")
+	flag.Var(&verbose, "v", "verbose output")
 }
 
 func main() {
 	log.SetFlags(0)
 
 	replp := flag.Bool("repl", false, "read-eval-print-loop")
-	verbose := flag.Bool("v", false, "verbose output")
 	noRuntime := flag.Bool("no-runtime", false, "do not load Scheme runtime")
 	bc := flag.Bool("bc", false, "compile scheme into bytecode")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
@@ -106,7 +126,7 @@ func main() {
 	}
 
 	params := scheme.Params{
-		Verbose:   *verbose,
+		Verbosity: int(verbose),
 		NoRuntime: *noRuntime,
 	}
 	for _, p := range pragmas {
