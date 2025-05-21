@@ -135,9 +135,6 @@ func infererPrefix(loc Locator) string {
 
 // Warningf prints a warning message about type inference.
 func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
-	if !inferer.scm.Params.Verbose() {
-		return
-	}
 	msg := fmt.Sprintf(format, a...)
 	var lead string
 	if len(msg) > 0 && unicode.IsSpace(rune(msg[0])) {
@@ -145,7 +142,11 @@ func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
 	} else {
 		lead = "warning: "
 	}
-	inferer.Print(ast, lead, msg)
+	if inferer.scm.Params.Verbose() {
+		inferer.Print(ast, lead, msg)
+	} else {
+		inferer.scm.Stdout.Printf("%s: %s%s", ast.Locator().From(), lead, msg)
+	}
 }
 
 // Debugf prints debugging information about type inference.
@@ -1067,7 +1068,7 @@ func (ast *ASTIf) Inferred(env *InferEnv) error {
 	t := ast.Cond.Type()
 	if !env.inferer.scm.Params.Pragma.NoCheckBooleanExprs &&
 		t.Concrete() && !t.IsA(types.Boolean) {
-		ast.Cond.Locator().From().Warningf("if test is not boolean: %v\n", t)
+		env.inferer.Warningf(ast, "if test is not boolean: %v\n", t)
 	}
 
 	err = ast.True.Inferred(env)
