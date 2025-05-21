@@ -4,6 +4,8 @@
 // All rights reserved.
 //
 
+// go test -run TestInference
+
 package scheme
 
 import (
@@ -70,6 +72,7 @@ var inferenceTests = []struct {
 		d: `(let ((x 1)) x)`,
 		t: types.InexactInteger,
 	},
+	// 10
 	{
 		d: `(define (loop a) (loop (+ a 1))) (loop 0)`,
 		t: &types.Type{
@@ -113,6 +116,24 @@ var inferenceTests = []struct {
 	{
 		d: `(cond ((> 3 2) "greater") ((< 3 2) "less") (else "equal"))`,
 		t: types.String,
+	},
+	// 20
+	{
+		d: `
+(letrec ((obj '#(1 2 3))
+         (iter
+          (lambda (idx)
+            (if (< idx (vector-length obj))
+                (vector-ref obj idx)
+                (vector-ref obj idx))
+            idx)))
+  iter)
+`,
+		t: &types.Type{
+			Enum:   types.EnumLambda,
+			Args:   []*types.Type{types.InexactInteger},
+			Return: types.InexactInteger,
+		},
 	},
 	{
 		d: `

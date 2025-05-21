@@ -4,13 +4,10 @@
 // All rights reserved.
 //
 
-// go test -run TestInference
-
 package scheme
 
 import (
 	"fmt"
-	"runtime/debug"
 	"sort"
 	"strings"
 	"unicode"
@@ -209,6 +206,14 @@ func (it *InferTypes) String() string {
 	return result
 }
 
+func (it *InferTypes) IsTypeVar() (*types.Type, bool) {
+	if !it.Conclusive || len(it.Types) != 1 ||
+		it.Types[0].Enum != types.EnumTypeVar {
+		return nil, false
+	}
+	return it.Types[0], true
+}
+
 func (it *InferTypes) Type() *types.Type {
 	if !it.Conclusive {
 		return types.Unspecified
@@ -254,13 +259,13 @@ func (it *InferTypes) LearnAll(ot *InferTypes) error {
 }
 
 func (it *InferTypes) Learn(t *types.Type) error {
-	// Do we already something kind of t?
+	// Do we already have something kind of t?
 	for _, current := range it.Types {
 		if current.IsKindOf(t) {
 			return nil
 		}
 	}
-	// Do we learning something more about an existing type?
+	// Are we learning something more about an existing type?
 	for idx, current := range it.Types {
 		if t.IsKindOf(current) {
 			it.Types[idx] = t
@@ -268,8 +273,13 @@ func (it *InferTypes) Learn(t *types.Type) error {
 		}
 	}
 	if it.Conclusive {
-		// Can't learn more about a conclusive type.
-		return fmt.Errorf("can't learn more about %v with %v", it, t)
+		_, ok := it.IsTypeVar()
+		if !ok {
+			// Can't learn more about a conclusive concrete type.
+			return fmt.Errorf("can't learn more about %v with %v", it, t)
+		}
+		// The current conclusive type is a type variable. Add the new
+		// type into the inferred types.
 	}
 	it.Types = append(it.Types, t)
 	return nil
@@ -462,12 +472,8 @@ func (inferred Inferred) Apply(t *types.Type) *types.Type {
 				}
 				result = types.Unify(result, ti)
 			}
-			if result == nil {
-				fmt.Printf("Inferred.Apply: result=nil, selfSkipped=%v\n",
-					selfSkipped)
-				if selfSkipped {
-					result = t
-				}
+			if result == nil && selfSkipped {
+				result = t
 			}
 			return result
 		}
@@ -1059,8 +1065,6 @@ func (ast *ASTIf) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 
 // Inferred implements AST.Inferred.
 func (ast *ASTIf) Inferred(env *InferEnv) error {
-	env.inferer.Debugf(ast, "If.Inferred: %v\n", env.Inferred())
-
 	err := ast.Cond.Inferred(env)
 	if err != nil {
 		return err
@@ -1081,13 +1085,8 @@ func (ast *ASTIf) Inferred(env *InferEnv) error {
 			return err
 		}
 	}
-	if ast.it == nil {
-		fmt.Printf("*** ast.it=nil\n")
-		debug.PrintStack()
-		ast.t = types.Unspecified
-	} else {
-		ast.t = ast.it.Type()
-	}
+	ast.t = ast.it.Type()
+
 	return nil
 }
 
@@ -1396,28 +1395,13 @@ func (ast *ASTCall) inlineFuncType(env *InferEnv) (*types.Type, error) {
 
 	switch ast.InlineOp {
 	case OpAdd, OpSub, OpMul, OpDiv:
-		var returnType *types.Type
-		for idx, t := range env.argTypes {
-			env.inferer.Debugf(ast, " %v: %v\n", idx, t)
-			returnType = types.Unify(returnType, t)
-		}
-		if returnType == nil {
-			returnType = types.Number
-		}
-		if returnType.Concrete() && !returnType.IsKindOf(types.Number) {
-			return nil, errf(ast, "invalid arguments: %v, expected %v",
-				returnType, types.Number)
-		}
-
 		result := &types.Type{
 			Enum:   types.EnumLambda,
-			Return: returnType,
+			Return: types.Number,
 		}
-
 		for i := 0; i < len(ast.Args); i++ {
 			result.Args = append(result.Args, types.Number)
 		}
-
 		return result, nil
 
 	case OpCons:
