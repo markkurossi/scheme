@@ -22,7 +22,7 @@ type AST interface {
 	SetType(t *types.Type)
 	Type() *types.Type
 	Infer(env *InferEnv) (*InferBranch, *InferTypes, error)
-	Inferred(i Inferred) error
+	Inferred(env *InferEnv) error
 	Bytecode(lib *Library) error
 	PP(w pp.Writer)
 }

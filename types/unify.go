@@ -21,6 +21,9 @@ func Unify(a *Type, b *Type) *Type {
 	if a.Enum == EnumUnspecified || b.Enum == EnumUnspecified {
 		return Unspecified
 	}
+	if a.Enum == EnumTypeVar || b.Enum == EnumTypeVar {
+		return Unspecified
+	}
 	if a.IsKindOf(b) {
 		return b
 	}
@@ -72,7 +75,7 @@ func Unify(a *Type, b *Type) *Type {
 		return Nil
 
 	default:
-		panic(fmt.Sprintf("unknown Enum: %v[%v]", e, e))
+		panic(fmt.Sprintf("unknown Enum: %v[%d]", e, e))
 	}
 }
 

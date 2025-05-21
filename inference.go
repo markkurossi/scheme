@@ -11,6 +11,7 @@ package scheme
 import (
 	"fmt"
 	"runtime/debug"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -64,11 +65,12 @@ func NewInferer(scm *Scheme, toplevel []AST) *Inferer {
 
 // Infer does type inference for the ast element.
 func (inferer *Inferer) Infer(ast AST) (*types.Type, error) {
-	_, _, err := ast.Infer(inferer.NewEnv())
+	env := inferer.NewEnv()
+	_, _, err := ast.Infer(env)
 	if err != nil {
 		return nil, err
 	}
-	err = ast.Inferred(inferer.inferred)
+	err = ast.Inferred(env)
 	if err != nil {
 		return nil, err
 	}
@@ -240,6 +242,38 @@ func (it *InferTypes) TypeFor(tv *types.Type) *types.Type {
 	return result
 }
 
+func (it *InferTypes) LearnAll(ot *InferTypes) error {
+	for _, t := range ot.Types {
+		err := it.Learn(t)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (it *InferTypes) Learn(t *types.Type) error {
+	// Do we already something kind of t?
+	for _, current := range it.Types {
+		if current.IsKindOf(t) {
+			return nil
+		}
+	}
+	// Do we learning something more about an existing type?
+	for idx, current := range it.Types {
+		if t.IsKindOf(current) {
+			it.Types[idx] = t
+			return nil
+		}
+	}
+	if it.Conclusive {
+		// Can't learn more about a conclusive type.
+		return fmt.Errorf("can't learn more about %v with %v", it, t)
+	}
+	it.Types = append(it.Types, t)
+	return nil
+}
+
 func (it *InferTypes) Add(t *types.Type) {
 	for _, current := range it.Types {
 		if t.IsA(current) {
@@ -264,7 +298,7 @@ func (it *InferTypes) Match(t *types.Type) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("can't match type %v with %v", t, it)
+	return fmt.Errorf("can't match type %v with %v", it, t)
 }
 
 // Inferred stores type inference results.
@@ -275,16 +309,22 @@ func (inferred Inferred) String() string {
 		return "\u2205"
 	}
 
+	var keys []int
+	for k := range inferred {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+
 	result := "["
 	first := true
 
-	for k, v := range inferred {
+	for _, k := range keys {
 		if first {
 			first = false
 		} else {
 			result += ","
 		}
-		result += fmt.Sprintf("%v=%v", k, v)
+		result += fmt.Sprintf("%v=%v", k, inferred[k])
 	}
 	return result + "]"
 }
@@ -368,10 +408,18 @@ func (inferred Inferred) Learn(v *types.Type, it *InferTypes) error {
 		return nil
 	}
 	if old.Conclusive {
-		return old.MatchAll(it)
+		err := old.LearnAll(it)
+		if err != nil {
+			return fmt.Errorf("old.Conclusive: old=%v, it=%v: %v", old, it, err)
+		}
+		return nil
 	}
 	if it.Conclusive {
-		return it.MatchAll(old)
+		err := it.MatchAll(old)
+		if err != nil {
+			return fmt.Errorf("it.Conclusive: %v", err)
+		}
+		return nil
 	}
 	for _, t := range it.Types {
 		old.Add(t)
@@ -547,7 +595,7 @@ func (env *InferEnv) Get(name string) (*types.Type, bool) {
 }
 
 func (env *InferEnv) follow(t *types.Type) (*types.Type, bool) {
-	return env.inferer.inferred.Apply(t), true
+	return t, true
 }
 
 func (env *InferEnv) resolve(ast AST) (*types.Type, bool) {
@@ -556,7 +604,7 @@ func (env *InferEnv) resolve(ast AST) (*types.Type, bool) {
 		fmt.Printf("%s\n", err)
 		return types.Unspecified, false
 	}
-	err = ast.Inferred(env.Inferred())
+	err = ast.Inferred(env)
 	if err != nil {
 		return types.Unspecified, false
 	}
@@ -762,7 +810,7 @@ func (ast *ASTSequence) Infer(env *InferEnv) (
 		if err != nil {
 			return nil, nil, err
 		}
-		err = item.Inferred(env.Inferred())
+		err = item.Inferred(env)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -773,14 +821,14 @@ func (ast *ASTSequence) Infer(env *InferEnv) (
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTSequence) Inferred(inferred Inferred) error {
+func (ast *ASTSequence) Inferred(env *InferEnv) error {
 	for _, item := range ast.Items {
-		err := item.Inferred(inferred)
+		err := item.Inferred(env)
 		if err != nil {
 			return err
 		}
 	}
-	ast.t = inferred.Apply(ast.t)
+	ast.t = env.Inferred().Apply(ast.t)
 
 	return nil
 }
@@ -801,7 +849,7 @@ func (ast *ASTDefine) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	err = ast.Value.Inferred(env.Inferred())
+	err = ast.Value.Inferred(env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -823,8 +871,8 @@ func (ast *ASTDefine) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTDefine) Inferred(inferred Inferred) error {
-	err := ast.Value.Inferred(inferred)
+func (ast *ASTDefine) Inferred(env *InferEnv) error {
+	err := ast.Value.Inferred(env)
 	if err != nil {
 		return err
 	}
@@ -843,7 +891,7 @@ func (ast *ASTSet) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	err = ast.Value.Inferred(env.Inferred())
+	err = ast.Value.Inferred(env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -878,8 +926,8 @@ func (ast *ASTSet) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTSet) Inferred(inferred Inferred) error {
-	err := ast.Value.Inferred(inferred)
+func (ast *ASTSet) Inferred(env *InferEnv) error {
+	err := ast.Value.Inferred(env)
 	if err != nil {
 		return err
 	}
@@ -909,7 +957,7 @@ func (ast *ASTLet) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		err = b.Init.Inferred(initEnv.Inferred())
+		err = b.Init.Inferred(initEnv)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -937,15 +985,15 @@ func (ast *ASTLet) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTLet) Inferred(inferred Inferred) error {
+func (ast *ASTLet) Inferred(env *InferEnv) error {
 	for _, b := range ast.Bindings {
-		err := b.Init.Inferred(inferred)
+		err := b.Init.Inferred(env)
 		if err != nil {
 			return err
 		}
 	}
 	for _, body := range ast.Body {
-		err := body.Inferred(inferred)
+		err := body.Inferred(env)
 		if err != nil {
 			return err
 		}
@@ -963,16 +1011,6 @@ func (ast *ASTIf) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	err = ast.Cond.Inferred(env.Inferred())
-	if err != nil {
-		return nil, nil, err
-	}
-	t := ast.Cond.Type()
-
-	if !env.inferer.scm.Params.Pragma.NoCheckBooleanExprs &&
-		t.Concrete() && !t.IsA(types.Boolean) {
-		ast.Cond.Locator().From().Warningf("if test is not boolean: %v\n", t)
-	}
 
 	env.inferer.Debugf(ast, "If: branch=%v\n", branch)
 
@@ -985,7 +1023,7 @@ func (ast *ASTIf) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	err = ast.True.Inferred(trueEnv.Inferred())
+	err = ast.True.Inferred(trueEnv)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -999,7 +1037,7 @@ func (ast *ASTIf) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		err = ast.False.Inferred(falseEnv.Inferred())
+		err = ast.False.Inferred(falseEnv)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1019,17 +1057,25 @@ func (ast *ASTIf) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTIf) Inferred(inferred Inferred) error {
-	err := ast.Cond.Inferred(inferred)
+func (ast *ASTIf) Inferred(env *InferEnv) error {
+	env.inferer.Debugf(ast, "If.Inferred: %v\n", env.Inferred())
+
+	err := ast.Cond.Inferred(env)
 	if err != nil {
 		return err
 	}
-	err = ast.True.Inferred(inferred)
+	t := ast.Cond.Type()
+	if !env.inferer.scm.Params.Pragma.NoCheckBooleanExprs &&
+		t.Concrete() && !t.IsA(types.Boolean) {
+		ast.Cond.Locator().From().Warningf("if test is not boolean: %v\n", t)
+	}
+
+	err = ast.True.Inferred(env)
 	if err != nil {
 		return err
 	}
 	if ast.False != nil {
-		err = ast.False.Inferred(inferred)
+		err = ast.False.Inferred(env)
 		if err != nil {
 			return err
 		}
@@ -1054,7 +1100,7 @@ func (ast *ASTApply) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	err = ast.Lambda.Inferred(env.Inferred())
+	err = ast.Lambda.Inferred(env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1074,16 +1120,16 @@ func (ast *ASTApply) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTApply) Inferred(inferred Inferred) error {
-	err := ast.Lambda.Inferred(inferred)
+func (ast *ASTApply) Inferred(env *InferEnv) error {
+	err := ast.Lambda.Inferred(env)
 	if err != nil {
 		return err
 	}
-	err = ast.Args.Inferred(inferred)
+	err = ast.Args.Inferred(env)
 	if err != nil {
 		return err
 	}
-	ast.t = inferred.Apply(ast.t)
+	ast.t = env.Inferred().Apply(ast.t)
 	return nil
 }
 
@@ -1111,15 +1157,11 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	env.inferer.Debugf(ast, "Call: argument types:\n")
 	var argTypes []*types.Type
 	for idx, arg := range ast.Args {
-		_, _, err := arg.Infer(env)
+		_, it, err := arg.Infer(env)
 		if err != nil {
 			return nil, nil, err
 		}
-		err = arg.Inferred(env.Inferred())
-		if err != nil {
-			return nil, nil, err
-		}
-		t := arg.Type()
+		t := it.Type()
 
 		argTypes = append(argTypes, t)
 		env.inferer.Debugf(ast, " %v: %v\n", idx, t)
@@ -1147,7 +1189,7 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		err = ast.Func.Inferred(env.Inferred())
+		err = ast.Func.Inferred(env)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1162,7 +1204,7 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		}
 
 		switch fnType.Enum {
-		case types.EnumTypeVar:
+		case types.EnumTypeVar, types.EnumUnspecified:
 			env.inferer.Debugf(ast, "unspecified function %v => %v\n",
 				fnType, types.Unspecified)
 			return nil, &InferTypes{
@@ -1236,14 +1278,9 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		}
 	}
 
-	retType, callType, err := inferCall(ast, env, fnType, ast.Args)
+	retType, _, err := inferCall(ast, env, fnType, ast.Args)
 	if err != nil {
 		return nil, nil, errf(ast, "%s: %s", fnName, err)
-	}
-
-	// Set types for arguments.
-	for idx, t := range callType.Args {
-		ast.Args[idx].SetType(t)
 	}
 	ast.it = &InferTypes{
 		Conclusive: true,
@@ -1274,22 +1311,21 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTCall) Inferred(inferred Inferred) error {
+func (ast *ASTCall) Inferred(env *InferEnv) error {
 	var err error
-
 	if ast.Func != nil {
-		err = ast.Func.Inferred(inferred)
+		err = ast.Func.Inferred(env)
 		if err != nil {
 			return err
 		}
 	}
 	for _, arg := range ast.Args {
-		err = arg.Inferred(inferred)
+		err = arg.Inferred(env)
 		if err != nil {
 			return err
 		}
 	}
-	ast.t = inferred.Apply(ast.t)
+	ast.t = env.Inferred().Apply(ast.t)
 
 	return nil
 }
@@ -1300,34 +1336,12 @@ func inferCall(ast AST, env *InferEnv, fnType *types.Type, args []AST) (
 	// Create a new type variable for the return type of the function.
 	rv := env.inferer.newTypeVar()
 
-	// Create a new type environment.
-	env1 := env.Copy()
-
 	env.inferer.Debugf(ast, "Call: fnType=%v\n", fnType)
 
-	// Infer argument types.
-	var argTypes []*types.Type // XXX type2
-	for idx, arg := range args {
-		_, _, err := arg.Infer(env1)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = arg.Inferred(env1.Inferred())
-		if err != nil {
-			return nil, nil, err
-		}
-		t := arg.Type()
-		argTypes = append(argTypes, t)
-		env.inferer.Debugf(ast, " %v: %v [%v]\n", idx, t, env1)
-	}
-	if len(env.argTypes) > 0 {
-		argTypes = env.argTypes
-	}
-
 	// Create a function type for the called function.
-	callType := &types.Type{ // XXX type3
+	callType := &types.Type{
 		Enum:   types.EnumLambda,
-		Args:   argTypes,
+		Args:   env.argTypes,
 		Return: rv,
 	}
 	env.inferer.Debugf(ast, "Call: calltype=%v, unify:\n", callType)
@@ -1364,10 +1378,6 @@ var minArgCount = map[Operand]int{
 }
 
 func (ast *ASTCall) inlineFuncType(env *InferEnv) (*types.Type, error) {
-
-	env.inferer.Enter(ast)
-	defer env.inferer.Exit(ast)
-
 	minArgs, ok := minArgCount[ast.InlineOp]
 	if !ok {
 		panic(fmt.Sprintf("unknown inline function: %v", ast.InlineOp))
@@ -1452,7 +1462,7 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 	if err != nil {
 		return nil, nil, err
 	}
-	err = ast.Arg.Inferred(env.Inferred())
+	err = ast.Arg.Inferred(env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1497,13 +1507,12 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 		return nil, nil, errf(ast, "%s: infer not implemented yet", ast.Op)
 	}
 
-	retType, callType, err := inferCall(ast, env, fnType, []AST{
+	retType, _, err := inferCall(ast, env, fnType, []AST{
 		ast.Arg,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
-	ast.Arg.SetType(callType.Args[0])
 	ast.it = &InferTypes{
 		Conclusive: true,
 		Types:      []*types.Type{retType},
@@ -1534,12 +1543,12 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTCallUnary) Inferred(inferred Inferred) error {
-	err := ast.Arg.Inferred(inferred)
+func (ast *ASTCallUnary) Inferred(env *InferEnv) error {
+	err := ast.Arg.Inferred(env)
 	if err != nil {
 		return err
 	}
-	ast.t = inferred.Apply(ast.t)
+	ast.t = env.Inferred().Apply(ast.t)
 	return nil
 }
 
@@ -1620,7 +1629,7 @@ func (ast *ASTLambda) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	env.inferer.Debugf(ast, "\u03bb: type    : %v\n", lambdaType)
 	env.inferer.Debugf(ast, "\u03bb: inferred: %v\n", env.inferer.inferred)
 
-	ast.Inferred(env.inferer.inferred)
+	ast.Inferred(env)
 
 	if ast.Define {
 		sym := env.inferer.scm.Intern(ast.Name.Name)
@@ -1635,14 +1644,14 @@ func (ast *ASTLambda) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTLambda) Inferred(inferred Inferred) error {
+func (ast *ASTLambda) Inferred(env *InferEnv) error {
 	for _, item := range ast.Body {
-		err := item.Inferred(inferred)
+		err := item.Inferred(env)
 		if err != nil {
 			return err
 		}
 	}
-	ast.t = inferred.Apply(ast.t)
+	ast.t = env.Inferred().Apply(ast.t)
 	return nil
 }
 
@@ -1663,7 +1672,7 @@ func (ast *ASTConstant) Infer(env *InferEnv) (
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTConstant) Inferred(inferred Inferred) error {
+func (ast *ASTConstant) Inferred(env *InferEnv) error {
 	return nil
 }
 
@@ -1679,6 +1688,7 @@ func (ast *ASTIdentifier) Infer(env *InferEnv) (
 	if !ok {
 		return nil, nil, errf(ast, "undefined symbol '%s'", ast.Name)
 	}
+
 	env.inferer.Debugf(ast, "name=%v, t=%v\n", ast.Name, ast.t)
 	if ast.t.Parametrizer != nil && len(env.argTypes) > 0 {
 		env.inferer.Debugf(ast, "calling parametrizer\n")
@@ -1700,8 +1710,8 @@ func (ast *ASTIdentifier) Infer(env *InferEnv) (
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTIdentifier) Inferred(inferred Inferred) error {
-	ast.t = inferred.Apply(ast.t)
+func (ast *ASTIdentifier) Inferred(env *InferEnv) error {
+	ast.t = env.Inferred().Apply(ast.t)
 	return nil
 }
 
@@ -1713,11 +1723,11 @@ func (ast *ASTCond) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	var err error
 	var branches []Inferred
 
-	result := &InferTypes{
+	ast.it = &InferTypes{
 		Conclusive: ast.Conclusive,
 	}
 	if !ast.Conclusive {
-		result.Add(types.Boolean)
+		ast.it.Add(types.Boolean)
 	}
 
 	for _, choice := range ast.Choices {
@@ -1731,7 +1741,7 @@ func (ast *ASTCond) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 			if err != nil {
 				return nil, nil, err
 			}
-			err = choice.Cond.Inferred(env.Inferred())
+			err = choice.Cond.Inferred(env)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1750,7 +1760,7 @@ func (ast *ASTCond) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 			if err != nil {
 				return nil, nil, err
 			}
-			err = choice.Func.Inferred(env.Inferred())
+			err = choice.Func.Inferred(env)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1767,9 +1777,9 @@ func (ast *ASTCond) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 						"function must take one argument: %v", fnType)
 				}
 			}
-			result.Add(fnType.Return)
+			ast.it.Add(fnType.Return)
 		} else if len(choice.Exprs) == 0 {
-			result.Add(choiceType)
+			ast.it.Add(choiceType)
 		} else {
 			choiceEnv := env.Positive(choiceBranch)
 			var choiceType *types.Type
@@ -1781,14 +1791,14 @@ func (ast *ASTCond) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 				}
 			}
 			for _, expr := range choice.Exprs {
-				err = expr.Inferred(choiceEnv.Inferred())
+				err = expr.Inferred(choiceEnv)
 				if err != nil {
 					return nil, nil, err
 				}
 				choiceType = expr.Type()
 			}
-			result.Add(choiceType)
-			env.inferer.Debugf(ast, "cond types=%v\n", result)
+			ast.it.Add(choiceType)
+			env.inferer.Debugf(ast, "cond types=%v\n", ast.it)
 
 			if ast.Conclusive {
 				branches = append(branches, choiceEnv.inferred)
@@ -1806,28 +1816,26 @@ func (ast *ASTCond) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		env.inferer.Debugf(ast, "cond: => : %v\n", env.Inferred())
 	}
 
-	ast.it = result
-
 	return nil, ast.it, nil
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTCond) Inferred(inferred Inferred) error {
+func (ast *ASTCond) Inferred(env *InferEnv) error {
 	for _, choice := range ast.Choices {
 		if choice.Cond != nil {
-			err := choice.Cond.Inferred(inferred)
+			err := choice.Cond.Inferred(env)
 			if err != nil {
 				return err
 			}
 		}
 		if choice.Func != nil {
-			err := choice.Func.Inferred(inferred)
+			err := choice.Func.Inferred(env)
 			if err != nil {
 				return nil
 			}
 		}
 		for _, expr := range choice.Exprs {
-			err := expr.Inferred(inferred)
+			err := expr.Inferred(env)
 			if err != nil {
 				return err
 			}
@@ -1867,7 +1875,7 @@ func (ast *ASTCase) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 			}
 		}
 		for _, expr := range choice.Exprs {
-			err = expr.Inferred(choiceEnv.Inferred())
+			err = expr.Inferred(choiceEnv)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1897,14 +1905,14 @@ func (ast *ASTCase) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTCase) Inferred(inferred Inferred) error {
-	err := ast.Expr.Inferred(inferred)
+func (ast *ASTCase) Inferred(env *InferEnv) error {
+	err := ast.Expr.Inferred(env)
 	if err != nil {
 		return err
 	}
 	for _, choice := range ast.Choices {
 		for _, expr := range choice.Exprs {
-			err = expr.Inferred(inferred)
+			err = expr.Inferred(env)
 			if err != nil {
 				return nil
 			}
@@ -1929,7 +1937,7 @@ func (ast *ASTAnd) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		err = expr.Inferred(env.Inferred())
+		err = expr.Inferred(env)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1946,9 +1954,9 @@ func (ast *ASTAnd) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTAnd) Inferred(inferred Inferred) error {
+func (ast *ASTAnd) Inferred(env *InferEnv) error {
 	for _, expr := range ast.Exprs {
-		err := expr.Inferred(inferred)
+		err := expr.Inferred(env)
 		if err != nil {
 			return err
 		}
@@ -1972,7 +1980,7 @@ func (ast *ASTOr) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		err = expr.Inferred(env.Inferred())
+		err = expr.Inferred(env)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1989,9 +1997,9 @@ func (ast *ASTOr) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTOr) Inferred(inferred Inferred) error {
+func (ast *ASTOr) Inferred(env *InferEnv) error {
 	for _, expr := range ast.Exprs {
-		err := expr.Inferred(inferred)
+		err := expr.Inferred(env)
 		if err != nil {
 			return err
 		}
@@ -2046,6 +2054,6 @@ func (ast *ASTPragma) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTPragma) Inferred(inferred Inferred) error {
+func (ast *ASTPragma) Inferred(env *InferEnv) error {
 	return nil
 }
