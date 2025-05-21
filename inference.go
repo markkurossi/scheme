@@ -274,7 +274,7 @@ func (it *InferTypes) Learn(t *types.Type) error {
 	}
 	if it.Conclusive {
 		_, ok := it.IsTypeVar()
-		if !ok {
+		if !ok && t.Enum != types.EnumTypeVar {
 			// Can't learn more about a conclusive concrete type.
 			return fmt.Errorf("can't learn more about %v with %v", it, t)
 		}
@@ -575,13 +575,13 @@ func (env *InferEnv) Get(name string) (*types.Type, bool) {
 	binding, ok := env.bindings[name]
 	if ok {
 		if binding.t != nil {
-			return env.follow(binding.t)
+			return binding.t, true
 		}
 		return env.resolve(binding.ast)
 	}
 	t := env.inferer.scm.Intern(name).GlobalType
 	if !t.IsA(types.Unspecified) {
-		return env.follow(t)
+		return t, true
 	}
 
 	// Lookup the name from the toplevel AST.
@@ -601,10 +601,6 @@ func (env *InferEnv) Get(name string) (*types.Type, bool) {
 	return types.Unspecified, false
 }
 
-func (env *InferEnv) follow(t *types.Type) (*types.Type, bool) {
-	return t, true
-}
-
 func (env *InferEnv) resolve(ast AST) (*types.Type, bool) {
 	_, _, err := ast.Infer(env)
 	if err != nil {
@@ -615,7 +611,7 @@ func (env *InferEnv) resolve(ast AST) (*types.Type, bool) {
 	if err != nil {
 		return types.Unspecified, false
 	}
-	return env.follow(ast.Type())
+	return ast.Type(), true
 }
 
 // Define defines the name with its type scheme.
@@ -1085,7 +1081,11 @@ func (ast *ASTIf) Inferred(env *InferEnv) error {
 			return err
 		}
 	}
-	ast.t = ast.it.Type()
+	if ast.it == nil {
+		ast.t = types.Unspecified
+	} else {
+		ast.t = ast.it.Type()
+	}
 
 	return nil
 }
