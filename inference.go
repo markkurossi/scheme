@@ -248,9 +248,9 @@ func (it *InferTypes) TypeFor(tv *types.Type) *types.Type {
 	return result
 }
 
-func (it *InferTypes) LearnAll(ot *InferTypes) error {
+func (it *InferTypes) LearnAll(ast AST, env *InferEnv, ot *InferTypes) error {
 	for _, t := range ot.Types {
-		err := it.Learn(t)
+		err := it.Learn(ast, env, t)
 		if err != nil {
 			return err
 		}
@@ -258,7 +258,7 @@ func (it *InferTypes) LearnAll(ot *InferTypes) error {
 	return nil
 }
 
-func (it *InferTypes) Learn(t *types.Type) error {
+func (it *InferTypes) Learn(ast AST, env *InferEnv, t *types.Type) error {
 	// Do we already have something kind of t?
 	for _, current := range it.Types {
 		if current.IsKindOf(t) {
@@ -273,6 +273,20 @@ func (it *InferTypes) Learn(t *types.Type) error {
 		}
 	}
 	if it.Conclusive {
+		// Can we unify t with any type of it?
+		for _, current := range it.Types {
+			unified, err := Unify(ast, env, current, t)
+			if err == nil {
+				if false {
+					fmt.Printf("Unify(%v,%v)=>%v\n", current, t, unified)
+				}
+				return nil
+			}
+		}
+		if true {
+			return fmt.Errorf("can't learn more about %v with %v", it, t)
+		}
+
 		_, ok := it.IsTypeVar()
 		if !ok && t.Enum != types.EnumTypeVar {
 			// Can't learn more about a conclusive concrete type.
@@ -369,7 +383,9 @@ func (inferred Inferred) CopyFacts() Inferred {
 
 // Merge merges the learned types from the array of Inferred values
 // into this Inferred.
-func (inferred Inferred) Merge(learned []Inferred) error {
+func (inferred Inferred) Merge(ast AST, env *InferEnv,
+	learned []Inferred) error {
+
 	keys := make(map[int]bool)
 
 	for _, l := range learned {
@@ -392,7 +408,7 @@ func (inferred Inferred) Merge(learned []Inferred) error {
 				}
 			}
 		}
-		err := inferred.Learn(&types.Type{
+		err := inferred.Learn(ast, env, &types.Type{
 			Enum:    types.EnumTypeVar,
 			TypeVar: key,
 		}, inferTypes)
@@ -405,7 +421,9 @@ func (inferred Inferred) Merge(learned []Inferred) error {
 }
 
 // Learn updates the type variable v's type with InferTypes it.
-func (inferred Inferred) Learn(v *types.Type, it *InferTypes) error {
+func (inferred Inferred) Learn(ast AST, env *InferEnv, v *types.Type,
+	it *InferTypes) error {
+
 	if v.Enum != types.EnumTypeVar {
 		learned := it.Type()
 		if !learned.IsKindOf(v) {
@@ -419,7 +437,7 @@ func (inferred Inferred) Learn(v *types.Type, it *InferTypes) error {
 		return nil
 	}
 	if old.Conclusive {
-		err := old.LearnAll(it)
+		err := old.LearnAll(ast, env, it)
 		if err != nil {
 			return fmt.Errorf("old.Conclusive: old=%v, it=%v: %v", old, it, err)
 		}
@@ -461,6 +479,10 @@ func (inferred Inferred) Apply(t *types.Type) *types.Type {
 	case types.EnumTypeVar:
 		mapped, ok := inferred[t.TypeVar]
 		if ok {
+			if !mapped.Conclusive {
+				return types.Unspecified
+			}
+
 			var result *types.Type
 			var selfSkipped bool
 
@@ -656,17 +678,21 @@ func (env *InferEnv) SetAST(name string, ast AST) {
 
 // Learn updates the type variable v's type to t. The function panics
 // if the variable v is not a type variable.
-func (env *InferEnv) Learn(v *types.Type, it *InferTypes) error {
+func (env *InferEnv) Learn(ast AST, v *types.Type, it *InferTypes) error {
 	if env.inferred != nil {
-		return env.inferred.Learn(v, it)
+		return env.inferred.Learn(ast, env, v, it)
 	}
-	return env.inferer.inferred.Learn(v, it)
+	return env.inferer.inferred.Learn(ast, env, v, it)
 }
 
 // InferBranch defines the branch condition specific types.
 type InferBranch struct {
 	pos *InferEnv
 	neg *InferEnv
+}
+
+func (ib *InferBranch) String() string {
+	return fmt.Sprintf("{+=%v, -=%v}", ib.pos, ib.neg)
 }
 
 // InferEnvBinding defines known bindings in the inference
@@ -791,7 +817,7 @@ func unifyTypeVar(ast AST, env *InferEnv, tv, to *types.Type) (
 		// We didn't learn anything.
 		return tv, nil
 	}
-	err := env.Learn(tv, &InferTypes{
+	err := env.Learn(ast, tv, &InferTypes{
 		Conclusive: true,
 		Types:      []*types.Type{to},
 	})
@@ -1050,7 +1076,10 @@ func (ast *ASTIf) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		// global curriculum.
 		env.inferer.Debugf(ast, "    true  : %v\n", trueEnv.inferred)
 		env.inferer.Debugf(ast, "    false : %v\n", falseEnv.inferred)
-		env.Inferred().Merge([]Inferred{trueEnv.inferred, falseEnv.inferred})
+		env.Inferred().Merge(ast, env, []Inferred{
+			trueEnv.inferred,
+			falseEnv.inferred,
+		})
 		env.inferer.Debugf(ast, " => merged: %v\n", env.Inferred())
 	}
 
@@ -1603,7 +1632,7 @@ func (ast *ASTLambda) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		t = types.Unspecified
 	}
 	// XXX this can be number=number
-	err = env.Learn(lambdaType.Return, &InferTypes{
+	err = env.Learn(ast, lambdaType.Return, &InferTypes{
 		Conclusive: true,
 		Types:      []*types.Type{t},
 	})
@@ -1637,6 +1666,7 @@ func (ast *ASTLambda) Inferred(env *InferEnv) error {
 		}
 	}
 	ast.t = env.Inferred().Apply(ast.t)
+
 	return nil
 }
 
@@ -1797,7 +1827,7 @@ func (ast *ASTCond) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		for idx, branch := range branches {
 			env.inferer.Debugf(ast, "cond: %v : %v\n", idx, branch)
 		}
-		env.Inferred().Merge(branches)
+		env.Inferred().Merge(ast, env, branches)
 		env.inferer.Debugf(ast, "cond: => : %v\n", env.Inferred())
 	}
 
@@ -1880,7 +1910,7 @@ func (ast *ASTCase) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		for idx, branch := range branches {
 			env.inferer.Debugf(ast, "case: %v : %v\n", idx, branch)
 		}
-		env.Inferred().Merge(branches)
+		env.Inferred().Merge(ast, env, branches)
 		env.inferer.Debugf(ast, "case: => : %v\n", env.Inferred())
 	}
 
