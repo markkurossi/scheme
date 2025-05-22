@@ -151,7 +151,7 @@
                   (display lib-imports)))
             (newline)))
 
-      (if this
+      (if (pair? this)
           ;; Library seen, check that is has been initialized
           ;; successfully.
           (eq? (lib-status this) 'initialized)
