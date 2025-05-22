@@ -23,13 +23,6 @@ func errf(ast AST, format string, a ...interface{}) error {
 	return ast.Locator().From().Errorf("\u22a2 %s", msg)
 }
 
-// Inferer
-// Inferred
-// InferEnv
-// InferEnvBinding
-// InferBranch
-// InferTypes
-
 // Inferer implements type inference.
 type Inferer struct {
 	scm      *Scheme
@@ -184,6 +177,7 @@ func (inferer *Inferer) newTypeVar() *types.Type {
 	}
 }
 
+// InferTypes collect inferred type information for a type variable.
 type InferTypes struct {
 	Conclusive bool
 	Types      []*types.Type
@@ -206,14 +200,7 @@ func (it *InferTypes) String() string {
 	return result
 }
 
-func (it *InferTypes) IsTypeVar() (*types.Type, bool) {
-	if !it.Conclusive || len(it.Types) != 1 ||
-		it.Types[0].Enum != types.EnumTypeVar {
-		return nil, false
-	}
-	return it.Types[0], true
-}
-
+// Type returns the unified type of these inferred types.
 func (it *InferTypes) Type() *types.Type {
 	if !it.Conclusive {
 		return types.Unspecified
@@ -248,6 +235,8 @@ func (it *InferTypes) TypeFor(tv *types.Type) *types.Type {
 	return result
 }
 
+// LearnAll updates the inferred types with all types of argument
+// InferTypes.
 func (it *InferTypes) LearnAll(ast AST, env *InferEnv, ot *InferTypes) error {
 	for _, t := range ot.Types {
 		err := it.Learn(ast, env, t)
@@ -258,6 +247,7 @@ func (it *InferTypes) LearnAll(ast AST, env *InferEnv, ot *InferTypes) error {
 	return nil
 }
 
+// Learn updates the inferred types with the argument type.
 func (it *InferTypes) Learn(ast AST, env *InferEnv, t *types.Type) error {
 	// Do we already have something kind of t?
 	for _, current := range it.Types {
@@ -283,22 +273,13 @@ func (it *InferTypes) Learn(ast AST, env *InferEnv, t *types.Type) error {
 				return nil
 			}
 		}
-		if true {
-			return fmt.Errorf("can't learn more about %v with %v", it, t)
-		}
-
-		_, ok := it.IsTypeVar()
-		if !ok && t.Enum != types.EnumTypeVar {
-			// Can't learn more about a conclusive concrete type.
-			return fmt.Errorf("can't learn more about %v with %v", it, t)
-		}
-		// The current conclusive type is a type variable. Add the new
-		// type into the inferred types.
+		return fmt.Errorf("can't learn more about %v with %v", it, t)
 	}
 	it.Types = append(it.Types, t)
 	return nil
 }
 
+// Add adds the argument type of this InferTypes.
 func (it *InferTypes) Add(t *types.Type) {
 	for _, current := range it.Types {
 		if t.IsA(current) {
@@ -308,6 +289,7 @@ func (it *InferTypes) Add(t *types.Type) {
 	it.Types = append(it.Types, t)
 }
 
+// MatchAll matches all argument types with this InferTypes.
 func (it *InferTypes) MatchAll(ot *InferTypes) error {
 	for _, t := range ot.Types {
 		if err := it.Match(t); err != nil {
@@ -317,6 +299,7 @@ func (it *InferTypes) MatchAll(ot *InferTypes) error {
 	return nil
 }
 
+// Match matches the argument type with this InferTypes.
 func (it *InferTypes) Match(t *types.Type) error {
 	for _, current := range it.Types {
 		if t.IsKindOf(current) {
