@@ -149,7 +149,7 @@ func (scm *Scheme) verbosef(format string, a ...interface{}) {
 	}
 }
 
-const typeInferRuntime = false
+const typeInferRuntime = true
 
 func (scm *Scheme) loadRuntime(dir string) error {
 	entries, err := runtime.ReadDir(dir)

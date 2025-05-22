@@ -992,11 +992,17 @@ func (ast *ASTLet) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		}
 		t := b.Init.Type()
 
+		tv := initEnv.inferer.newTypeVar()
+
 		if ast.Kind == KwLet {
-			bodyBindings[b.Name()] = t
+			bodyBindings[b.Name()] = tv
 		} else {
-			initEnv.Set(b.Name(), t)
+			initEnv.Set(b.Name(), tv)
 		}
+		err = initEnv.Learn(b.Init, tv, &InferTypes{
+			Conclusive: true,
+			Types:      []*types.Type{t},
+		})
 	}
 
 	bodyEnv := initEnv.Copy()
