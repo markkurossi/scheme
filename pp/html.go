@@ -188,7 +188,7 @@ func (w *HTML) Trailer() {
           }
       };
 
-      let isVisible = false;
+      let isVisible = true;
       toggleUpdate();
 
       toggleButton.addEventListener('click', function() {
