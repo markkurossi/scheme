@@ -495,7 +495,6 @@ type InferEnv struct {
 	bindings map[string]InferEnvBinding
 	inferred Inferred
 
-	// XXX
 	argTypes []*types.Type
 }
 
@@ -1191,12 +1190,9 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	// Resolve the type of the function.
 
 	var fnName string
-	var fnType *types.Type // XXX type1
+	var fnType *types.Type
 	var err error
 
-	// XXX inlining should happen only after we know the argument
-	// types. I.e. if the LambdaImpl has Inlinable flag set and the
-	// argument types match the function.
 	if ast.Inline {
 		fnType, err = ast.inlineFuncType(env)
 		if err != nil {
@@ -1622,7 +1618,6 @@ func (ast *ASTLambda) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	if t == nil {
 		t = types.Unspecified
 	}
-	// XXX this can be number=number
 	err = env.Learn(ast, lambdaType.Return, &InferTypes{
 		Conclusive: true,
 		Types:      []*types.Type{t},
