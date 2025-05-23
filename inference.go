@@ -135,7 +135,8 @@ func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
 	if inferer.scm.Params.Verbose() {
 		inferer.Print(ast, lead, msg)
 	} else {
-		inferer.scm.Stdout.Printf("%s: %s%s", ast.Locator().From(), lead, msg)
+		inferer.scm.Stdout.Printf("%s: \u22a2 %s%s",
+			ast.Locator().From(), lead, msg)
 	}
 }
 
