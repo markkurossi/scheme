@@ -151,7 +151,7 @@
                   (display lib-imports)))
             (newline)))
 
-      (if this
+      (if (pair? this)
           ;; Library seen, check that is has been initialized
           ;; successfully.
           (eq? (lib-status this) 'initialized)
@@ -166,7 +166,7 @@
             (if (importer lib-imports)
                 (begin
                   ;; Imports loaded, now init this module.
-                  (let ((init (scheme::compile lib-library)))
+                  (let ((init (scheme::compile lib-library #t)))
                     (if init-self
                         (set! result (init))
                         (set! result #t)))

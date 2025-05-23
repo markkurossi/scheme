@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2023 Markku Rossi
+;;; Copyright (c) 2023-2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -17,5 +17,6 @@
      ((list? obj) (length obj))
      ((vector? obj) (vector-length obj))
      (else
-      (error 'len "invalid object" obj))))
+      (error 'len "invalid object" obj)
+      0)))
   )

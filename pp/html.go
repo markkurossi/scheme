@@ -73,6 +73,10 @@ func (w *HTML) Header() {
           border-radius: 5px;
           color: #228b22;
           margin-left: 2px;
+          display: inline-block;
+      }
+      .type.hidden {
+          display: none;
       }
       .keyword {
           color: #800080;
@@ -80,10 +84,77 @@ func (w *HTML) Header() {
       .string {
           color: #8b2252;
       }
+
+      .toggle-container {
+          font-family: sans-serif;
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          margin-bottom: 30px;
+          position: fixed;
+          top: 5px;
+          right: 10px;
+          z-index: 1000;
+      }
+      .toggle-label {
+          font-size: 15px;
+          font-weight: 400;
+          color: #333;
+          user-select: none;
+      }
+      .toggle-switch {
+          position: relative;
+          width: 40px;
+          height: 24px;
+          background: #e5e5e7;
+          border-radius: 17px;
+          cursor: pointer;
+          transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          border: none;
+          outline: none;
+          box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .toggle-switch:hover {
+          background: #d1d1d6;
+      }
+      .toggle-switch.active {
+          background: #34c759;
+      }
+      .toggle-switch.active:hover {
+          background: #30d158;
+      }
+      .toggle-knob {
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 20px;
+          height: 20px;
+          background: white;
+          border-radius: 50%%;
+          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .toggle-switch.active .toggle-knob {
+          transform: translateX(16px);
+      }
+      .toggle-switch:active .toggle-knob {
+          width: 21px;
+      }
+      .toggle-switch.active:active .toggle-knob {
+          transform: translateX(15px);
+      }
     </style>
   </head>
   <body>
     <h1>%s</h1>
+
+    <div class="toggle-container">
+      <span class="toggle-label">Types</span>
+      <button class="toggle-switch" id="toggleButton">
+        <div class="toggle-knob"></div>
+      </button>
+    </div>
+
     <div class="code">
 `,
 		name, name)
@@ -95,6 +166,44 @@ func (w *HTML) Trailer() {
 		return
 	}
 	_, w.err = fmt.Fprintf(w.w, `    </div>
+
+    <script>
+      const toggleButton = document.getElementById('toggleButton');
+      const toggleLabel = document.querySelector('.toggle-label');
+      const toggleableElements = document.querySelectorAll('.type');
+
+      const toggleUpdate = function() {
+          toggleableElements.forEach(element => {
+              if (isVisible) {
+                  element.classList.remove('hidden');
+              } else {
+                  element.classList.add('hidden');
+              }
+          });
+
+          if (isVisible) {
+              toggleButton.classList.add('active');
+          } else {
+              toggleButton.classList.remove('active');
+          }
+      };
+
+      let isVisible = true;
+      toggleUpdate();
+
+      toggleButton.addEventListener('click', function() {
+          isVisible = !isVisible;
+          toggleUpdate();
+      });
+
+      // Optional: Add keyboard support
+      toggleButton.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              toggleButton.click();
+          }
+      });
+    </script>
   </body>
 </html>
 `)

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -33,7 +33,7 @@ var loadBuiltins = []Builtin{
 			if !path.IsAbs(file) {
 				file = path.Join(path.Dir(string(caller)), file)
 			}
-			if scm.Params.Verbose {
+			if scm.Params.Verbose() {
 				fmt.Printf("load: %v\n", file)
 			}
 			return scm.LoadFile(file)
@@ -73,7 +73,7 @@ var loadBuiltins = []Builtin{
 	},
 	{
 		Name: "scheme::compile",
-		Args: []string{"ast<any>"},
+		Args: []string{"ast<any>", "type-inference<bool>"},
 		Return: &types.Type{
 			Enum:   types.EnumLambda,
 			Return: types.Any,
@@ -83,7 +83,11 @@ var loadBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("invalid library: %v", args[0])
 			}
-			v, err := lib.Compile()
+			inference, ok := args[1].(Boolean)
+			if !ok {
+				return nil, fmt.Errorf("invalid type-inference: %v", args[1])
+			}
+			v, err := lib.Compile(bool(inference))
 			if err != nil {
 				return nil, fmt.Errorf("<<%s", err.Error())
 			}

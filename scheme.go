@@ -46,8 +46,8 @@ type Scheme struct {
 
 // Params define the configuration parameters for Scheme.
 type Params struct {
-	// Verbose output.
-	Verbose bool
+	// Verbosity level.
+	Verbosity int
 
 	// Quiet output.
 	Quiet bool
@@ -62,6 +62,16 @@ type Params struct {
 	// Pragmas.
 	Pragma  Pragmas
 	pragmas []Pragmas
+}
+
+// Verbose returns true if verbose output is enabled.
+func (p *Params) Verbose() bool {
+	return p.Verbosity > 0
+}
+
+// Verbose2 returns true if verbosity is 2 or more.
+func (p *Params) Verbose2() bool {
+	return p.Verbosity >= 2
 }
 
 // PushScope push a new compilation scope and saves the current
@@ -134,10 +144,12 @@ func NewWithParams(params Params) (*Scheme, error) {
 }
 
 func (scm *Scheme) verbosef(format string, a ...interface{}) {
-	if scm.Params.Verbose {
+	if scm.Params.Verbose() {
 		scm.Stdout.Printf(format, a...)
 	}
 }
+
+const typeInferRuntime = true
 
 func (scm *Scheme) loadRuntime(dir string) error {
 	entries, err := runtime.ReadDir(dir)
@@ -156,7 +168,7 @@ func (scm *Scheme) loadRuntime(dir string) error {
 		if err != nil {
 			return err
 		}
-		_, err = scm.eval(file, bytes.NewReader(data))
+		_, err = scm.eval(file, bytes.NewReader(data), typeInferRuntime)
 		if err != nil {
 			return err
 		}
@@ -257,7 +269,7 @@ func (scm *Scheme) Eval(source string, in io.Reader) (Value, error) {
 	if scm.hasRuntime {
 		return scm.evalRuntime(source, in)
 	}
-	return scm.eval(source, in)
+	return scm.eval(source, in, true)
 }
 
 func (scm *Scheme) evalRuntime(source string, in io.Reader) (Value, error) {
@@ -270,7 +282,9 @@ func (scm *Scheme) evalRuntime(source string, in io.Reader) (Value, error) {
 	return scm.Apply(sym.Global, []Value{library, Boolean(true)})
 }
 
-func (scm *Scheme) eval(source string, in io.Reader) (Value, error) {
+func (scm *Scheme) eval(source string, in io.Reader, typeInfer bool) (
+	Value, error) {
+
 	library, err := scm.Load(source, in)
 	if err != nil {
 		return nil, err
@@ -284,7 +298,7 @@ func (scm *Scheme) eval(source string, in io.Reader) (Value, error) {
 		return nil, fmt.Errorf("invalid library: %T", values[4])
 	}
 
-	init, err := lib.Compile()
+	init, err := lib.Compile(typeInfer)
 	if err != nil {
 		return nil, err
 	}

@@ -170,11 +170,15 @@ func (lib *Library) PrettyPrint(w pp.Writer) error {
 }
 
 // Compile compiles the library into bytecode.
-func (lib *Library) Compile() (Value, error) {
-	inferer := NewInferer(lib.scm, lib.Body.Items)
-	_, err := inferer.Infer(lib.Body)
-	if err != nil {
-		return nil, err
+func (lib *Library) Compile(typeInfer bool) (Value, error) {
+	var err error
+
+	if typeInfer {
+		inferer := NewInferer(lib.scm, lib.Body.Items)
+		_, err = inferer.Infer(lib.Body)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = lib.Body.Bytecode(lib)
@@ -236,8 +240,15 @@ func (lib *Library) Compile() (Value, error) {
 				name = def.Name.Name
 			}
 			t := def.Self.Type()
-			if t.Enum != types.EnumLambda {
-				return nil, fmt.Errorf("invalid lambda type: %v", t)
+			if typeInferRuntime {
+				if t.Enum != types.EnumLambda {
+					return nil, fmt.Errorf("invalid lambda type: %v", t)
+				}
+			} else {
+				t = &types.Type{
+					Enum:   types.EnumLambda,
+					Return: types.Unspecified,
+				}
 			}
 
 			instr.I = def.Start
