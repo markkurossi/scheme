@@ -90,11 +90,17 @@ func (inferer *Inferer) astName(ast AST) string {
 
 // Print prints an inferer debug message.
 func (inferer *Inferer) Print(ast AST, lead, msg string) {
-	prefix := infererPrefix(ast.Locator())
-	indent := "\u2502 "
+	var prefix string
 
-	for i := 0; i < inferer.nesting; i++ {
-		prefix += indent
+	if inferer.scm.Params.Verbose() {
+		prefix = infererPrefix(ast.Locator())
+		indent := "\u2502 "
+
+		for i := 0; i < inferer.nesting; i++ {
+			prefix += indent
+		}
+	} else {
+		prefix = fmt.Sprintf("%s: \u22a2 ", ast.Locator().From())
 	}
 	inferer.scm.Stdout.Printf("%s%s%s", prefix, lead, msg)
 }
@@ -132,12 +138,7 @@ func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
 	} else {
 		lead = "warning: "
 	}
-	if inferer.scm.Params.Verbose() {
-		inferer.Print(ast, lead, msg)
-	} else {
-		inferer.scm.Stdout.Printf("%s: \u22a2 %s%s",
-			ast.Locator().From(), lead, msg)
-	}
+	inferer.Print(ast, lead, msg)
 }
 
 // Debugf prints debugging information about type inference.
