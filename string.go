@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -333,6 +333,39 @@ var stringBuiltins = []Builtin{
 			new := make([]rune, len(runes), len(runes))
 			copy(new, runes)
 			return String(string(new)), nil
+		},
+	},
+
+	{
+		Name:   "string-prefix?",
+		Args:   []string{"prefix<string>", "string"},
+		Return: types.Boolean,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			prefix, ok := args[0].(String)
+			if !ok {
+				return nil, fmt.Errorf("invalid string: %v", args[0])
+			}
+			str, ok := args[1].(String)
+			if !ok {
+				return nil, fmt.Errorf("invalid string: %v", args[1])
+			}
+			return Boolean(strings.HasPrefix(string(str), string(prefix))), nil
+		},
+	},
+	{
+		Name:   "string-suffix?",
+		Args:   []string{"suffix<string>", "string"},
+		Return: types.Boolean,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			prefix, ok := args[0].(String)
+			if !ok {
+				return nil, fmt.Errorf("invalid string: %v", args[0])
+			}
+			str, ok := args[1].(String)
+			if !ok {
+				return nil, fmt.Errorf("invalid string: %v", args[1])
+			}
+			return Boolean(strings.HasSuffix(string(str), string(prefix))), nil
 		},
 	},
 }
