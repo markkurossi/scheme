@@ -132,6 +132,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 	scm.DefineBuiltins(rnrsMutablePairsBuiltins)
 	scm.DefineBuiltins(rnrsMutableStringsBuiltins)
 	scm.DefineBuiltins(rnrsProgramsBuiltins)
+	scm.DefineBuiltins(rnrsEvalBuiltins)
 
 	if !scm.Params.NoRuntime {
 		err := scm.loadRuntime("runtime")
