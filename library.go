@@ -30,7 +30,6 @@ type Library struct {
 	lambdas   []*lambdaCompilation
 	nextLabel int
 	exported  map[string]*export
-	recheck   bool
 	current   *lambdaCompilation
 }
 
@@ -40,7 +39,7 @@ func (lib *Library) String() string {
 
 // Scheme implements Value.Scheme.
 func (lib *Library) Scheme() string {
-	return fmt.Sprintf("library %s", lib.Name.Scheme())
+	return fmt.Sprintf("#<library %s>", lib.Name.Scheme())
 }
 
 // Eq implements Value.Eq.
