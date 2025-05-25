@@ -61,7 +61,8 @@
 (define (load filename)
   (let* ((stack (scheme::stack-trace))
          (library (scheme::load (caadr stack) filename)))
-    (scheme::init-library library #t)))
+    (scheme::init-library library #t)
+    library))
 
 (define scheme::libraries
   '(
