@@ -46,6 +46,30 @@ var rnrsFilesBuiltins = []Builtin{
 			return Boolean(true), nil
 		},
 	},
+
+	{
+		Name:   "current-directory",
+		Args:   []string{"[path<string>]"},
+		Return: types.String,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			if len(args) == 1 {
+				d, ok := args[0].(String)
+				if !ok {
+					return nil, fmt.Errorf("invalid directory: %v", args[0])
+				}
+				err := os.Chdir(string(d))
+				if err != nil {
+					return nil, err
+				}
+				return d, nil
+			}
+			d, err := os.Getwd()
+			if err != nil {
+				return nil, err
+			}
+			return String(d), nil
+		},
+	},
 	{
 		Name: "directory-list",
 		Args: []string{"[path<string>]"},
