@@ -154,6 +154,13 @@ func main() {
 			}
 			return
 
+		case "test":
+			err = test(scm, flag.Args()[idx+1:])
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+
 		default:
 			// Process argument as scheme file.
 			if *bc {
@@ -220,6 +227,23 @@ func vetFile(scm *scheme.Scheme, file string) error {
 	defer in.Close()
 
 	return scm.Vet(file, in)
+}
+
+func test(scm *scheme.Scheme, files []string) error {
+	lambda, err := scm.Eval("{input}", strings.NewReader(`(import (scheme test))
+scheme::test::runner
+`))
+	if err != nil {
+		return err
+	}
+
+	var args []scheme.Value
+	for _, f := range files {
+		args = append(args, scheme.String(f))
+	}
+
+	_, err = scm.Apply(lambda, args)
+	return err
 }
 
 func bytecode(scm *scheme.Scheme, file string) error {
