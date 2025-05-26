@@ -7,7 +7,7 @@
 ;;; SRFI 13: String Libraries - https://srfi.schemers.org/srfi-13/srfi-13.html
 ;;;
 
-(library (srfi 13 (1 0))
+(library (srfi 13 (2024 9 2))
   (export string-pad string-pad-right)
   (import (rnrs base))
 
