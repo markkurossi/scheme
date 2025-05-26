@@ -14,6 +14,14 @@ import (
 
 var rnrsEvalBuiltins = []Builtin{
 	{
+		Name:   "interaction-environment",
+		Return: types.Pair,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			return NewPair(scm.Intern("env"),
+				NewPair(scm.Intern("interaction"), nil)), nil
+		},
+	},
+	{
 		Name:   "eval",
 		Args:   []string{"obj", "obj"},
 		Return: types.Any,
