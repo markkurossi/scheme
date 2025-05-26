@@ -18,7 +18,13 @@
 ;; (display "load-path=") (display load-path) (newline)
 
 (define (load-library name)
-  (letrec ((name-string-list (map symbol->string name))
+  (letrec ((name-string-list (map (lambda (obj)
+                                    (cond
+                                     ((symbol? obj) (symbol->string obj))
+                                     ((number? obj) (number->string obj))
+                                     (else
+                                      (error "invalid name" obj))))
+                                  name))
            (join
             (lambda (items sep)
               (letrec ((head '())
