@@ -11,6 +11,7 @@ package scheme
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/markkurossi/scheme/types"
@@ -28,6 +29,54 @@ var rnrsFilesBuiltins = []Builtin{
 			}
 			_, err := os.Stat(string(filename))
 			return Boolean(!errors.Is(err, os.ErrNotExist)), nil
+		},
+	},
+	{
+		Name:   "file-directory?",
+		Args:   []string{"filename<string>"},
+		Return: types.Boolean,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			filename, ok := args[0].(String)
+			if !ok {
+				return nil, fmt.Errorf("invalid filename: %v", args[0])
+			}
+			info, err := os.Lstat(string(filename))
+			if err != nil {
+				return nil, err
+			}
+			return Boolean(info.IsDir()), nil
+		},
+	},
+	{
+		Name:   "file-regular?",
+		Args:   []string{"filename<string>"},
+		Return: types.Boolean,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			filename, ok := args[0].(String)
+			if !ok {
+				return nil, fmt.Errorf("invalid filename: %v", args[0])
+			}
+			info, err := os.Lstat(string(filename))
+			if err != nil {
+				return nil, err
+			}
+			return Boolean(info.Mode()&fs.ModeType == 0), nil
+		},
+	},
+	{
+		Name:   "file-symbolic-link?",
+		Args:   []string{"filename<string>"},
+		Return: types.Boolean,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			filename, ok := args[0].(String)
+			if !ok {
+				return nil, fmt.Errorf("invalid filename: %v", args[0])
+			}
+			info, err := os.Lstat(string(filename))
+			if err != nil {
+				return nil, err
+			}
+			return Boolean(info.Mode()&fs.ModeSymlink != 0), nil
 		},
 	},
 	{
