@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/markkurossi/scheme/types"
 )
@@ -133,6 +134,25 @@ func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 			return nil, err
 		}
 		library.Body.Add(ast)
+	}
+
+	if library.ExportAll {
+		var exports []string
+		for _, item := range library.Body.Items {
+			switch ast := item.(type) {
+			case *ASTDefine:
+				exports = append(exports, ast.Name.Name)
+
+			case *ASTLambda:
+				if ast.Define {
+					exports = append(exports, ast.Name.Name)
+				}
+			}
+		}
+		sort.Strings(exports)
+		for i := len(exports) - 1; i >= 0; i-- {
+			library.Exports = NewPair(p.scm.Intern(exports[i]), library.Exports)
+		}
 	}
 
 	return library, nil
