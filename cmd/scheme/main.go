@@ -238,6 +238,9 @@ scheme::test::runner
 	}
 
 	var args []scheme.Value
+
+	args = append(args, scheme.Boolean(scm.Params.Verbosity > 0))
+
 	for _, f := range files {
 		args = append(args, scheme.String(f))
 	}

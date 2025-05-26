@@ -9,7 +9,12 @@
   (export scheme::test::runner)
   (import (rnrs base) (filepath walk))
 
-  (define (scheme::test::runner . args)
+  (define (scheme::test::runner verbose . args)
+    (display "scheme::test::runner ")
+    (display verbose)
+    (display " ")
+    (display args)
+    (newline)
     (if (null? args)
         (scheme::test::handle-arg ".")
         (for-each scheme::test::handle-arg args)))
