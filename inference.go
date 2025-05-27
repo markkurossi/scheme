@@ -89,10 +89,10 @@ func (inferer *Inferer) astName(ast AST) string {
 }
 
 // Print prints an inferer debug message.
-func (inferer *Inferer) Print(ast AST, lead, msg string) {
+func (inferer *Inferer) Print(ast AST, guide bool, lead, msg string) {
 	var prefix string
 
-	if inferer.scm.Params.Verbose() {
+	if guide {
 		prefix = infererPrefix(ast.Locator())
 		indent := "\u2502 "
 
@@ -138,7 +138,7 @@ func (inferer *Inferer) Warningf(ast AST, format string, a ...interface{}) {
 	} else {
 		lead = "warning: "
 	}
-	inferer.Print(ast, lead, msg)
+	inferer.Print(ast, inferer.scm.Params.Verbose(), lead, msg)
 }
 
 // Debugf prints debugging information about type inference.
@@ -147,7 +147,7 @@ func (inferer *Inferer) Debugf(ast AST, format string, a ...interface{}) {
 		return
 	}
 	msg := fmt.Sprintf(format, a...)
-	inferer.Print(ast, "", msg)
+	inferer.Print(ast, true, "", msg)
 }
 
 // Debug2f prints debugging information about type inference.
@@ -157,7 +157,7 @@ func (inferer *Inferer) Debug2f(ast AST, format string, a ...interface{}) {
 		return
 	}
 	msg := fmt.Sprintf(format, a...)
-	inferer.Print(ast, "", msg)
+	inferer.Print(ast, true, "", msg)
 }
 
 // NewEnv creates a new inference environment.
