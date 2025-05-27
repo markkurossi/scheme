@@ -210,7 +210,8 @@ func (lib *Library) Compile(typeInfer bool) (Value, error) {
 		lib.addInstr(nil, OpReturn, nil, 0)
 		lambda.End = len(lib.Init)
 
-		pcmap := lib.PCMap[pcmapStart:len(lib.PCMap)]
+		pcmap := make(PCMap, len(lib.PCMap)-pcmapStart)
+		copy(pcmap, lib.PCMap[pcmapStart:])
 		for i := 0; i < len(pcmap); i++ {
 			pcmap[i].PC -= lambda.Start
 		}
