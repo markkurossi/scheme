@@ -83,7 +83,7 @@ func (v *Lambda) MapPC(pc int) (source string, line int) {
 	source = v.Impl.Source
 
 	if false {
-		fmt.Printf("MapPC: %v:%v\n", source, pc)
+		fmt.Printf("\nMapPC: %v:%v\n", source, pc)
 		for idx, pm := range v.Impl.PCMap {
 			fmt.Printf(" - %v\tPC=%v, Line=%v\n", idx, pm.PC, pm.Line)
 		}
