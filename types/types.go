@@ -462,7 +462,12 @@ func (t *Type) IsKindOf(o *Type) bool {
 	if t.Enum == EnumUnspecified || o.Enum == EnumUnspecified {
 		return true
 	}
+	// Lists are cons pairs or empty (nil). Assigning cons to nil and
+	// nil to cons are valid.
 	if o.Enum == EnumPair && t.Enum == EnumNil {
+		return true
+	}
+	if o.Enum == EnumNil && t.Enum == EnumPair {
 		return true
 	}
 

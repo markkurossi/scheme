@@ -924,13 +924,17 @@ func (ast *ASTSet) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	if sym.GlobalType.IsA(types.Unspecified) {
 		return nil, nil, errf(ast, "setting undefined symbol '%s'", ast.Name)
 	}
-
 	if !t.IsKindOf(sym.GlobalType) {
 		_, err := Unify(ast, env, t, sym.GlobalType)
 		if err != nil {
 			return nil, nil, errf(ast, "can't assign %s to variable of type %s",
 				t, sym.GlobalType)
 		}
+	}
+	if sym.GlobalType.IsA(types.Nil) && t.Enum == types.EnumPair {
+		// Initializing empty list with a non-empty value. Set its
+		// type.
+		sym.GlobalType = t
 	}
 
 	ast.t = sym.GlobalType
@@ -1660,15 +1664,9 @@ func (ast *ASTLambda) Inferred(env *InferEnv) error {
 func (ast *ASTConstant) Infer(env *InferEnv) (
 	*InferBranch, *InferTypes, error) {
 
-	var t *types.Type
-	if ast.Value == nil {
-		t = types.Nil
-	} else {
-		t = ast.Value.Type()
-	}
 	return nil, &InferTypes{
 		Conclusive: true,
-		Types:      []*types.Type{t},
+		Types:      []*types.Type{ast.Type()},
 	}, nil
 }
 
