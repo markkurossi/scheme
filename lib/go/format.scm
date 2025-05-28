@@ -1,14 +1,14 @@
 ;;;
-;;; Copyright (c) 2023-2024 Markku Rossi
+;;; Copyright (c) 2023-2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
 
 (library (go format (1 19))
-  (export format)
+  (export go::format)
   (import (rnrs base))
 
-  (define (format format . args)
+  (define (go::format format . args)
     (letrec ((head '())
              (tail '())
 
