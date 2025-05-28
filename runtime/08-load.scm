@@ -73,11 +73,13 @@
 (define scheme::libraries
   '(
     ((rnrs base) (6) initialized)
+    ((rnrs eval) (6) initialized)
     ((rnrs files) (6) initialized)
     ((rnrs io simple) (6) initialized)
     ((rnrs programs) (6) initialized)
     ((rnrs mutable-pairs) (6) initialized)
     ((rnrs mutable-strings) (6) initialized)
+    ((srfi 28) (2002 6 25) initialized)
     ))
 
 (define (scheme::init-library library init-self)

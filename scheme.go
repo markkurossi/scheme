@@ -134,6 +134,8 @@ func NewWithParams(params Params) (*Scheme, error) {
 	scm.DefineBuiltins(rnrsProgramsBuiltins)
 	scm.DefineBuiltins(rnrsEvalBuiltins)
 
+	scm.DefineBuiltins(srfi28Builtins)
+
 	if !scm.Params.NoRuntime {
 		err := scm.loadRuntime("runtime")
 		if err != nil {
