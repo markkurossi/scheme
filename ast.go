@@ -671,7 +671,7 @@ func (ast *ASTConstant) SetType(t *types.Type) {
 // Type implements AST.Type.
 func (ast *ASTConstant) Type() *types.Type {
 	if ast.Value == nil {
-		return types.Unspecified
+		return types.Nil
 	}
 	return ast.Value.Type()
 }
