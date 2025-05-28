@@ -8,7 +8,7 @@
 ;;;
 
 (library (srfi 13 (2024 9 2))
-  (export string-pad string-pad-right)
+  (export string-pad string-pad-right string-join)
   (import (rnrs base))
 
   (define (string-pad s len . args)
@@ -28,4 +28,16 @@
       (if (>= l len)
           (substring s 0 len)
           (string-append s (make-string (- len l) ch)))))
+
+  (define (string-join strings separator)
+    (letrec ((iter
+              (lambda (strings result)
+                (if (null? strings)
+                    result
+                    (if (zero? (string-length result))
+                        (iter (cdr strings) (car strings))
+                        (iter (cdr strings)
+                              (string-append result separator
+                                             (car strings))))))))
+      (iter strings "")))
   )
