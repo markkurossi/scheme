@@ -29,15 +29,45 @@
           (substring s 0 len)
           (string-append s (make-string (- len l) ch)))))
 
-  (define (string-join strings separator)
-    (letrec ((iter
-              (lambda (strings result)
+  (define (string-join strings . args)
+    (letrec ((iter-infix
+              (lambda (strings separator result)
                 (if (null? strings)
                     result
                     (if (zero? (string-length result))
-                        (iter (cdr strings) (car strings))
-                        (iter (cdr strings)
-                              (string-append result separator
-                                             (car strings))))))))
-      (iter strings "")))
+                        (iter-infix (cdr strings) separator (car strings))
+                        (iter-infix (cdr strings) separator
+                                    (string-append result separator
+                                                   (car strings)))))))
+             (iter-suffix
+              (lambda (strings separator result)
+                (if (null? strings)
+                    (string-append result separator)
+                    (if (zero? (string-length result))
+                        (iter-suffix (cdr strings) separator (car strings))
+                        (iter-suffix (cdr strings) separator
+                                     (string-append result separator
+                                                    (car strings)))))))
+
+             (iter-prefix
+              (lambda (strings separator result)
+                (if (null? strings)
+                    (string-append separator result)
+                    (if (zero? (string-length result))
+                        (iter-prefix (cdr strings) separator (car strings))
+                        (iter-prefix (cdr strings) separator
+                                     (string-append result separator
+                                                    (car strings)))))))
+             )
+      (case (length args)
+        ((0) (iter-infix strings " " ""))
+        ((1) (iter-infix strings (car args) ""))
+        ((2) (case (cadr args)
+               ((infix)  (iter-infix  strings (car args) ""))
+               ((prefix) (iter-prefix strings (car args) ""))
+               ((suffix) (iter-suffix strings (car args) ""))
+               (else
+                (error 'srfi13 "Invalid grammar" (cadr args)))))
+        (else
+         (error 'srf113 "Invalid arguments" args)))))
   )
