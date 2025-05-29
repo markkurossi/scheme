@@ -1851,11 +1851,11 @@ func (ast *ASTCase) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 
 	var branches []Inferred
 
-	result := &InferTypes{
+	ast.it = &InferTypes{
 		Conclusive: ast.Conclusive,
 	}
 	if !ast.Conclusive {
-		result.Add(types.Boolean)
+		ast.it.Add(types.Boolean)
 	}
 
 	_, _, err := ast.Expr.Infer(env)
@@ -1880,8 +1880,8 @@ func (ast *ASTCase) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 			}
 			choiceType = expr.Type()
 		}
-		result.Add(choiceType)
-		env.inferer.Debugf(ast, "case types=%v\n", result)
+		ast.it.Add(choiceType)
+		env.inferer.Debugf(ast, "case types=%v\n", ast.it)
 
 		if ast.Conclusive {
 			branches = append(branches, choiceEnv.inferred)
@@ -1897,8 +1897,6 @@ func (ast *ASTCase) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		env.Inferred().Merge(ast, env, branches)
 		env.inferer.Debugf(ast, "case: => : %v\n", env.Inferred())
 	}
-
-	ast.it = result
 
 	return nil, ast.it, nil
 }
