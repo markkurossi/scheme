@@ -797,7 +797,7 @@ func unifyTypeVar(ast AST, env *InferEnv, tv, to *types.Type) (
 	if to == nil {
 		panic("unifyTypeVar: to=nil")
 	}
-	if to.Enum == types.EnumAny {
+	if to.Enum == types.EnumAny || to.IsA(tv) {
 		// We didn't learn anything.
 		return tv, nil
 	}
