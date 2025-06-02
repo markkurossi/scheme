@@ -84,12 +84,15 @@
       (newline)
       (if (> num-errors 0)
           (for-each (lambda (error)
-                      (display (string-join
-                                (map (lambda (e) (format "~a" e)) error)
-                                " "))
-                      (newline))
+                      (scheme::test::display error))
                     (reverse log)))
       ))
+
+  (define (scheme::test::display msg)
+    (display (string-join
+              (map (lambda (m) (format "~a" m)) msg)
+              " "))
+    (newline))
 
   (define (scheme::test::run-test name t)
     (let ((fn (eval name (interaction-environment))))
