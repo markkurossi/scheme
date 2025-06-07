@@ -8,6 +8,7 @@ package scheme
 
 import (
 	"github.com/markkurossi/scheme/pp"
+	"github.com/markkurossi/scheme/types"
 )
 
 // PP implements AST.PP.
@@ -215,7 +216,11 @@ func (ast *ASTConstant) PP(w pp.Writer) {
 	case String:
 		w.Literal(ToScheme(v))
 	default:
-		w.Printf("%s", ToScheme(ast.Value))
+		if ast.LexicalType != nil && ast.LexicalType.IsA(types.InexactInteger) {
+			w.Printf("#i%s", ToString(ast.Value))
+		} else {
+			w.Printf("%s", ToScheme(ast.Value))
+		}
 	}
 	w.Type(ast.Type().String())
 }
