@@ -282,7 +282,7 @@ func (v *BigFloat) String() string {
 
 // Scheme implements Value.Scheme.
 func (v *BigFloat) Scheme() string {
-	return v.String()
+	return "#e" + v.String()
 }
 
 // Eq implements Value.Eq.

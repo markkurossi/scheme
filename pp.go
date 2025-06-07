@@ -216,7 +216,9 @@ func (ast *ASTConstant) PP(w pp.Writer) {
 	case String:
 		w.Literal(ToScheme(v))
 	default:
-		if ast.LexicalType != nil && ast.LexicalType.IsA(types.InexactInteger) {
+		if ast.LexicalType != nil &&
+			(ast.LexicalType.IsA(types.InexactInteger) ||
+				ast.LexicalType.IsA(types.InexactFloat)) {
 			w.Printf("#i%s", ToString(ast.Value))
 		} else {
 			w.Printf("%s", ToScheme(ast.Value))
