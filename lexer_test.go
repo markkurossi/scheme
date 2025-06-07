@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -75,56 +75,56 @@ var lexerTests = []struct {
 		i: "#b101",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(5),
+			Number: MakeNumber(5),
 		},
 	},
 	{
 		i: "#o077",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(63),
+			Number: MakeNumber(63),
 		},
 	},
 	{
 		i: "#d42",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(42),
+			Number: MakeNumber(42),
 		},
 	},
 	{
 		i: "#xdeadbeef",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(0xdeadbeef),
+			Number: MakeNumber(0xdeadbeef),
 		},
 	},
 	{
 		i: "#e42",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(42),
+			Number: MakeNumber(42),
 		},
 	},
 	{
 		i: "#e#x42",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(66),
+			Number: MakeNumber(66),
 		},
 	},
 	{
 		i: "#e#x-42",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(-66),
+			Number: MakeNumber(-66),
 		},
 	},
 	{
 		i: "#e#x+42",
 		o: &Token{
 			Type:   TNumber,
-			Number: NewNumber(66),
+			Number: MakeNumber(66),
 		},
 	},
 	{

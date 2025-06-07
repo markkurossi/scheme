@@ -18,7 +18,7 @@ var parserTests = []struct {
 }{
 	{
 		i: "(1 2)",
-		o: NewPair(NewNumber(1), NewPair(NewNumber(2), nil)),
+		o: NewPair(MakeNumber(1), NewPair(MakeNumber(2), nil)),
 	},
 	{
 		i: "foo",
@@ -32,7 +32,7 @@ var parserTests = []struct {
 	},
 	{
 		i: "1",
-		o: NewNumber(1),
+		o: MakeNumber(1),
 	},
 	{
 		i: `"foo"`,

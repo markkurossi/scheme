@@ -23,7 +23,8 @@
                                      ((symbol? obj) (symbol->string obj))
                                      ((number? obj) (number->string obj))
                                      (else
-                                      (error "invalid name" obj))))
+                                      (error 'load-library
+                                             "invalid name" obj))))
                                   name))
            (join
             (lambda (items sep)

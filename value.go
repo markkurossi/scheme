@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -14,7 +14,11 @@ import (
 )
 
 var (
+	_ Value = &Number{}
 	_ Value = &BigInt{}
+	_ Value = &BigFloat{}
+	_ Value = Int(0)
+	_ Value = Float(0.0)
 	_ Value = &Bytevector{}
 	_ Value = &Frame{}
 	_ Value = &Identifier{}
@@ -24,8 +28,6 @@ var (
 	_ Value = &Vector{}
 	_ Value = Boolean(true)
 	_ Value = Character('@')
-	_ Value = Float(0.0)
-	_ Value = Int(0)
 	_ Value = Keyword(0)
 	_ Value = String("string")
 )
@@ -36,6 +38,7 @@ type Value interface {
 	Eq(o Value) bool
 	Equal(o Value) bool
 	Type() *types.Type
+	Unbox() (Value, *types.Type)
 }
 
 // ToString returns a display representation of the value.
@@ -52,6 +55,14 @@ func ToScheme(v Value) string {
 		return "'()"
 	}
 	return v.Scheme()
+}
+
+// Unbox returns the value and its type from the boxed value v.
+func Unbox(v Value) (Value, *types.Type) {
+	if v == nil {
+		return v, types.Nil
+	}
+	return v.Unbox()
 }
 
 // Flags define symbol flags.
@@ -102,6 +113,11 @@ func (v *Identifier) Equal(o Value) bool {
 // Type implements Value.Type.
 func (v *Identifier) Type() *types.Type {
 	return types.Symbol
+}
+
+// Unbox implements Value.Unbox.
+func (v *Identifier) Unbox() (Value, *types.Type) {
+	return v, v.Type()
 }
 
 func (v *Identifier) String() string {

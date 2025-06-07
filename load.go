@@ -58,7 +58,7 @@ var loadBuiltins = []Builtin{
 			for _, frame := range stack {
 				p := NewPair(
 					NewPair(String(frame.Source),
-						NewNumber(frame.Line)),
+						MakeNumber(frame.Line)),
 					nil)
 				if tail == nil {
 					result = p

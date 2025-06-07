@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -61,6 +61,11 @@ func (v Vector) Type() *types.Type {
 		t.Element = types.Unspecified
 	}
 	return t
+}
+
+// Unbox implements Value.Unbox.
+func (v Vector) Unbox() (Value, *types.Type) {
+	return v, v.Type()
 }
 
 func (v Vector) String() string {
@@ -134,7 +139,7 @@ var vectorBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("not a vector: %v", args[0])
 			}
-			return NewNumber(len(v)), nil
+			return MakeNumber(len(v)), nil
 		},
 	},
 	{

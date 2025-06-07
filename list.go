@@ -30,6 +30,7 @@ type Pair interface {
 	Eq(o Value) bool
 	Equal(o Value) bool
 	Type() *types.Type
+	Unbox() (Value, *types.Type)
 }
 
 // PlainPair implements a Scheme pair with car and cdr values.
@@ -158,6 +159,23 @@ func (pair *PlainPair) Type() *types.Type {
 	}
 
 	return t
+}
+
+// Unbox implements Value.Unbox.
+func (pair *PlainPair) Unbox() (Value, *types.Type) {
+	result := &PlainPair{
+		car: pair.car,
+		cdr: pair.cdr,
+	}
+	if result.car != nil {
+		v, _ := result.car.Unbox()
+		result.car = v
+	}
+	if result.cdr != nil {
+		v, _ := result.cdr.Unbox()
+		result.cdr = v
+	}
+	return result, pair.Type()
 }
 
 func (pair *PlainPair) String() string {

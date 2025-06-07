@@ -629,9 +629,10 @@ func (ast *ASTLambda) Bytecode(lib *Library) error {
 
 // ASTConstant implements contant values.
 type ASTConstant struct {
-	From   Locator
-	Quoted bool
-	Value  Value
+	From        Locator
+	Quoted      bool
+	Value       Value
+	LexicalType *types.Type
 }
 
 func (ast *ASTConstant) String() string {

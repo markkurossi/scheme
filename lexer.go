@@ -80,6 +80,11 @@ func (kw Keyword) Type() *types.Type {
 	return types.Unspecified
 }
 
+// Unbox implements Value.Unbox.
+func (kw Keyword) Unbox() (Value, *types.Type) {
+	return kw, kw.Type()
+}
+
 func (kw Keyword) String() string {
 	name, ok := keywords[kw]
 	if ok {
@@ -241,6 +246,7 @@ type Token struct {
 	Identifier string
 	Bool       bool
 	Number     Value
+	NumberType *types.Type
 	Char       rune
 	Str        string
 	Keyword    Keyword
@@ -599,7 +605,7 @@ func (l *Lexer) Get() (*Token, error) {
 				if err != nil {
 					return nil, err
 				}
-				return l.newNumber(false, r == '-', ival, fval)
+				return l.newNumber(false, false, r == '-', ival, fval)
 			} else {
 				l.UnreadRune()
 			}
@@ -642,15 +648,19 @@ func (l *Lexer) Get() (*Token, error) {
 				if err != nil {
 					return nil, err
 				}
-				return l.newNumber(false, false, ival, fval)
+				return l.newNumber(false, false, false, ival, fval)
 			}
 			return nil, l.errf("unexpected character: %c", r)
 		}
 	}
 }
 
-func (l *Lexer) newNumber(exact, negative bool, ival *big.Int,
+func (l *Lexer) newNumber(exact, inexact, negative bool, ival *big.Int,
 	fval *big.Float) (*Token, error) {
+
+	if exact && inexact {
+		return nil, l.errf("invalid number: #e and #i")
+	}
 
 	token := l.Token(TNumber)
 
@@ -660,9 +670,15 @@ func (l *Lexer) newNumber(exact, negative bool, ival *big.Int,
 			ival.Sub(zero, ival)
 		}
 		if exact {
-			token.Number = NewNumber(ival)
+			token.Number = MakeNumber(ival)
+			token.NumberType = types.ExactInteger
 		} else {
-			token.Number = NewNumber(ival.Int64())
+			token.Number = MakeNumber(ival.Int64())
+			if inexact {
+				token.NumberType = types.InexactInteger
+			} else {
+				token.NumberType = types.Number
+			}
 		}
 	} else {
 		if negative {
@@ -670,13 +686,19 @@ func (l *Lexer) newNumber(exact, negative bool, ival *big.Int,
 			fval.Sub(zero, fval)
 		}
 		if exact {
-			token.Number = NewNumber(fval)
+			token.Number = MakeNumber(fval)
+			token.NumberType = types.ExactFloat
 		} else {
 			f64, accuracy := fval.Float64()
 			if accuracy == big.Exact {
-				token.Number = NewNumber(f64)
+				token.Number = MakeNumber(f64)
 			} else {
-				token.Number = NewNumber(fval)
+				token.Number = MakeNumber(fval)
+			}
+			if inexact {
+				token.NumberType = types.InexactFloat
+			} else {
+				token.NumberType = types.Number
 			}
 		}
 	}
@@ -684,7 +706,7 @@ func (l *Lexer) newNumber(exact, negative bool, ival *big.Int,
 }
 
 func (l *Lexer) parseNumber() (*Token, error) {
-	var exact, negative, hasSign bool
+	var exact, inexact, negative, hasSign bool
 	base := int64(10)
 
 	for {
@@ -696,7 +718,7 @@ func (l *Lexer) parseNumber() (*Token, error) {
 		}
 		switch r {
 		case 'i':
-			exact = false
+			inexact = true
 
 		case 'e':
 			exact = true
@@ -746,7 +768,7 @@ func (l *Lexer) parseNumber() (*Token, error) {
 			if err != nil {
 				return nil, err
 			}
-			return l.newNumber(exact, negative, ival, fval)
+			return l.newNumber(exact, inexact, negative, ival, fval)
 		} else {
 			l.UnreadRune()
 			return nil, l.errf("number: unexpected character: %c", r)

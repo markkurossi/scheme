@@ -47,6 +47,11 @@ func (v String) Type() *types.Type {
 	return types.String
 }
 
+// Unbox implements Value.Unbox.
+func (v String) Unbox() (Value, *types.Type) {
+	return v, v.Type()
+}
+
 func (v String) String() string {
 	return string(v)
 }
@@ -153,7 +158,7 @@ var stringBuiltins = []Builtin{
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch v := args[0].(type) {
 			case String:
-				return NewNumber(len([]rune(string(v)))), nil
+				return MakeNumber(len([]rune(string(v)))), nil
 
 			default:
 				return nil, fmt.Errorf("invalid argument: %v", args[0])

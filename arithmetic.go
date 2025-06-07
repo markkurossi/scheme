@@ -17,8 +17,80 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
-// NewNumber creates a new numeric value.
-func NewNumber(value interface{}) Value {
+// Number represents numbers as they appeared in the source code. They
+// capture the actual number value and the lexical type of the number.
+type Number struct {
+	val Value
+	t   *types.Type
+}
+
+// NewNumber creates a new Number with the value and its lexical type.
+func NewNumber(v Value, t *types.Type) *Number {
+	return &Number{
+		val: v,
+		t:   t,
+	}
+}
+
+func (v *Number) String() string {
+	return fmt.Sprintf("%v", v.val)
+}
+
+// Scheme implements Value.Scheme.
+func (v *Number) Scheme() string {
+	if !v.t.IsA(types.Number) {
+		return v.val.Scheme()
+	}
+	switch val := v.val.(type) {
+	case Int:
+		return fmt.Sprintf("%v", int64(val))
+	case Float:
+		return fmt.Sprintf("%v", float64(val))
+	case *BigInt:
+		return val.I.String()
+	case *BigFloat:
+		return val.F.String()
+	default:
+		panic(fmt.Sprintf("invalid number: %v(%T)", val, val))
+	}
+}
+
+// Eq implements Value.Eq.
+func (v *Number) Eq(o Value) bool {
+	ov, ok := o.(*Number)
+	if !ok {
+		return false
+	}
+	return v.val.Eq(ov.val) && v.t.IsA(ov.t)
+}
+
+// Equal implements Value.Equal.
+func (v *Number) Equal(o Value) bool {
+	ov, ok := o.(*Number)
+	if ok {
+		return v.val.Eq(ov.val)
+	}
+	return v.val.Eq(o)
+}
+
+// Type implements Value.Type.
+func (v *Number) Type() *types.Type {
+	return v.t
+}
+
+// Unbox implements Value.Unbox.
+func (v *Number) Unbox() (Value, *types.Type) {
+	return Unbox(v.val)
+}
+
+// Value returns the native number value.
+func (v *Number) Value() Value {
+	return v.val
+}
+
+// MakeNumber creates a new numeric value from the native number. The
+// function panics if the input value type is not supported.
+func MakeNumber(value interface{}) Value {
 	switch v := value.(type) {
 	case int:
 		return Int(v)
@@ -90,6 +162,11 @@ func (v Int) Type() *types.Type {
 	return types.InexactInteger
 }
 
+// Unbox implements Value.Unbox.
+func (v Int) Unbox() (Value, *types.Type) {
+	return v, v.Type()
+}
+
 // Float implements inexact floating point numbers.
 type Float float64
 
@@ -134,6 +211,11 @@ func (v Float) Equal(o Value) bool {
 // Type implements Value.Type.
 func (v Float) Type() *types.Type {
 	return types.InexactFloat
+}
+
+// Unbox implements Value.Unbox.
+func (v Float) Unbox() (Value, *types.Type) {
+	return v, v.Type()
 }
 
 // BigInt implements exact integer numbers.
@@ -184,6 +266,11 @@ func (v *BigInt) Type() *types.Type {
 	return types.ExactInteger
 }
 
+// Unbox implements Value.Unbox.
+func (v *BigInt) Unbox() (Value, *types.Type) {
+	return v, v.Type()
+}
+
 // BigFloat implements exact floating point numbers.
 type BigFloat struct {
 	F *big.Float
@@ -230,6 +317,11 @@ func (v *BigFloat) Equal(o Value) bool {
 // Type implements Value.Type.
 func (v *BigFloat) Type() *types.Type {
 	return types.ExactFloat
+}
+
+// Unbox implements Value.Unbox.
+func (v *BigFloat) Unbox() (Value, *types.Type) {
+	return v, v.Type()
 }
 
 // Int64 returns the number value as int64 integer number. The
@@ -907,7 +999,7 @@ var numberBuiltins = []Builtin{
 		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			switch args[0].(type) {
-			case Int, Float, *BigInt, *BigFloat:
+			case Int, Float, *BigInt, *BigFloat, *Number:
 				return Boolean(true), nil
 
 			default:
@@ -1358,7 +1450,9 @@ var numberBuiltins = []Builtin{
 			}
 			_ = precision
 
-			switch v := args[0].(type) {
+			val, _ := Unbox(args[0])
+
+			switch v := val.(type) {
 			case Int:
 				return String(strconv.FormatInt(int64(v), radix)), nil
 
@@ -1424,6 +1518,7 @@ var numberBuiltins = []Builtin{
 			if err == nil || err != io.EOF {
 				return Boolean(false), nil
 			}
+			v, _ = Unbox(v)
 
 			switch v.(type) {
 			case Int, *BigInt:

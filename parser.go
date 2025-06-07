@@ -222,6 +222,7 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 			if !ok {
 				return nil, v.Errorf("invalid quote: %v", v)
 			}
+			quoted, _ = Unbox(quoted)
 			return &ASTConstant{
 				From:   loc,
 				Quoted: true,
@@ -340,6 +341,13 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 			Value: v,
 		}, nil
 
+	case *Number:
+		return &ASTConstant{
+			From:        loc,
+			Value:       v.Value(),
+			LexicalType: v.Type(),
+		}, nil
+
 	default:
 		return nil, fmt.Errorf("parseValue: unsupported value: %v(%T)", v, v)
 	}
@@ -379,7 +387,11 @@ func (p *Parser) inlineUnary(env *Env, list []Pair) (bool, Operand, int) {
 		if !ok {
 			return false, 0, 0
 		}
-		iv, ok := list[2].Car().(Int)
+		v, t := Unbox(list[2].Car())
+		if !t.IsA(types.InexactInteger) {
+			return false, 0, 0
+		}
+		iv, ok := v.(Int)
 		if !ok {
 			return false, 0, 0
 		}
@@ -985,7 +997,8 @@ func (p *Parser) parseCase(env *Env, list []Pair,
 
 			for _, datum := range datums {
 				// (eqv? value datum)
-				choice.Datums = append(choice.Datums, datum.Car())
+				v, _ := Unbox(datum.Car())
+				choice.Datums = append(choice.Datums, v)
 				choice.DatumLocs = append(choice.DatumLocs, datum)
 			}
 		}

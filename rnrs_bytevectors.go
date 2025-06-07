@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -51,6 +51,11 @@ func (v Bytevector) Equal(o Value) bool {
 // Type implements Value.Type.
 func (v Bytevector) Type() *types.Type {
 	return types.Bytevector
+}
+
+// Unbox implements Value.Unbox.
+func (v Bytevector) Unbox() (Value, *types.Type) {
+	return v, v.Type()
 }
 
 func (v Bytevector) String() string {
@@ -112,7 +117,7 @@ var rnrsBytevectorBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("not a bytevector: %v", args[0])
 			}
-			return NewNumber(len(v)), nil
+			return MakeNumber(len(v)), nil
 		},
 	},
 	{
@@ -231,7 +236,7 @@ var rnrsBytevectorBuiltins = []Builtin{
 				return nil, fmt.Errorf("invalid index: 0 <= %v < %v", k, len(v))
 			}
 
-			return NewNumber(int(uint8(v[k]))), nil
+			return MakeNumber(int(uint8(v[k]))), nil
 		},
 	},
 	{
@@ -251,7 +256,7 @@ var rnrsBytevectorBuiltins = []Builtin{
 				return nil, fmt.Errorf("invalid index: 0 <= %v < %v", k, len(v))
 			}
 
-			return NewNumber(int(int8(v[k]))), nil
+			return MakeNumber(int(int8(v[k]))), nil
 		},
 	},
 }

@@ -918,6 +918,11 @@ func (f *Frame) Type() *types.Type {
 	return types.Unspecified
 }
 
+// Unbox implements Value.Unbox.
+func (f *Frame) Unbox() (Value, *types.Type) {
+	return f, f.Type()
+}
+
 // VMEnvFrame implement a virtual machine environment frame.
 type VMEnvFrame struct {
 	Next   *VMEnvFrame

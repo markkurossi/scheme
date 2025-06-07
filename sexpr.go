@@ -172,6 +172,7 @@ func (p *SexprParser) Next() (Value, error) {
 				}
 				return nil, err
 			}
+			v, _ = Unbox(v)
 			elements = append(elements, v)
 		}
 
@@ -212,7 +213,7 @@ func (p *SexprParser) Next() (Value, error) {
 		return Boolean(t.Bool), nil
 
 	case TNumber:
-		return t.Number, nil
+		return NewNumber(t.Number, t.NumberType), nil
 
 	case TCharacter:
 		return Character(t.Char), nil

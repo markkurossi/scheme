@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -44,6 +44,11 @@ func (v Boolean) Equal(o Value) bool {
 // Type implements the Value.Type().
 func (v Boolean) Type() *types.Type {
 	return types.Boolean
+}
+
+// Unbox implements Value.Unbox.
+func (v Boolean) Unbox() (Value, *types.Type) {
+	return v, v.Type()
 }
 
 func (v Boolean) String() string {

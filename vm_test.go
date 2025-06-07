@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -65,29 +65,29 @@ Hello, world!
 	},
 	{
 		i: `(begin 1 2 3 4)`,
-		v: NewNumber(4),
+		v: MakeNumber(4),
 		o: ``,
 	},
 	{
 		i: `(define v (cons 1 2)) (set-car! v 42) v`,
-		v: NewPair(NewNumber(42), NewNumber(2)),
+		v: NewPair(MakeNumber(42), MakeNumber(2)),
 	},
 	{
 		i: `(define v (cons 1 2)) (set-cdr! v 42) v`,
-		v: NewPair(NewNumber(1), NewNumber(42)),
+		v: NewPair(MakeNumber(1), MakeNumber(42)),
 	},
 	{
 		i: `((lambda x x) 3 4 5 6)`,
-		v: NewPair(NewNumber(3),
-			NewPair(NewNumber(4),
-				NewPair(NewNumber(5),
-					NewPair(NewNumber(6),
+		v: NewPair(MakeNumber(3),
+			NewPair(MakeNumber(4),
+				NewPair(MakeNumber(5),
+					NewPair(MakeNumber(6),
 						nil)))),
 	},
 	{
 		i: `((lambda (x y . z) z) 3 4 5 6)`,
-		v: NewPair(NewNumber(5),
-			NewPair(NewNumber(6),
+		v: NewPair(MakeNumber(5),
+			NewPair(MakeNumber(6),
 				nil)),
 	},
 	{
@@ -96,7 +96,7 @@ Hello, world!
 	},
 	{
 		i: `'(1 2)`,
-		v: NewPair(NewNumber(1), NewPair(NewNumber(2), nil)),
+		v: NewPair(MakeNumber(1), NewPair(MakeNumber(2), nil)),
 	},
 	{
 		i: `(quote ())`,
@@ -104,7 +104,7 @@ Hello, world!
 	},
 	{
 		i: `(quote (1 2))`,
-		v: NewPair(NewNumber(1), NewPair(NewNumber(2), nil)),
+		v: NewPair(MakeNumber(1), NewPair(MakeNumber(2), nil)),
 	},
 	{
 		i: `'#t`,
@@ -116,7 +116,7 @@ Hello, world!
       (y 3))
   (* x y))
 `,
-		v: NewNumber(6),
+		v: MakeNumber(6),
 	},
 	{
 		i: `
@@ -126,7 +126,7 @@ Hello, world!
         (z (+ x y)))
     (* z x)))
 `,
-		v: NewNumber(35),
+		v: MakeNumber(35),
 	},
 	{
 		i: `
@@ -136,7 +136,7 @@ Hello, world!
          (z (+ x y)))
     (* z x)))
 `,
-		v: NewNumber(70),
+		v: MakeNumber(70),
 	},
 	{
 		i: `

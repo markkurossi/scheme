@@ -74,6 +74,11 @@ func (v *Lambda) Type() *types.Type {
 	return t
 }
 
+// Unbox implements Value.Unbox.
+func (v *Lambda) Unbox() (Value, *types.Type) {
+	return v, v.Type()
+}
+
 func (v *Lambda) String() string {
 	return v.Impl.Signature(false)
 }
@@ -184,6 +189,11 @@ func (v *LambdaImpl) Equal(o Value) bool {
 // Type implements the Value.Type().
 func (v *LambdaImpl) Type() *types.Type {
 	return types.Unspecified
+}
+
+// Unbox implements Value.Unbox.
+func (v *LambdaImpl) Unbox() (Value, *types.Type) {
+	return v, v.Type()
 }
 
 // Parametrize implements types.Parametrizer.Parametrize.

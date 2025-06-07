@@ -60,12 +60,20 @@ var inferenceTests = []struct {
 		t: types.String,
 	},
 	{
-		d: `(define limit 1)`,
+		d: `(define limit #i1)`,
 		t: types.InexactInteger,
 	},
 	{
-		d: `(define limit 1) limit`,
+		d: `(define limit #i1) limit`,
 		t: types.InexactInteger,
+	},
+	{
+		d: `(define limit 1)`,
+		t: types.Number,
+	},
+	{
+		d: `(define limit 1) limit`,
+		t: types.Number,
 	},
 
 	{

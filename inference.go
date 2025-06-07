@@ -866,7 +866,6 @@ func (ast *ASTDefine) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	t := ast.Value.Type()
 
 	// Check the current type of the name.
 	sym := env.inferer.scm.Intern(ast.Name.Name)
@@ -875,6 +874,8 @@ func (ast *ASTDefine) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	}
 
 	env.inferer.calls[ast] = ast.it
+
+	t := ast.valueType()
 
 	env.inferer.Debugf(ast, "%v=%v\n", ast.Name.Name, t)
 	sym.GlobalType = t
@@ -889,8 +890,21 @@ func (ast *ASTDefine) Inferred(env *InferEnv) error {
 	if err != nil {
 		return err
 	}
-	ast.t = ast.Value.Type()
+	ast.t = ast.valueType()
 	return nil
+}
+
+func (ast *ASTDefine) valueType() *types.Type {
+	var result *types.Type
+
+	switch val := ast.Value.(type) {
+	case *ASTConstant:
+		result = val.LexicalType
+	}
+	if result != nil {
+		return result
+	}
+	return ast.Value.Type()
 }
 
 // Infer implements AST.Infer.

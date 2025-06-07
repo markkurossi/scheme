@@ -38,6 +38,11 @@ func (v Character) Type() *types.Type {
 	return types.Character
 }
 
+// Unbox implements Value.Unbox.
+func (v Character) Unbox() (Value, *types.Type) {
+	return v, v.Type()
+}
+
 func (v Character) String() string {
 	return fmt.Sprintf("%c", v)
 }
@@ -160,7 +165,7 @@ var characterBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("invalid character %v", args[0])
 			}
-			return NewNumber(int64(ch)), nil
+			return MakeNumber(int64(ch)), nil
 		},
 	},
 	{

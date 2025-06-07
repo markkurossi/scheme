@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023, 2025, 2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -39,7 +39,7 @@ func TestAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("add1 not defined: %v", err)
 	}
-	v, err = scm.Apply(v, []scheme.Value{scheme.NewNumber(41)})
+	v, err = scm.Apply(v, []scheme.Value{scheme.MakeNumber(41)})
 	if err != nil {
 		t.Fatalf("scm.Apply: %v", err)
 	}

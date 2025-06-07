@@ -58,6 +58,11 @@ func (lib *Library) Type() *types.Type {
 	return types.Any
 }
 
+// Unbox implements Value.Unbox.
+func (lib *Library) Unbox() (Value, *types.Type) {
+	return lib, lib.Type()
+}
+
 func (lib *Library) parseLibraryHeader(list []Pair) error {
 	if len(list) < 4 {
 		return list[0].Errorf("truncated library header")

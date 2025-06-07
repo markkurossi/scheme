@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -78,6 +78,11 @@ func (p *Port) Equal(o Value) bool {
 // Type implements Value.Type.
 func (p *Port) Type() *types.Type {
 	return types.Port
+}
+
+// Unbox implements Value.Unbox.
+func (p *Port) Unbox() (Value, *types.Type) {
+	return p, p.Type()
 }
 
 var rnrsIOSimpleBuiltins = []Builtin{
