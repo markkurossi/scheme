@@ -11,14 +11,13 @@
 
   (define scheme::test::count 0)
   (define scheme::test::errors 0)
-  (define scheme::test::failed #f)
   (define scheme::test::log '())
 
   (define (scheme::test::runner verbose . args)
     (if (null? args)
         (scheme::test::handle-arg ".")
         (for-each scheme::test::handle-arg args))
-    scheme::test::failed)
+    (not (zero? scheme::test::errors)))
 
   (define (scheme::test::handle-arg arg)
     (if (string-suffix? "/..." arg)
@@ -75,10 +74,10 @@
                       (scheme::test::run-test export t)
                       ))
                 (caddr lib))
-      ;; (set! scheme::test::count (+ scheme::test::count num-tests))
+      (set! scheme::test::count (+ scheme::test::count num-tests))
 
       (cond ((> num-errors 0)
-             (set! scheme::test::failed #t)
+             (set! scheme::test::errors (+ scheme::test::errors 1))
              (display "fail "))
             ((> num-tests 0)
              (display "ok   "))
