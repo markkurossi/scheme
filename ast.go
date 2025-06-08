@@ -1026,7 +1026,7 @@ func (ast *ASTCase) Bytecode(lib *Library) error {
 
 	if !ast.Tail {
 		// Pop value scope.
-		lib.addPopS(nil, 1, ast.Captures)
+		lib.addPopS(nil, 1, false)
 	}
 
 	return nil
