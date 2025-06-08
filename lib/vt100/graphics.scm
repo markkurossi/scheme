@@ -1,5 +1,6 @@
+;;; -*- compile-command: "scheme vet"; -*-
 ;;;
-;;; Copyright (c) 2023 Markku Rossi
+;;; Copyright (c) 2023-2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -13,8 +14,8 @@
         (set! fract 0.0))
     (if (> fract 1.0)
         (set! fract 1.0))
-    (letrec ((w8 (integer->float (* width 8)))
-             (w (float->integer (* w8 fract)))
+    (letrec ((w8 (number->float (* width 8)))
+             (w (number->integer (* w8 fract)))
              (wrem (mod w 8))
              (fill (lambda (str count ch)
                      (if (zero? count)
