@@ -936,8 +936,8 @@ func (p *Parser) parseCond(env *Env, list []Pair,
 	return ast, nil
 }
 
-func (p *Parser) parseCase(env *Env, list []Pair,
-	tail, captures bool) (AST, error) {
+func (p *Parser) parseCase(env *Env, list []Pair, tail, captures bool) (
+	AST, error) {
 
 	if len(list) < 3 {
 		return nil, list[0].Errorf("case: key or clauses")
