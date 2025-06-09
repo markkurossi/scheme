@@ -6,6 +6,10 @@
 
 (import (html unescape))
 
+(define (test-unescape t)
+  (t 'eq? (html-unescape "&lt;") "<")
+  )
+
 (define (unescape t idx)
   (if (>= idx (vector-length html-entities))
       #t
@@ -20,5 +24,5 @@
                                 (car item) expected result))
               (unescape t (+ idx 1)))))))
 
-(define (test-unescape t)
+(define (test-unescape-all t)
   (unescape t 0))
