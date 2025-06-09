@@ -15,12 +15,14 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
+const symInferer = "\u22a2"
+
 func errf(ast AST, format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 	if ast.Locator() == nil {
-		return fmt.Errorf("\u22a2 %s", msg)
+		return fmt.Errorf("%s %s", symInferer, msg)
 	}
-	return ast.Locator().From().Errorf("\u22a2 %s", msg)
+	return ast.Locator().From().Errorf("%s %s", symInferer, msg)
 }
 
 // Inferer implements type inference.
@@ -100,7 +102,7 @@ func (inferer *Inferer) Print(ast AST, guide bool, lead, msg string) {
 			prefix += indent
 		}
 	} else {
-		prefix = fmt.Sprintf("%s: \u22a2 ", ast.Locator().From())
+		prefix = fmt.Sprintf("%s: %s ", ast.Locator().From(), symInferer)
 	}
 	inferer.scm.Stdout.Printf("%s%s%s", prefix, lead, msg)
 }
@@ -126,7 +128,19 @@ func infererPrefix(loc Locator) string {
 		}
 	}
 
-	return prefix + " \u22a2 "
+	return prefix + " " + symInferer + " "
+}
+
+// Errorf prints an error message about type inference.
+func (inferer *Inferer) Errorf(ast AST, format string, a ...interface{}) {
+	msg := fmt.Sprintf(format, a...)
+	var lead string
+	if len(msg) > 0 && unicode.IsSpace(rune(msg[0])) {
+		lead = ""
+	} else {
+		lead = "error: "
+	}
+	inferer.Print(ast, inferer.scm.Params.Verbose(), lead, msg)
 }
 
 // Warningf prints a warning message about type inference.
@@ -722,14 +736,14 @@ func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 	switch from.Enum {
 	case types.EnumLambda:
 		if to.Enum != from.Enum {
-			return nil, errf(ast, "can't unify %v with %v", from, to)
+			return nil, fmt.Errorf("can't unify %v with %v", from, to)
 		}
 		if len(from.Args) < len(to.Args) {
-			return nil, errf(ast, "too few arguments: got %v, need %v",
+			return nil, fmt.Errorf("too few arguments: got %v, need %v",
 				len(from.Args), len(to.Args))
 		}
 		if len(from.Args) > len(to.Args) {
-			return nil, errf(ast, "too many arguments: got %v, need %v",
+			return nil, fmt.Errorf("too many arguments: got %v, need %v",
 				len(from.Args), len(to.Args))
 		}
 		result := &types.Type{
@@ -738,7 +752,7 @@ func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 		for idx, arg := range from.Args {
 			t, err = unify(ast, env, arg, to.Args[idx])
 			if err != nil {
-				return nil, errf(ast, "argument %d: %s", idx, err)
+				return nil, fmt.Errorf("argument %d: %s", idx, err)
 			}
 			result.Args = append(result.Args, t)
 		}
@@ -752,7 +766,7 @@ func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 
 	case types.EnumPair:
 		if to.Enum != from.Enum {
-			return nil, errf(ast, "can't unify %v with %v", from, to)
+			return nil, fmt.Errorf("can't unify %v with %v", from, to)
 		}
 		result := &types.Type{
 			Enum: types.EnumPair,
@@ -773,7 +787,7 @@ func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 
 	case types.EnumVector:
 		if to.Enum != from.Enum {
-			return nil, errf(ast, "can't unify %v with %v", from, to)
+			return nil, fmt.Errorf("can't unify %v with %v", from, to)
 		}
 		result := &types.Type{
 			Enum: types.EnumVector,
@@ -787,7 +801,7 @@ func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 		return result, nil
 
 	default:
-		return nil, errf(ast, "can't unify %v with %v", from, to)
+		return nil, fmt.Errorf("can't unify %v with %v", from, to)
 	}
 }
 
@@ -1403,10 +1417,10 @@ func inferCall(ast AST, env *InferEnv, fnType *types.Type, args []AST) (
 	// Unify fnTypeSubst with callType.
 	unified, err := Unify(ast, env, callType, fnType)
 	if err != nil {
-		env.inferer.Warningf(ast, "Unify: %s:\n", err)
-		env.inferer.Warningf(ast, " \u251c\u2574\u22a5 %v\n", callType)
-		env.inferer.Warningf(ast, " \u251c\u2574\u22a5 %v\n", fnType)
-		env.inferer.Warningf(ast, " \u2514\u2574\u22a5 %v\n", env.Inferred())
+		env.inferer.Errorf(ast, "Unify: %s:\n", err)
+		env.inferer.Errorf(ast, " \u251c\u2574\u22a5 %v\n", callType)
+		env.inferer.Errorf(ast, " \u251c\u2574\u22a5 %v\n", fnType)
+		env.inferer.Errorf(ast, " \u2514\u2574\u22a5 %v\n", env.Inferred())
 		return nil, nil, err
 	}
 	env.inferer.Debugf(ast, " \u2570> %v\n", unified)
