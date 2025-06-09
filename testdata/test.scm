@@ -104,8 +104,6 @@
 (load "test-lib-03-list-utilities.scm")
 (load "test-lib-04-sorting.scm")
 
-(load "test-go-format.scm")
-
 (load "test-html.scm")
 
 (runner 'stats)
