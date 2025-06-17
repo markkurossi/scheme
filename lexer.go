@@ -420,8 +420,11 @@ func (l *Lexer) Get() (*Token, error) {
 				return nil, err
 			}
 
-		case '(', ')', '\'', '`', ',':
+		case '(', ')', '`', ',':
 			return l.Token(TokenType(r)), nil
+
+		case '\'', 0x2019:
+			return l.Token(TokenType('\'')), nil
 
 		case '.':
 			r, _, err := l.ReadRune()
