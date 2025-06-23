@@ -696,10 +696,64 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 	if len(list) < 3 {
 		return nil, list[0].Errorf("%s: missing bindings or body", kind)
 	}
-	bindings, ok := ListPairs(list[1].Car())
+	var idxBindings, idxBody int
+	var namedLet bool
+	switch list[1].Car().(type) {
+	case *Identifier:
+		namedLet = true
+	}
+	if kind == KwLet && namedLet {
+		if len(list) < 4 {
+			return nil, list[0].Errorf("named let: missing body")
+		}
+		idxBindings = 2
+		idxBody = 3
+	} else {
+		namedLet = false
+		idxBindings = 1
+		idxBody = 2
+	}
+	bindings, ok := ListPairs(list[idxBindings].Car())
 	if !ok {
-		return nil, list[1].Errorf("%s: invalid bindings: %v",
-			kind, list[1].Car())
+		return nil, list[idxBindings].Errorf("%s: invalid bindings: %v",
+			kind, list[idxBindings].Car())
+	}
+	if namedLet {
+		// (let name ((vn initn)   => (letrec ((name (lambda (vn...)
+		//            ...)                             body)))
+		//   body)                      (name initn...))
+
+		argsBuilder := new(ListBuilder)
+		initBuilder := new(ListBuilder)
+
+		initBuilder.Add(list[1].Car())
+
+		for _, binding := range bindings {
+			def, ok := ListPairs(binding.Car())
+			if !ok || len(def) != 2 {
+				return nil,
+					list[idxBindings].Errorf("named let: invalid init: %v",
+						binding)
+			}
+			argsBuilder.Add(def[0].Car())
+			initBuilder.Add(def[1].Car())
+		}
+
+		named := new(ListBuilder).
+			Add(KwLetrec,
+				new(ListBuilder).Add(new(ListBuilder).
+					Add(list[1].Car(),
+						new(ListBuilder).
+							Add(KwLambda,
+								argsBuilder.B()).
+							Add(XListValues(list[idxBody])...).B()).B()).B()).
+			Add(initBuilder.B()).B()
+
+		namedList, ok := ListPairs(named)
+		if !ok {
+			panic("named let")
+		}
+		return p.parseLet(KwLetrec, env, namedList, tail, true)
 	}
 
 	// XXX check if the let inits or body captures and use that as the
@@ -713,7 +767,8 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 	for _, binding := range bindings {
 		def, ok := ListPairs(binding.Car())
 		if !ok || len(def) != 2 {
-			return nil, list[1].Errorf("%s: invalid init: %v", kind, binding)
+			return nil, list[idxBindings].Errorf("%s: invalid init: %v",
+				kind, binding)
 		}
 		name, ok := def[0].Car().(*Identifier)
 		if !ok {
@@ -739,7 +794,8 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 	for idx, binding := range bindings {
 		def, ok := ListPairs(binding.Car())
 		if !ok || len(def) != 2 {
-			return nil, list[1].Errorf("%s: invalid init: %v", kind, binding)
+			return nil, list[idxBindings].Errorf("%s: invalid init: %v",
+				kind, binding)
 		}
 
 		initAst, err := p.parseValue(letEnv, def[1], def[1].Car(), false,
@@ -767,7 +823,7 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 	}
 
 	// Compile body.
-	for i := 2; i < len(list); i++ {
+	for i := idxBody; i < len(list); i++ {
 		bodyAst, err := p.parseValue(letEnv, list[i], list[i].Car(),
 			tail && i+1 >= len(list), captures)
 		if err != nil {

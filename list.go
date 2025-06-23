@@ -33,6 +33,32 @@ type Pair interface {
 	Unbox() (Value, *types.Type)
 }
 
+// ListBuilder builds scheme lists.
+type ListBuilder struct {
+	Head Pair
+	Tail Pair
+}
+
+// B returns the list.
+func (lb *ListBuilder) B() Value {
+	return lb.Head
+}
+
+// Add appends the argument values to the list.
+func (lb *ListBuilder) Add(values ...Value) *ListBuilder {
+	for _, v := range values {
+		pair := NewPair(v, nil)
+		if lb.Head == nil {
+			lb.Head = pair
+		} else {
+			lb.Tail.SetCdr(pair)
+		}
+		lb.Tail = pair
+	}
+
+	return lb
+}
+
 // PlainPair implements a Scheme pair with car and cdr values.
 type PlainPair struct {
 	car Value
@@ -329,6 +355,16 @@ func ListValues(list Value) ([]Value, bool) {
 		return nil, false
 	}
 	return result, true
+}
+
+// XListValues returns the list values as []Value. The function panics
+// if the argument list is not a valid list.
+func XListValues(list Value) []Value {
+	v, ok := ListValues(list)
+	if !ok {
+		panic("not a list")
+	}
+	return v
 }
 
 // Map maps function for each element of the list. The function

@@ -91,8 +91,8 @@
 ;; XXX 11.14. Errors and violations
 
 (load "test-11-15-control-features.scm")
+(load "test-11-16-iteration.scm")
 
-;; XXX 11.16. Iteration
 ;; XXX 11.17. Quasiquotation
 ;; XXX 11.18. Binding constructs for syntactic key-words
 ;; XXX 11.19. Macro transformers
