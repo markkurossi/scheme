@@ -33,6 +33,22 @@ type Pair interface {
 	Unbox() (Value, *types.Type)
 }
 
+// List creates a list from the argument values.
+func List(values ...Value) Value {
+	var head, tail Pair
+	for _, v := range values {
+		pair := NewPair(v, nil)
+		if head == nil {
+			head = pair
+		} else {
+			tail.SetCdr(pair)
+		}
+		tail = pair
+	}
+
+	return head
+}
+
 // ListBuilder builds scheme lists.
 type ListBuilder struct {
 	Head Pair
@@ -47,14 +63,19 @@ func (lb *ListBuilder) B() Value {
 // Add appends the argument values to the list.
 func (lb *ListBuilder) Add(values ...Value) *ListBuilder {
 	for _, v := range values {
-		pair := NewPair(v, nil)
-		if lb.Head == nil {
-			lb.Head = pair
-		} else {
-			lb.Tail.SetCdr(pair)
-		}
-		lb.Tail = pair
+		lb.AddPair(NewPair(v, nil))
 	}
+	return lb
+}
+
+// AddPair appends the argument pair to the list.
+func (lb *ListBuilder) AddPair(p Pair) *ListBuilder {
+	if lb.Head == nil {
+		lb.Head = p
+	} else {
+		lb.Tail.SetCdr(p)
+	}
+	lb.Tail = p
 
 	return lb
 }
@@ -83,7 +104,11 @@ func (pair *PlainPair) To() Point {
 	return Point{}
 }
 
-// SetTo sets pair's end location.
+// SetFrom implements Locator.SetFrom.
+func (pair *PlainPair) SetFrom(p Point) {
+}
+
+// SetTo implements Locator.SetTo.
 func (pair *PlainPair) SetTo(p Point) {
 }
 
@@ -270,7 +295,12 @@ func (pair *LocationPair) To() Point {
 	return pair.to
 }
 
-// SetTo sets pair's end location.
+// SetFrom implements Locator.SetFrom.
+func (pair *LocationPair) SetFrom(p Point) {
+	pair.from = p
+}
+
+// SetTo implements Locator.SetTo.
 func (pair *LocationPair) SetTo(p Point) {
 	pair.to = p
 }

@@ -172,6 +172,10 @@ func (p Point) To() Point {
 	return p
 }
 
+// SetFrom does nothing on point.
+func (p Point) SetFrom(point Point) {
+}
+
 // SetTo does nothing on point.
 func (p Point) SetTo(point Point) {
 }
@@ -213,6 +217,7 @@ func (p Point) Infof(format string, a ...interface{}) {
 type Locator interface {
 	From() Point
 	To() Point
+	SetFrom(p Point)
 	SetTo(p Point)
 	// Errorf returns an error with the location information.
 	Errorf(format string, a ...interface{}) error
@@ -420,8 +425,22 @@ func (l *Lexer) Get() (*Token, error) {
 				return nil, err
 			}
 
-		case '(', ')', '`', ',':
+		case '(', ')', '`':
 			return l.Token(TokenType(r)), nil
+
+		case ',':
+			r, _, err := l.ReadRune()
+			if err != nil {
+				if err != io.EOF {
+					return nil, err
+				}
+				return l.Token(TokenType(',')), nil
+			}
+			if r != '@' {
+				l.UnreadRune()
+				return l.Token(TokenType(',')), nil
+			}
+			return l.Token(TCommaAt), nil
 
 		case '\'', 0x2019:
 			return l.Token(TokenType('\'')), nil

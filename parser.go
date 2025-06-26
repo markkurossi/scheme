@@ -15,6 +15,11 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
+var qqNamedLed = MustParseSexpr(`
+(letrec ((,name (lambda ,args)
+                  ,@body))
+  (,name ,inits))`)
+
 // Parser implements the byte-code compiler.
 type Parser struct {
 	scm    *Scheme
@@ -218,11 +223,7 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 			if length != 2 {
 				return nil, v.Errorf("invalid quote: %v", v)
 			}
-			quoted, ok := Car(v.Cdr(), true)
-			if !ok {
-				return nil, v.Errorf("invalid quote: %v", v)
-			}
-			quoted, _ = Unbox(quoted)
+			quoted, _ := Unbox(list[1].Car())
 			return &ASTConstant{
 				From:   loc,
 				Quoted: true,

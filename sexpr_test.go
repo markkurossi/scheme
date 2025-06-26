@@ -42,6 +42,14 @@ var parserTests = []struct {
 		i: "else",
 		o: KwElse,
 	},
+	{
+		i: "`1",
+		o: List(KwQuasiquote, Int(1)),
+	},
+	{
+		i: "`(1 2 3)",
+		o: List(KwQuasiquote, List(Int(1), Int(2), Int(3))),
+	},
 }
 
 func TestParser(t *testing.T) {

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-, 20252025 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
+	"strings"
 )
 
 // SexprParser implements S-expression parser.
@@ -32,6 +34,10 @@ func (p *SexprParser) From() Point {
 // To returns the parser's current location.
 func (p *SexprParser) To() Point {
 	return p.lexer.point
+}
+
+// SetFrom does nothing on parser.
+func (p *SexprParser) SetFrom(point Point) {
 }
 
 // SetTo does nothing on parser.
@@ -63,7 +69,7 @@ func (p *SexprParser) Next() (Value, error) {
 		return nil, err
 	}
 	switch t.Type {
-	case '\'':
+	case '\'', '`', ',', TCommaAt:
 		v, err := p.Next()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -80,7 +86,21 @@ func (p *SexprParser) Next() (Value, error) {
 			next = NewPair(v, nil)
 		}
 
-		return NewLocationPair(t.From, t.To, KwQuote, next), nil
+		var kw Keyword
+		switch t.Type {
+		case '\'':
+			kw = KwQuote
+		case '`':
+			kw = KwQuasiquote
+		case ',':
+			kw = KwUnquote
+		case TCommaAt:
+			kw = KwUnquoteSplicing
+		default:
+			panic("unknown keyword")
+		}
+
+		return NewLocationPair(t.From, t.To, kw, next), nil
 
 	case '(':
 		var list, cursor Pair
@@ -227,4 +247,27 @@ func (p *SexprParser) Next() (Value, error) {
 	default:
 		return nil, t.Errorf("unexpected token: %v", t)
 	}
+}
+
+// ParseSexpr parses the s-expression.
+func ParseSexpr(sexpr string) (Value, error) {
+	parser := NewSexprParser("input", strings.NewReader(sexpr))
+	return parser.Next()
+}
+
+// MustParseSexpr parses the s-expression. The function panics if the
+// input sexpr is not a valid s-expression.
+func MustParseSexpr(sexpr string) Value {
+	v, err := ParseSexpr(sexpr)
+	if err != nil {
+		panic(`sexpr: ParseSexpr(` + quote(sexpr) + `): ` + err.Error())
+	}
+	return v
+}
+
+func quote(s string) string {
+	if strconv.CanBackquote(s) {
+		return "`" + s + "`"
+	}
+	return strconv.Quote(s)
 }
