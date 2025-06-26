@@ -68,9 +68,9 @@ func (v *Number) Eq(o Value) bool {
 func (v *Number) Equal(o Value) bool {
 	ov, ok := o.(*Number)
 	if ok {
-		return v.val.Eq(ov.val)
+		return v.val.Equal(ov.val)
 	}
-	return v.val.Eq(o)
+	return v.val.Equal(o)
 }
 
 // Type implements Value.Type.
@@ -152,6 +152,9 @@ func (v Int) Equal(o Value) bool {
 	case *BigFloat:
 		return ov.F.Cmp(big.NewFloat(float64(v))) == 0
 
+	case *Number:
+		return v.Equal(ov.Value())
+
 	default:
 		return false
 	}
@@ -202,6 +205,9 @@ func (v Float) Equal(o Value) bool {
 
 	case *BigFloat:
 		return ov.F.Cmp(big.NewFloat(float64(v))) == 0
+
+	case *Number:
+		return v.Equal(ov.Value())
 
 	default:
 		return false
@@ -256,6 +262,9 @@ func (v *BigInt) Equal(o Value) bool {
 	case *BigFloat:
 		return new(big.Float).SetInt(v.I).Cmp(ov.F) == 0
 
+	case *Number:
+		return v.Equal(ov.Value())
+
 	default:
 		return false
 	}
@@ -308,6 +317,9 @@ func (v *BigFloat) Equal(o Value) bool {
 
 	case *BigFloat:
 		return v.F.Cmp(ov.F) == 0
+
+	case *Number:
+		return v.Equal(ov.Value())
 
 	default:
 		return false
