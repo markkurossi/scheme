@@ -84,16 +84,20 @@ func Eval(value Value, env *EvalEnv) (Value, error) {
 				return nil, v.Errorf("invalid quasiquote: %v", v)
 			}
 			quoted, _ := Unbox(list[1].Car())
-			return evalQuasiquote(quoted, env)
+			return evalQuasiquote(1, quoted, env)
 		}
-		return nil, v.Errorf("eval: call not supported")
+		if isKeyword(v.Car(), KwUnquote) ||
+			isKeyword(v.Car(), KwUnquoteSplicing) {
+			return v, nil
+		}
+		return nil, v.Errorf("eval: call not supported: %v", v)
 
 	default:
 		return nil, fmt.Errorf("eval: %v[%T] not supported", v, v)
 	}
 }
 
-func evalQuasiquote(value Value, env *EvalEnv) (Value, error) {
+func evalQuasiquote(level int, value Value, env *EvalEnv) (Value, error) {
 	switch v := value.(type) {
 	case Pair:
 		list, ok := ListPairs(v)
@@ -106,46 +110,87 @@ func evalQuasiquote(value Value, env *EvalEnv) (Value, error) {
 		for _, p := range list {
 			item := p.Car()
 
-			switch iv := item.(type) {
-			case Pair:
-				ilist, ok := ListPairs(iv)
-				if ok {
-					if isKeyword(iv.Car(), KwUnquote) {
-						if len(ilist) != 2 {
-							return nil, iv.Errorf("invalid unquote")
-						}
-						unquoted, err := Eval(ilist[1].Car(), env)
-						if err != nil {
-							return nil, err
-						}
-						item = unquoted
-					} else if isKeyword(iv.Car(), KwUnquoteSplicing) {
-						if len(ilist) != 2 {
-							return nil, iv.Errorf("invalid unquote-splicing")
-						}
-						unquoted, err := Eval(ilist[1].Car(), env)
-						if err != nil {
-							return nil, err
-						}
-						uqlist, ok := ListPairs(unquoted)
-						if !ok {
-							return nil, iv.Errorf("invalid unquote-splicing")
-						}
-						for _, uqp := range uqlist {
-							lb.AddPair(NewLocationPair(uqp.From(), uqp.To(),
-								uqp.Car(), nil))
-						}
-						continue list
+			lvl, kw, qv := unquote(item)
+			if lvl == level {
+				switch kw {
+				case KwUnquote:
+					unquoted, err := Eval(qv, env)
+					if err != nil {
+						return nil, err
+					}
+					lb.AddPair(NewLocationPair(p.From(), p.To(), unquoted, nil))
+
+				case KwUnquoteSplicing:
+					unquoted, err := Eval(qv, env)
+					if err != nil {
+						return nil, err
+					}
+					uqlist, ok := ListPairs(unquoted)
+					if !ok {
+						// XXX error location
+						return nil, p.Errorf("invalid unquote-splicing")
+					}
+					for _, uqp := range uqlist {
+						lb.AddPair(NewLocationPair(uqp.From(), uqp.To(),
+							uqp.Car(), nil))
 					}
 				}
+				continue list
 			}
 
-			lb.AddPair(NewLocationPair(p.From(), p.To(), item, nil))
+			pair, ok := item.(Pair)
+
+			if !ok {
+				lb.AddPair(NewLocationPair(p.From(), p.To(), item, nil))
+				continue
+			}
+			ilist, ok := ListPairs(pair)
+			if !ok {
+				lb.AddPair(NewLocationPair(p.From(), p.To(), item, nil))
+				continue
+			}
+
+			if isKeyword(pair.Car(), KwQuasiquote) {
+				if len(ilist) != 2 {
+					return nil, pair.Errorf("invalid quasiquote")
+				}
+				quoted, _ := Unbox(ilist[1].Car())
+				unquoted, err := evalQuasiquote(level+1, quoted, env)
+				if err != nil {
+					return nil, err
+				}
+				lb.AddPair(NewLocationPair(p.From(), p.To(), unquoted, nil))
+			}
 		}
 		return lb.B(), nil
 
 	default:
 		return nil, fmt.Errorf("eval: invalid quasiquote: %v[%T]", v, v)
+	}
+}
+
+func unquote(value Value) (int, Keyword, Value) {
+	var keyword Keyword
+
+	for level := 0; ; level++ {
+		pair, ok := value.(Pair)
+		if !ok {
+			return level, keyword, value
+		}
+		next, ok := pair.Cdr().(Pair)
+		if !ok || next.Cdr() != nil {
+			return level, keyword, value
+		}
+		car := pair.Car()
+		kw, ok := car.(Keyword)
+		if !ok {
+			return level, keyword, value
+		}
+		if kw != KwUnquote && kw != KwUnquoteSplicing {
+			return level, keyword, value
+		}
+		keyword = kw
+		value = next.Car()
 	}
 }
 
