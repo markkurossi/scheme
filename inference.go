@@ -1019,6 +1019,9 @@ func (ast *ASTLet) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 			Conclusive: true,
 			Types:      []*types.Type{t},
 		})
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	bodyEnv := initEnv.Copy()
@@ -1628,13 +1631,10 @@ func (ast *ASTLambda) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 
 	env = env.Copy()
 
-	var args []*types.Type
 	for idx, arg := range ast.Args.Fixed {
 		t := env.inferer.newTypeVar()
 
 		env.inferer.Debugf(ast, "\u03bb: arg[%v]=%v\n", idx, t)
-
-		args = append(args, t)
 		env.Set(arg.Name, t)
 
 		lambdaType.Args = append(lambdaType.Args, t)
@@ -1645,7 +1645,7 @@ func (ast *ASTLambda) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 			Car:  env.inferer.newTypeVar(),
 			Cdr:  env.inferer.newTypeVar(),
 		}
-		args = append(args, t)
+		env.inferer.Debugf(ast, "\u03bb: rest=%v\n", t)
 		env.Set(ast.Args.Rest.Name, t)
 
 		lambdaType.Rest = t
