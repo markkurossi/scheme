@@ -129,7 +129,7 @@ Any
      - [ ] finite?
      - [ ] infinite?
      - [ ] nan?
-     - [ ] abs
+     - [x] abs
      - [ ] div-and-mod
      - [ ] div
      - [ ] div0-and-mod0
@@ -244,8 +244,8 @@ Any
      - [ ] exact->inexact
      - [ ] inexact->exact
      - [ ] quotient
-     - [ ] remainder
-     - [X] modulo
+     - [x] remainder
+     - [x] modulo
      - [ ] delay
      - [ ] force
      - [ ] null-environment

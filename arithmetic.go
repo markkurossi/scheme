@@ -1249,6 +1249,40 @@ var numberBuiltins = []Builtin{
 		Parametrize: parametrizeNumber,
 	},
 	{
+		Name:   "abs",
+		Args:   []string{"x"},
+		Return: types.Number,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			switch v := args[0].(type) {
+			case Int:
+				if v < 0 {
+					return Int(-v), nil
+				}
+				return v, nil
+
+			case Float:
+				if v < 0 {
+					return Float(-v), nil
+				}
+				return v, nil
+
+			case *BigInt:
+				return &BigInt{
+					I: new(big.Int).Abs(v.I),
+				}, nil
+
+			case *BigFloat:
+				return &BigFloat{
+					F: new(big.Float).Abs(v.F),
+				}, nil
+
+			default:
+				return Int(0), fmt.Errorf("invalid number: %v", args[0])
+			}
+		},
+		Parametrize: parametrizeNumber,
+	},
+	{
 		Name:    "mod",
 		Aliases: []string{"modulo"},
 		Args:    []string{"z1", "z2"},
@@ -1583,6 +1617,48 @@ var numberBuiltins = []Builtin{
 
 			default:
 				return Float(0), fmt.Errorf("invalid integer: %v", v)
+			}
+		},
+	},
+
+	{
+		Name:   "remainder",
+		Args:   []string{"n", "n"},
+		Return: types.Number,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			switch n1 := args[0].(type) {
+			case Int:
+				switch n2 := args[1].(type) {
+				case Int:
+					return Int(n1 % n2), nil
+
+				case *BigInt:
+					return &BigInt{
+						I: new(big.Int).Rem(big.NewInt(int64(n1)), n2.I),
+					}, nil
+
+				default:
+					return Int(0), fmt.Errorf("invalid number: %v", args[1])
+				}
+
+			case *BigInt:
+				switch n2 := args[1].(type) {
+				case Int:
+					return &BigInt{
+						I: new(big.Int).Rem(n1.I, big.NewInt(int64(n2))),
+					}, nil
+
+				case *BigInt:
+					return &BigInt{
+						I: new(big.Int).Rem(n1.I, n2.I),
+					}, nil
+
+				default:
+					return Int(0), fmt.Errorf("invalid number: %v", args[1])
+				}
+
+			default:
+				return Int(0), fmt.Errorf("expt: invalid number: %v", args[0])
 			}
 		},
 	},
