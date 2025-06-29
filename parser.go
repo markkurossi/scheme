@@ -15,10 +15,12 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
-var qqNamedLed = MustParseSexpr(`
-(letrec ((,name (lambda ,args)
-                  ,@body))
-  (,name ,inits))`)
+var qqNamedLet Value
+
+func init() {
+	qqNamedLet = MustParseSexpr(
+		"`(letrec `(`(,,,name `(lambda ,,,,args ,,,,@body))) `(,,@init))")
+}
 
 // Parser implements the byte-code compiler.
 type Parser struct {
@@ -727,7 +729,7 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 		argsBuilder := new(ListBuilder)
 		initBuilder := new(ListBuilder)
 
-		initBuilder.Add(list[1].Car())
+		initBuilder.AddPair(DerivePair(list[1], list[1].Car(), nil))
 
 		for _, binding := range bindings {
 			def, ok := ListPairs(binding.Car())
@@ -736,21 +738,21 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 					list[idxBindings].Errorf("named let: invalid init: %v",
 						binding)
 			}
-			argsBuilder.Add(def[0].Car())
-			initBuilder.Add(def[1].Car())
+			argsBuilder.AddPair(DerivePair(def[0], def[0].Car(), nil))
+			initBuilder.AddPair(DerivePair(def[1], def[1].Car(), nil))
 		}
 
-		named := new(ListBuilder).
-			Add(KwLetrec,
-				new(ListBuilder).Add(new(ListBuilder).
-					Add(list[1].Car(),
-						new(ListBuilder).
-							Add(KwLambda,
-								argsBuilder.B()).
-							Add(XListValues(list[idxBody])...).B()).B()).B()).
-			Add(initBuilder.B()).B()
+		qqEnv := NewEvalEnv(nil)
+		qqEnv.Set("name", list[1].Car())
+		qqEnv.Set("args", argsBuilder.B())
+		qqEnv.Set("init", initBuilder.B())
+		qqEnv.Set("body", list[idxBody])
 
-		namedList, ok := ListPairs(named)
+		n, err := Eval(qqNamedLet, qqEnv)
+		if err != nil {
+			return nil, err
+		}
+		namedList, ok := ListPairs(n)
 		if !ok {
 			panic("named let")
 		}
