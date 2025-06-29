@@ -33,6 +33,20 @@ type Pair interface {
 	Unbox() (Value, *types.Type)
 }
 
+// DerivePair creates a new pair with the argument car and cdr
+// values. The function derives any metadata (location information)
+// from the pair from.
+func DerivePair(from Pair, car, cdr Value) Pair {
+	switch p := from.(type) {
+	case *PlainPair:
+		return NewPair(car, cdr)
+	case *LocationPair:
+		return NewLocationPair(p.from, p.to, car, cdr)
+	default:
+		panic("invalid pair")
+	}
+}
+
 // List creates a list from the argument values.
 func List(values ...Value) Value {
 	var head, tail Pair
@@ -385,16 +399,6 @@ func ListValues(list Value) ([]Value, bool) {
 		return nil, false
 	}
 	return result, true
-}
-
-// XListValues returns the list values as []Value. The function panics
-// if the argument list is not a valid list.
-func XListValues(list Value) []Value {
-	v, ok := ListValues(list)
-	if !ok {
-		panic("not a list")
-	}
-	return v
 }
 
 // Map maps function for each element of the list. The function
