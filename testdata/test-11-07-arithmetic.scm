@@ -515,6 +515,13 @@
         (lambda () (eq? (apply / '(#e4.0 #e2)) #e2.0))
         (lambda () (eq? (apply / '(#e4.0 #e2.0)) #e2.0))
 
+        (lambda () (eq? (abs -7) 7))
+
+        (lambda () (eq? (remainder 13 4) 1))
+        (lambda () (eq? (remainder -13 4) -1))
+        (lambda () (eq? (remainder 13 -4) 1))
+        (lambda () (eq? (remainder -13 -4) -1))
+
         ;; Result type checks.
 
         (lambda () (inexact? (/ 4 2)))
