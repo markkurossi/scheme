@@ -35,7 +35,7 @@ following non-compliant design decisions:
  - Several unary (`pair?`, `null?`, `zero?`, `car`, `cdr`, `not`) and
    binary (`cons`, `+`, `-`, `*`, `/`, `=`, `<`, `>`, `<=`, `>=`)
    functions are inlined and implemented as VM bytecode operands. The
-   runtime also implements the funtions as procedures so it is
+   runtime also implements these funtions as procedures so it is
    possible to `apply` them to arguments.
 
 ### Extensions
@@ -84,6 +84,8 @@ Any
   |     +-- ExactFloat (big.Float)
   |           |
   |           +-- InexactFloat (float64)
+  |
+  +-- Port
   |
   +-- Lambda(Type...) Type
   |
@@ -162,8 +164,8 @@ Any
      - [ ] angle
      - [x] number->string
      - [x] string->number
-   - [ ] 11.16. Iteration
-     - [ ] Named let
+   - [x] 11.16. Iteration
+     - [x] Named let
    - [ ] 11.17. Quasiquotation
      - [ ] quasiquote
      - [ ] unquote
@@ -172,7 +174,7 @@ Any
    - [ ] 1. Unicode `(rnrs unicode (6))`
      - [ ] char-foldcase
      - [ ] char-general-category
-     - [ ] string-titlecase
+     - [x] string-titlecase
      - [ ] string-foldcase
      - [ ] string-normalize-nfd
      - [ ] string-normalize-nfkd
