@@ -118,6 +118,7 @@ const (
 	KwQuasiquote
 	KwSchemeApply
 	KwPragma
+	KwGuard
 )
 
 var keywords = map[Keyword]string{
@@ -144,6 +145,7 @@ var keywords = map[Keyword]string{
 	KwQuasiquote:      "quasiquote",
 	KwSchemeApply:     "scheme::apply",
 	KwPragma:          "pragma",
+	KwGuard:           "guard",
 }
 
 var keywordNames map[string]Keyword

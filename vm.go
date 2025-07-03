@@ -993,6 +993,23 @@ var vmBuiltins = []Builtin{
 		},
 	},
 	{
+		Name:   "error?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			_, ok := args[0].(error)
+			return Boolean(ok), nil
+		},
+	},
+	{
+		Name:   "with-exception-handler",
+		Args:   []string{"handler<lambda(any)any>", "thunk<lambda()any>"},
+		Return: types.Any,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			return nil, fmt.Errorf("with-exception-handler")
+		},
+	},
+	{
 		Name:   "scheme::->scheme",
 		Args:   []string{"obj"},
 		Return: types.String,

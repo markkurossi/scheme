@@ -15,11 +15,16 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
-var qqNamedLet Value
+var qqNamedLet, qqGuard Value
 
 func init() {
 	qqNamedLet = MustParseSexpr(
-		"`(letrec `(`(,,,name `(lambda ,,,,args ,,,,@body))) `(,,@init))")
+		"`(letrec `(`(,,,name `(lambda ,,,,args ,,,,@body))) " +
+			"`(,,@init))")
+	qqGuard = MustParseSexpr(
+		"`(with-exception-handler\n" +
+			"`(lambda `(,,,variable) `(cond ,,,@conditions))\n" +
+			"`(lambda () ,,@body))")
 }
 
 // Parser implements the byte-code compiler.
@@ -249,6 +254,9 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 		}
 		if isKeyword(v.Car(), KwOr) {
 			return p.parseOr(env, list, tail, captures)
+		}
+		if isKeyword(v.Car(), KwGuard) {
+			return p.parseGuard(env, list, tail, captures)
 		}
 
 		// Function call.
@@ -1114,6 +1122,39 @@ func (p *Parser) parseOr(env *Env, list []Pair,
 	}
 
 	return ast, nil
+}
+
+func (p *Parser) parseGuard(env *Env, list []Pair,
+	tail, captures bool) (AST, error) {
+
+	// (guard (variable			=> (with-exception-handler
+	//         condClause...)        (lambda (variable)
+	//        body)                    (cond condClause...))
+	//                               (lambda ()
+	//                                 body))
+	if len(list) < 3 {
+		return nil, list[0].Errorf("guard: missing body")
+	}
+	clauses, ok := ListPairs(list[1].Car())
+	if !ok || len(clauses) < 2 {
+		return nil, list[1].Errorf("guard: invalid clauses")
+	}
+	if !Symbolp(clauses[0].Car()) {
+		return nil, clauses[0].Errorf("guard: invalid variable")
+	}
+	// check if the clauses do not have else, then add (raise var)
+
+	qqEnv := NewEvalEnv(nil)
+	qqEnv.Set("variable", clauses[0].Car())
+	qqEnv.Set("conditions", clauses[1])
+	qqEnv.Set("body", list[2])
+
+	n, err := Eval(qqGuard, qqEnv)
+	if err != nil {
+		return nil, err
+	}
+
+	return p.parseValue(env, list[0], n, tail, captures)
 }
 
 func isKeyword(value Value, keyword Keyword) bool {
