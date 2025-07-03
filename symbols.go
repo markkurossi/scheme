@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -12,14 +12,25 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
+// Symbolp tests if the value is a symbol.
+func Symbolp(v Value) bool {
+	_, ok := v.(*Identifier)
+	return ok
+}
+
+// IsSymbol tests if the value is the symbol sym.
+func IsSymbol(v Value, sym string) bool {
+	id, ok := v.(*Identifier)
+	return ok && id.Name == sym
+}
+
 var symbolBuiltins = []Builtin{
 	{
 		Name:   "symbol?",
 		Args:   []string{"obj"},
 		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			_, ok := args[0].(*Identifier)
-			return Boolean(ok), nil
+			return Boolean(Symbolp(args[0])), nil
 		},
 	},
 	{
