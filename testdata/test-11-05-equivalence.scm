@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2022-2023 Markku Rossi
+;;; Copyright (c) 2022-2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -68,8 +68,6 @@
         (lambda () (equal? (make-vector 5 'a)
                            (make-vector 5 'a)))
         ;; XXX u8-list->bytevector
-        (lambda () (equal? (lambda (x) x)
-                           (lambda (x) x)))
         (lambda () (equal? (let* ((x (list 'a))
                                   (y (list 'a))
                                   (z (list x y)))

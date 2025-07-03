@@ -159,31 +159,7 @@ func (v *LambdaImpl) Eq(o Value) bool {
 
 // Equal implements the Value.Equal().
 func (v *LambdaImpl) Equal(o Value) bool {
-	ov, ok := o.(*LambdaImpl)
-	if !ok {
-		return false
-	}
-	if !v.Args.Equal(ov.Args) {
-		return false
-	}
-	if v.Captures != ov.Captures {
-		return false
-	}
-	if v.Native == nil && ov.Native != nil {
-		return false
-	}
-	if v.Native != nil && ov.Native == nil {
-		return false
-	}
-	if len(v.Body) != len(ov.Body) {
-		return false
-	}
-	for idx, vv := range v.Body {
-		if !vv.Equal(ov.Body[idx]) {
-			return false
-		}
-	}
-	return true
+	return v.Eq(o)
 }
 
 // Type implements the Value.Type().

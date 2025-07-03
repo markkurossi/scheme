@@ -16,7 +16,6 @@ import (
 // AST defines an abstract syntax tree entry
 type AST interface {
 	Locator() Locator
-	Equal(o AST) bool
 	SetInferTypes(it *InferTypes)
 	InferTypes() *InferTypes
 	SetType(t *types.Type)
@@ -92,23 +91,6 @@ func (ast *ASTSequence) Locator() Locator {
 	return ast.From
 }
 
-// Equal implements AST.Equal.
-func (ast *ASTSequence) Equal(o AST) bool {
-	oast, ok := o.(*ASTSequence)
-	if !ok {
-		return false
-	}
-	if len(ast.Items) != len(oast.Items) {
-		return false
-	}
-	for idx, item := range ast.Items {
-		if !item.Equal(oast.Items[idx]) {
-			return false
-		}
-	}
-	return true
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTSequence) Bytecode(lib *Library) error {
 	for _, item := range ast.Items {
@@ -134,17 +116,6 @@ func (ast *ASTDefine) Locator() Locator {
 	return ast.From
 }
 
-// Equal implements AST.Equal.
-func (ast *ASTDefine) Equal(o AST) bool {
-	oast, ok := o.(*ASTDefine)
-	if !ok {
-		return false
-	}
-	return ast.Name.Name == oast.Name.Name &&
-		ast.Flags == oast.Flags &&
-		ast.Value.Equal(oast.Value)
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTDefine) Bytecode(lib *Library) error {
 	err := ast.Value.Bytecode(lib)
@@ -166,21 +137,6 @@ type ASTSet struct {
 // Locator implements AST.Locator.
 func (ast *ASTSet) Locator() Locator {
 	return ast.From
-}
-
-// Equal implements AST.Equal.
-func (ast *ASTSet) Equal(o AST) bool {
-	oast, ok := o.(*ASTSet)
-	if !ok {
-		return false
-	}
-	if ast.Binding == nil && oast.Binding != nil {
-		return false
-	}
-	if ast.Binding != nil && oast.Binding == nil {
-		return false
-	}
-	return ast.Name == oast.Name && ast.Value.Equal(oast.Value)
 }
 
 // Bytecode implements AST.Bytecode.
@@ -233,31 +189,6 @@ func (ast *ASTLet) Locator() Locator {
 	return ast.From
 }
 
-// Equal implements AST.Equal.
-func (ast *ASTLet) Equal(o AST) bool {
-	oast, ok := o.(*ASTLet)
-	if !ok {
-		return false
-	}
-	if ast.Kind != oast.Kind || ast.Captures != oast.Captures ||
-		ast.Tail != oast.Tail || len(ast.Bindings) != len(oast.Bindings) ||
-		len(ast.Body) != len(oast.Body) {
-		return false
-	}
-	for idx, b := range ast.Bindings {
-		if b.Binding.Index != oast.Bindings[idx].Binding.Index ||
-			b.Binding.Frame.Index != oast.Bindings[idx].Binding.Frame.Index {
-			return false
-		}
-	}
-	for idx, item := range ast.Body {
-		if !item.Equal(oast.Body[idx]) {
-			return false
-		}
-	}
-	return true
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTLet) Bytecode(lib *Library) error {
 	lib.addPushS(ast.From, len(ast.Bindings), ast.Captures)
@@ -295,31 +226,6 @@ type ASTIf struct {
 // Locator implements AST.Locator.
 func (ast *ASTIf) Locator() Locator {
 	return ast.From
-}
-
-// Equal implements AST.Equal.
-func (ast *ASTIf) Equal(o AST) bool {
-	oast, ok := o.(*ASTIf)
-	if !ok {
-		return false
-	}
-	if !ast.Cond.Equal(oast.Cond) {
-		return false
-	}
-	if !ast.True.Equal(oast.True) {
-		return false
-	}
-	if ast.False == nil {
-		if oast.False != nil {
-			return false
-		}
-	} else if oast.False == nil {
-		return false
-	} else if !ast.False.Equal(oast.False) {
-		return false
-	}
-
-	return true
 }
 
 // Bytecode implements AST.Bytecode.
@@ -378,17 +284,6 @@ func (ast *ASTApply) Locator() Locator {
 	return ast.From
 }
 
-// Equal implements AST.Equal.
-func (ast *ASTApply) Equal(o AST) bool {
-	oast, ok := o.(*ASTApply)
-	if !ok {
-		return false
-	}
-	return ast.Lambda.Equal(oast.Lambda) &&
-		ast.Args.Equal(oast.Args) &&
-		ast.Tail == oast.Tail
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTApply) Bytecode(lib *Library) error {
 	err := ast.Lambda.Bytecode(lib)
@@ -442,26 +337,6 @@ func (ast *ASTCall) String() string {
 // Locator implements AST.Locator.
 func (ast *ASTCall) Locator() Locator {
 	return ast.From
-}
-
-// Equal implements AST.Equal.
-func (ast *ASTCall) Equal(o AST) bool {
-	oast, ok := o.(*ASTCall)
-	if !ok {
-		return false
-	}
-	if !ast.Func.Equal(oast.Func) {
-		return false
-	}
-	if len(ast.Args) != len(oast.Args) {
-		return false
-	}
-	for idx, arg := range ast.Args {
-		if !arg.Equal(oast.Args[idx]) {
-			return false
-		}
-	}
-	return ast.Tail == oast.Tail
 }
 
 // Bytecode implements AST.Bytecode.
@@ -535,15 +410,6 @@ func (ast *ASTCallUnary) Locator() Locator {
 	return ast.From
 }
 
-// Equal implements AST.Equal.
-func (ast *ASTCallUnary) Equal(o AST) bool {
-	oast, ok := o.(*ASTCallUnary)
-	if !ok {
-		return false
-	}
-	return ast.Op == oast.Op && ast.Arg.Equal(oast.Arg)
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTCallUnary) Bytecode(lib *Library) error {
 	err := ast.Arg.Bytecode(lib)
@@ -585,26 +451,6 @@ func (ast *ASTLambda) Locator() Locator {
 	return ast.From
 }
 
-// Equal implements AST.Equal.
-func (ast *ASTLambda) Equal(o AST) bool {
-	oast, ok := o.(*ASTLambda)
-	if !ok {
-		return false
-	}
-	if !ast.Args.Equal(oast.Args) {
-		return false
-	}
-	if len(ast.Body) != len(oast.Body) {
-		return false
-	}
-	for idx, body := range ast.Body {
-		if !body.Equal(oast.Body[idx]) {
-			return false
-		}
-	}
-	return ast.Captures == oast.Captures && ast.Flags == oast.Flags
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTLambda) Bytecode(lib *Library) error {
 	lib.addInstr(ast.From, OpLambda, nil, len(lib.lambdas))
@@ -642,15 +488,6 @@ func (ast *ASTConstant) String() string {
 // Locator implements AST.Locator.
 func (ast *ASTConstant) Locator() Locator {
 	return ast.From
-}
-
-// Equal implements AST.Equal.
-func (ast *ASTConstant) Equal(o AST) bool {
-	oast, ok := o.(*ASTConstant)
-	if !ok {
-		return false
-	}
-	return ast.Value.Equal(oast.Value)
 }
 
 // SetInferTypes implements AST.SetInferTypes.
@@ -702,24 +539,6 @@ func (ast *ASTIdentifier) Locator() Locator {
 	return ast.From
 }
 
-// Equal implements AST.Equal.
-func (ast *ASTIdentifier) Equal(o AST) bool {
-	oast, ok := o.(*ASTIdentifier)
-	if !ok {
-		return false
-	}
-	if ast.Name != oast.Name {
-		return false
-	}
-	if ast.Binding == nil && oast.Binding != nil {
-		return false
-	}
-	if ast.Binding != nil && oast.Binding == nil {
-		return false
-	}
-	return true
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTIdentifier) Bytecode(lib *Library) error {
 	if ast.Binding != nil {
@@ -757,40 +576,9 @@ type ASTCondChoice struct {
 	Exprs          []AST
 }
 
-// Equal test if this choice is equal to the argument choice.
-func (c *ASTCondChoice) Equal(o *ASTCondChoice) bool {
-	if len(c.Exprs) != len(o.Exprs) {
-		return false
-	}
-	for idx, expr := range c.Exprs {
-		if !expr.Equal(o.Exprs[idx]) {
-			return false
-		}
-	}
-
-	return c.Cond.Equal(o.Cond) && c.Func.Equal(o.Func)
-}
-
 // Locator implements AST.Locator.
 func (ast *ASTCond) Locator() Locator {
 	return ast.From
-}
-
-// Equal implements AST.Equal.
-func (ast *ASTCond) Equal(o AST) bool {
-	oast, ok := o.(*ASTCond)
-	if !ok {
-		return false
-	}
-	if len(ast.Choices) != len(oast.Choices) {
-		return false
-	}
-	for idx, choice := range ast.Choices {
-		if !choice.Equal(oast.Choices[idx]) {
-			return false
-		}
-	}
-	return ast.Tail == oast.Tail && ast.Captures == oast.Captures
 }
 
 // Bytecode implements AST.Bytecode.
@@ -893,48 +681,9 @@ type ASTCaseChoice struct {
 	Exprs     []AST
 }
 
-// Equal test if this choice is equal to the argument choice.
-func (c *ASTCaseChoice) Equal(o *ASTCaseChoice) bool {
-	if len(c.Datums) != len(o.Datums) {
-		return false
-	}
-	for idx, datum := range c.Datums {
-		if !datum.Equal(c.Datums[idx]) {
-			return false
-		}
-	}
-	if len(c.Exprs) != len(o.Exprs) {
-		return false
-	}
-	for idx, expr := range c.Exprs {
-		if !expr.Equal(o.Exprs[idx]) {
-			return false
-		}
-	}
-	return true
-}
-
 // Locator implements AST.Locator.
 func (ast *ASTCase) Locator() Locator {
 	return ast.From
-}
-
-// Equal implements AST.Equal.
-func (ast *ASTCase) Equal(o AST) bool {
-	oast, ok := o.(*ASTCase)
-	if !ok {
-		return false
-	}
-	if len(ast.Choices) != len(oast.Choices) {
-		return false
-	}
-	for idx, choice := range ast.Choices {
-		if !choice.Equal(oast.Choices[idx]) {
-			return false
-		}
-	}
-	return ast.Expr.Equal(oast.Expr) && ast.Tail == oast.Tail &&
-		ast.Captures == oast.Captures
 }
 
 // Bytecode implements AST.Bytecode.
@@ -1044,20 +793,6 @@ func (ast *ASTAnd) Locator() Locator {
 	return ast.From
 }
 
-// Equal implements AST.Equal.
-func (ast *ASTAnd) Equal(o AST) bool {
-	oast, ok := o.(*ASTAnd)
-	if !ok {
-		return false
-	}
-	for idx, expr := range ast.Exprs {
-		if !expr.Equal(oast.Exprs[idx]) {
-			return false
-		}
-	}
-	return true
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTAnd) Bytecode(lib *Library) error {
 	if len(ast.Exprs) == 0 {
@@ -1098,20 +833,6 @@ func (ast *ASTOr) Locator() Locator {
 	return ast.From
 }
 
-// Equal implements AST.Equal.
-func (ast *ASTOr) Equal(o AST) bool {
-	oast, ok := o.(*ASTOr)
-	if !ok {
-		return false
-	}
-	for idx, expr := range ast.Exprs {
-		if !expr.Equal(oast.Exprs[idx]) {
-			return false
-		}
-	}
-	return true
-}
-
 // Bytecode implements AST.Bytecode.
 func (ast *ASTOr) Bytecode(lib *Library) error {
 	if len(ast.Exprs) == 0 {
@@ -1150,11 +871,6 @@ type ASTPragma struct {
 // Locator implements AST.Locator.
 func (ast *ASTPragma) Locator() Locator {
 	return ast.From
-}
-
-// Equal implements AST.Equal.
-func (ast *ASTPragma) Equal(o AST) bool {
-	return false
 }
 
 // Bytecode implements AST.Bytecode.
