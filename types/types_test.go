@@ -211,3 +211,44 @@ func TestTypeVar(t *testing.T) {
 	}
 	fmt.Printf("TypeVar: %v\n", typeVar)
 }
+
+var parseTests = []struct {
+	i string
+	n string
+	o *Type
+}{
+	{
+		i: "handler<lambda(any)any>",
+		n: "handler",
+		o: &Type{
+			Enum:   EnumLambda,
+			Args:   []*Type{Any},
+			Return: Any,
+		},
+	},
+	{
+		i: "handler<lambda()any>",
+		n: "handler",
+		o: &Type{
+			Enum:   EnumLambda,
+			Return: Any,
+		},
+	},
+}
+
+func TestParse(t *testing.T) {
+	for idx, parseTest := range parseTests {
+		typ, name, err := Parse(parseTest.i)
+		if err != nil {
+			t.Errorf("test-%v: %v: %v", idx, parseTest.i, err)
+			continue
+		}
+		if name != parseTest.n {
+			t.Errorf("test-%v: invalid name: got %v, expected %v",
+				idx, name, parseTest.n)
+		}
+		if !typ.IsA(parseTest.o) {
+			t.Errorf("test-%v: unexpected type: %v", idx, typ)
+		}
+	}
+}

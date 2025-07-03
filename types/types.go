@@ -121,7 +121,7 @@ func (e Enum) Unify(o Enum) Enum {
 
 var (
 	reArgType = regexp.MustCompilePOSIX(
-		`^(\[?)([^<\]]+)(<([a-z0-9]+)>)?(\.\.\.)?(\]?)$`)
+		`^(\[?)([^<\]]+)(<([^>]+)>)?(\.\.\.)?(\]?)$`)
 )
 
 // Parse parses the type of the function argument based on naming
@@ -250,6 +250,30 @@ func Parse(arg string) (*Type, string, error) {
 			Enum: EnumInexactInteger,
 			Kind: kind,
 		}, name, nil
+	} else if strings.HasPrefix(typeName, "lambda(") {
+		t := &Type{
+			Enum: EnumLambda,
+			Kind: kind,
+		}
+		end := strings.IndexByte(typeName[7:], ')')
+		if end < 0 {
+			return Unspecified, name, fmt.Errorf("invalid lambda: %v", typeName)
+		}
+		if end > 0 {
+			for _, arg := range strings.Split(typeName[7:7+end], ",") {
+				at, _, err := Parse(arg)
+				if err != nil {
+					return Unspecified, name, err
+				}
+				t.Args = append(t.Args, at)
+			}
+		}
+		rt, _, err := Parse(typeName[7+end+1:])
+		if err != nil {
+			return Unspecified, name, err
+		}
+		t.Return = rt
+		return t, name, nil
 	} else {
 		return Unspecified, name, fmt.Errorf("unsupported argument: %v", arg)
 	}
