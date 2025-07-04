@@ -760,6 +760,8 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 		if err != nil {
 			return nil, err
 		}
+		PatchLocation(n, list[0].From())
+
 		namedList, ok := ListPairs(n)
 		if !ok {
 			panic("named let")
