@@ -94,6 +94,24 @@ func (lb *ListBuilder) AddPair(p Pair) *ListBuilder {
 	return lb
 }
 
+// PatchLocation updates the value's location information with the
+// origin. The location information is updated only for pairs with
+// empty Point.Source value.
+func PatchLocation(value Value, origin Point) {
+	pair, ok := value.(Pair)
+	if !ok {
+		return
+	}
+	if len(pair.From().Source) > 0 {
+		return
+	}
+	pair.SetFrom(pair.From().Add(origin))
+	pair.SetTo(pair.To().Add(origin))
+
+	PatchLocation(pair.Car(), origin)
+	PatchLocation(pair.Cdr(), origin)
+}
+
 // PlainPair implements a Scheme pair with car and cdr values.
 type PlainPair struct {
 	car Value

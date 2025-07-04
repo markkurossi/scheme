@@ -164,6 +164,20 @@ type Point struct {
 	Col    int // 1-based
 }
 
+// Add the argument location information to this point. The function
+// also sets the Source location if it is unset on this point.
+func (p Point) Add(o Point) Point {
+	source := p.Source
+	if len(source) == 0 {
+		source = o.Source
+	}
+	return Point{
+		Source: source,
+		Line:   p.Line + o.Line,
+		Col:    p.Col + o.Col,
+	}
+}
+
 // From returns the point.
 func (p Point) From() Point {
 	return p

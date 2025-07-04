@@ -1153,6 +1153,7 @@ func (p *Parser) parseGuard(env *Env, list []Pair,
 	if err != nil {
 		return nil, err
 	}
+	PatchLocation(n, list[0].From())
 
 	return p.parseValue(env, list[0], n, tail, captures)
 }
