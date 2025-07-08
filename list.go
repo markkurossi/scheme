@@ -105,8 +105,8 @@ func PatchLocation(value Value, origin Point) {
 	if len(pair.From().Source) > 0 {
 		return
 	}
-	pair.SetFrom(pair.From().Add(origin))
-	pair.SetTo(pair.To().Add(origin))
+	pair.SetFrom(origin)
+	pair.SetTo(origin)
 
 	PatchLocation(pair.Car(), origin)
 	PatchLocation(pair.Cdr(), origin)
