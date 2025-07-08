@@ -64,6 +64,8 @@ const (
 	OpGe
 )
 
+var errGuard = errors.New("guard")
+
 var operands = map[Operand]string{
 	OpConst:     "const",
 	OpDefine:    "define",
@@ -249,8 +251,9 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 
 		case OpDefine:
 			if instr.Sym.Flags&FlagConst != 0 {
-				return nil, scm.Breakf("redefining final symbol '%s'",
+				err = scm.VMErrorf("redefining final symbol '%s'",
 					instr.Sym.Name)
+				goto errorHandler
 			}
 			if instr.Sym.Flags&FlagDefined != 0 && !scm.Params.NoWarnDefine {
 				scm.VMWarningf("redefining symbol '%s'", instr.Sym.Name)
@@ -262,7 +265,8 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		case OpLambda:
 			tmpl, ok := instr.V.(*LambdaImpl)
 			if !ok {
-				return nil, scm.Breakf("lambda: invalid argument: %v", instr.V)
+				err = scm.VMErrorf("lambda: invalid argument: %v", instr.V)
+				goto errorHandler
 			}
 			accu = &Lambda{
 				Capture: env,
@@ -285,12 +289,14 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				}
 			}
 			if e == nil {
-				return nil, scm.Breakf("invalid env frame %v", instr.I)
+				err = scm.VMErrorf("invalid env frame %v", instr.I)
+				goto errorHandler
 			}
 
 		case OpGlobal:
 			if instr.Sym.Flags&FlagDefined == 0 {
-				return nil, scm.Breakf("undefined symbol '%s' ", instr.Sym.Name)
+				err = scm.VMErrorf("undefined symbol '%s' ", instr.Sym.Name)
+				goto errorHandler
 			}
 			accu = instr.Sym.Global
 
@@ -306,16 +312,18 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				}
 			}
 			if e == nil {
-				return nil, scm.Breakf("invalid env frame %v", instr.I)
+				err = scm.VMErrorf("invalid env frame %v", instr.I)
+				goto errorHandler
 			}
 
 		case OpGlobalSet:
 			if instr.Sym.Flags&FlagConst != 0 {
-				return nil, scm.Breakf("setting final symbol '%s'",
-					instr.Sym.Name)
+				err = scm.VMErrorf("setting final symbol '%s'", instr.Sym.Name)
+				goto errorHandler
 			}
 			if instr.Sym.Flags&FlagDefined == 0 {
-				return nil, scm.Breakf("undefined symbol '%s'", instr.Sym.Name)
+				err = scm.VMErrorf("undefined symbol '%s'", instr.Sym.Name)
+				goto errorHandler
 			}
 			instr.Sym.Global = accu
 
@@ -323,7 +331,8 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			// i.I != 0 for toplevel frames.
 			lambda, ok := accu.(*Lambda)
 			if !ok {
-				return nil, scm.Breakf("invalid function: %v", accu)
+				err = scm.VMErrorf("invalid function: %v", accu)
+				goto errorHandler
 			}
 
 			var frame *Frame
@@ -374,44 +383,81 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				return nil
 			}, accu)
 			if err != nil {
-				return nil, scm.Breakf("pusha: invalid arguments: %v", err)
+				err = scm.VMErrorf("pusha: invalid arguments: %v", err)
+				goto errorHandler
 			}
 			accu = Int(count)
 
 		case OpCall:
 			vi, ok := accu.(Int)
 			if !ok {
-				return nil, scm.Breakf("%s: invalid #args: %v", instr.Op, accu)
+				err = scm.VMErrorf("%s: invalid #args: %v", instr.Op, accu)
+				goto errorHandler
 			}
 			numArgs := int(vi)
 			args := scm.stack[scm.sp-numArgs : scm.sp]
 
 			callFrame, ok := scm.stack[scm.sp-numArgs-1].(*Frame)
 			if !ok || callFrame.Lambda == nil {
-				return nil, scm.Breakf("%s: invalid function: %v",
+				err = scm.VMErrorf("%s: invalid function: %v",
 					instr.Op, scm.stack[scm.sp-numArgs-1])
+				goto errorHandler
 			}
 			lambda := callFrame.Lambda
 
 			if numArgs < lambda.Impl.Args.Min {
-				return nil, scm.Breakf("too few arguments: got %v, need %v",
+				err = scm.VMErrorf("too few arguments: got %v, need %v",
 					numArgs, lambda.Impl.Args.Min)
+				goto errorHandler
 			}
 			if numArgs > lambda.Impl.Args.Max {
-				return nil, scm.Breakf("too many arguments: got %v, max %v",
+				err = scm.VMErrorf("too many arguments: got %v, max %v",
 					numArgs, lambda.Impl.Args.Max)
+				goto errorHandler
 			}
 
 			// Set fp for the call.
 			scm.fp = scm.sp - numArgs - 1
 
+		call:
 			if lambda.Impl.Native != nil {
 				accu, err = callFrame.Lambda.Impl.Native(scm, args)
 				if err != nil {
-					if len(lambda.Impl.Name) != 0 {
-						return nil, scm.Breakf("%s: %v", lambda.Impl.Name, err)
+					if err == errGuard {
+						// A call with-exception-handler.
+						handler, ok := args[0].(*Lambda)
+						if !ok {
+							err = scm.VMErrorf("invalid handler: %v", args[0])
+							goto errorHandler
+						}
+						lambda, ok = args[1].(*Lambda)
+						if !ok {
+							err = scm.VMErrorf("invalid thunk: %v", args[1])
+							goto errorHandler
+						}
+
+						// Clear stack.
+						scm.sp = scm.fp + 1
+
+						// Make with-exception-handler call frame a
+						// top-level frame for thunk.
+						callFrame.Toplevel = true
+						callFrame.Tail = int8(instr.I)
+						callFrame.Handler = handler
+						callFrame.Lambda = lambda
+
+						// Thunk takes no arguments.
+						numArgs = 0
+						args = nil
+
+						goto call
 					}
-					return nil, scm.Breakf("%v", err)
+					if len(lambda.Impl.Name) != 0 {
+						err = scm.VMErrorf("%s: %v", lambda.Impl.Name, err)
+					} else {
+						err = scm.VMErrorf("%v", err)
+					}
+					goto errorHandler
 				}
 				scm.sp = scm.fp
 				scm.fp = callFrame.Next
@@ -461,10 +507,14 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				next := callFrame.Next
 				nextFrame, ok := scm.stack[next].(*Frame)
 				if !ok {
-					return nil, scm.Breakf("invalid next frame: %v",
+					err = scm.VMErrorf("invalid next frame: %v",
 						scm.stack[callFrame.Next])
+					goto errorHandler
 				}
 				nextFrame.Lambda = callFrame.Lambda
+				nextFrame.Toplevel = callFrame.Toplevel
+				nextFrame.Tail = callFrame.Tail
+				nextFrame.Handler = callFrame.Handler
 
 				callFrame.flNext = scm.frameFL
 				scm.frameFL = callFrame
@@ -475,8 +525,9 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				scm.fp = next
 			}
 			if scm.sp+lambda.Impl.MaxStack > len(scm.stack) {
-				return nil, scm.Breakf("out of stack: need %d, got %d",
+				err = scm.VMErrorf("out of stack: need %d, got %d",
 					lambda.Impl.MaxStack, len(scm.stack)-scm.sp)
+				goto errorHandler
 			}
 
 			// Jump to lambda code.
@@ -499,8 +550,9 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		case OpReturn:
 			frame, ok := scm.stack[scm.fp].(*Frame)
 			if !ok {
-				return nil, scm.Breakf("%s: invalid function: %v",
+				err = scm.VMErrorf("%s: invalid function: %v",
 					instr.Op, scm.stack[scm.fp])
+				goto errorHandler
 			}
 			scm.pc = frame.PC
 			code = frame.Code
@@ -520,14 +572,16 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		case OpCar:
 			pair, ok := accu.(Pair)
 			if !ok {
-				return nil, scm.Breakf("%s: not a pair: %v", instr.Op, accu)
+				err = scm.VMErrorf("%s: not a pair: %v", instr.Op, accu)
+				goto errorHandler
 			}
 			accu = pair.Car()
 
 		case OpCdr:
 			pair, ok := accu.(Pair)
 			if !ok {
-				return nil, scm.Breakf("%s: not a pair: %v", instr.Op, accu)
+				err = scm.VMErrorf("%s: not a pair: %v", instr.Op, accu)
+				goto errorHandler
 			}
 			accu = pair.Cdr()
 
@@ -537,7 +591,8 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		case OpZerop:
 			accu, err = zero(accu)
 			if err != nil {
-				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
+				err = scm.VMErrorf("%s: %v", instr.Op, err.Error())
+				goto errorHandler
 			}
 
 		case OpNot:
@@ -546,7 +601,8 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		case OpAdd:
 			accu, err = numAdd(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
+				err = scm.VMErrorf("%s: %v", instr.Op, err.Error())
+				goto errorHandler
 			}
 
 		case OpAddI64:
@@ -571,13 +627,15 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				}
 
 			default:
-				return nil, scm.Breakf("%s: invalid number %v", instr.Op, accu)
+				err = scm.VMErrorf("%s: invalid number %v", instr.Op, accu)
+				goto errorHandler
 			}
 
 		case OpSub:
 			accu, err = numSub(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
+				err = scm.VMErrorf("%s: %v", instr.Op, err.Error())
+				goto errorHandler
 			}
 
 		case OpSubI64:
@@ -602,13 +660,15 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				}
 
 			default:
-				return nil, scm.Breakf("%s: invalid number %v", instr.Op, accu)
+				err = scm.VMErrorf("%s: invalid number %v", instr.Op, accu)
+				goto errorHandler
 			}
 
 		case OpMul:
 			accu, err = numMul(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
+				err = scm.VMErrorf("%s: %v", instr.Op, err.Error())
+				goto errorHandler
 			}
 
 		case OpMulConst:
@@ -630,73 +690,129 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				}
 
 			default:
-				return nil, scm.Breakf("%s: invalid number %v", instr.Op, accu)
+				err = scm.VMErrorf("%s: invalid number %v", instr.Op, accu)
+				goto errorHandler
 			}
 
 		case OpDiv:
 			accu, err = numDiv(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
+				err = scm.VMErrorf("%s: %v", instr.Op, err.Error())
+				goto errorHandler
 			}
 
 		case OpEq:
 			accu, err = numEq(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
+				err = scm.VMErrorf("%s: %v", instr.Op, err.Error())
+				goto errorHandler
 			}
 
 		case OpLt:
 			accu, err = numLt(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
+				err = scm.VMErrorf("%s: %v", instr.Op, err.Error())
+				goto errorHandler
 			}
 
 		case OpGt:
 			accu, err = numGt(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
+				err = scm.VMErrorf("%s: %v", instr.Op, err.Error())
+				goto errorHandler
 			}
 
 		case OpLe:
 			accu, err = numGt(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
+				err = scm.VMErrorf("%s: %v", instr.Op, err.Error())
+				goto errorHandler
 			}
 			accu = Boolean(!IsTrue(accu))
 
 		case OpGe:
 			accu, err = numLt(scm.stack[scm.sp-2], scm.stack[scm.sp-1])
 			if err != nil {
-				return nil, scm.Breakf("%s: %v", instr.Op, err.Error())
+				err = scm.VMErrorf("%s: %v", instr.Op, err.Error())
+				goto errorHandler
 			}
 			accu = Boolean(!IsTrue(accu))
 
 		default:
-			return nil, scm.Breakf("%s: not implemented", instr.Op)
+			err = scm.VMErrorf("%s: not implemented", instr.Op)
+			goto errorHandler
 		}
+		continue
+
+	errorHandler:
+		f := scm.popToplevel()
+		if f == nil || f.Handler == nil {
+			msg := err.Error()
+
+			var compilerError bool
+
+			idx := strings.Index(msg, "<<")
+			if idx >= 0 {
+				msg = msg[idx+2:]
+				compilerError = true
+			}
+			if !scm.Params.Quiet && !compilerError {
+				fmt.Printf("%s\n", msg)
+				scm.PrintStack()
+			}
+			return nil, errors.New(msg)
+		}
+
+		// Restore thunk frame as non-toplevel frame.
+
+		accu = f.Handler
+		f.Handler = nil
+		f.Toplevel = false
+
+		scm.stack[scm.sp] = f
+		scm.fp = scm.sp
+		scm.sp++
+
+		// Call handler with error argument.
+
+		// 4		global	handler
+		// 5		pushf	false
+		// 6		pushs	1
+		// 7		const	err
+		// 8		local!	1
+		// 9		const	1
+		// 10		call{t}			// tail call if guard was a tail call
+		// 11		return
+		code = []*Instr{
+			{
+				Op: OpPushF,
+			},
+			{
+				Op: OpPushS,
+				I:  1,
+			},
+			{
+				Op: OpConst,
+				V:  String(err.Error()), // XXX err
+			},
+			{
+				Op: OpLocalSet,
+				I:  1,
+			},
+			{
+				Op: OpConst,
+				V:  Int(1),
+			},
+			{
+				Op: OpCall,
+				I:  int(f.Tail),
+			},
+			{
+				Op: OpReturn,
+			},
+		}
+		scm.pc = 0
 	}
-}
-
-// Breakf breaks the program execution with the error.
-func (scm *Scheme) Breakf(format string, a ...interface{}) error {
-	err := scm.VMErrorf(format, a...)
-	msg := err.Error()
-
-	var compilerError bool
-
-	idx := strings.Index(msg, "<<")
-	if idx >= 0 {
-		msg = msg[idx+2:]
-		compilerError = true
-	}
-	if !scm.Params.Quiet && !compilerError {
-		fmt.Printf("%s\n", msg)
-		scm.PrintStack()
-	}
-
-	scm.popToplevel()
-
-	return errors.New(msg)
 }
 
 // Location returns the source file location of the current VM
@@ -751,24 +867,27 @@ func (scm *Scheme) VMErrorf(format string, a ...interface{}) error {
 	return fmt.Errorf("%s:%v: \u22a5 %s", source, line, msg)
 }
 
-func (scm *Scheme) popToplevel() {
+func (scm *Scheme) popToplevel() *Frame {
 	fp := scm.fp
 
 	for fp < len(scm.stack) {
 		frame, ok := scm.stack[fp].(*Frame)
 		if !ok {
+			fmt.Printf("fp=%v, scm.stack[fp]=%v[%T]\n",
+				fp, scm.stack[fp], scm.stack[fp])
 			panic("corrupted stack")
 		}
 		if frame.Toplevel {
 			scm.sp = fp
 			scm.fp = frame.Next
-			break
+			return frame
 		}
 		if frame.Next == fp {
 			break
 		}
 		fp = frame.Next
 	}
+	return nil
 }
 
 // PrintStack prints the virtual machine stack.
@@ -866,7 +985,7 @@ func (scm *Scheme) popFrame() bool {
 	frame.flNext = scm.frameFL
 	scm.frameFL = frame
 
-	return frame.Toplevel
+	return frame.Toplevel && frame.Handler == nil
 }
 
 // Frame implements a SCM call stack frame.
@@ -874,6 +993,8 @@ type Frame struct {
 	Index    int
 	Next     int
 	Toplevel bool
+	Tail     int8
+	Handler  *Lambda
 
 	Lambda *Lambda
 	PC     int
@@ -982,6 +1103,9 @@ var vmBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("invalid message: %v", args[1])
 			}
+			if len(args) == 2 {
+				return nil, fmt.Errorf("%v: %v", args[0], message)
+			}
 			var irritants string
 			for i := 2; i < len(args); i++ {
 				if len(irritants) != 0 {
@@ -1006,7 +1130,14 @@ var vmBuiltins = []Builtin{
 		Args:   []string{"handler<lambda(any)any>", "thunk<lambda()any>"},
 		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			return nil, fmt.Errorf("with-exception-handler")
+			return nil, errGuard
+		},
+	},
+	{
+		Name:   "scheme::stack-size",
+		Return: types.InexactInteger,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			return Int(len(scm.stack)), nil
 		},
 	},
 	{

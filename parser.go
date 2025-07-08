@@ -170,6 +170,10 @@ func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 	return library, nil
 }
 
+// parseValue parses the value into AST. XXX we should run the macro
+// expansion (and the hard-coded ones too (named let, guard)) before
+// calling parseValue. Now we have to detect closures in parseLambda
+// and it must also check the guard keyword.
 func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 	tail, captures bool) (AST, error) {
 
@@ -591,7 +595,8 @@ func (p *Parser) parseLambda(env *Env, define bool, flags Flags,
 
 	checkLambda = func(idx int, p Pair) error {
 		if idx == 0 && (isKeyword(p.Car(), KwLambda) ||
-			isKeyword(p.Car(), KwDefine)) {
+			isKeyword(p.Car(), KwDefine) ||
+			isKeyword(p.Car(), KwGuard)) {
 			lambdas++
 			return ErrNext
 		}

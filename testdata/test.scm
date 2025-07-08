@@ -97,12 +97,14 @@
 ;; XXX 11.18. Binding constructs for syntactic key-words
 ;; XXX 11.19. Macro transformers
 
-(runner 'section "1. Standard libraries")
+(runner 'section "Standard libraries")
 
 (load "test-lib-01-unicode.scm")
 (load "test-lib-02-bytevectors.scm")
 (load "test-lib-03-list-utilities.scm")
 (load "test-lib-04-sorting.scm")
+
+(load "test-lib-07-exceptions.scm")
 
 (runner 'stats)
 (runner 'status)
