@@ -80,6 +80,7 @@
     ((rnrs programs) (6) initialized)
     ((rnrs mutable-pairs) (6) initialized)
     ((rnrs mutable-strings) (6) initialized)
+    ((rnrs control) (6) initialized)
     ((srfi 28) (2002 6 25) initialized)
     ))
 

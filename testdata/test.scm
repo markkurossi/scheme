@@ -103,6 +103,7 @@
 (load "test-lib-02-bytevectors.scm")
 (load "test-lib-03-list-utilities.scm")
 (load "test-lib-04-sorting.scm")
+(load "test-lib-05-control.scm")
 
 (load "test-lib-07-exceptions.scm")
 
