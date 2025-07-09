@@ -36,6 +36,7 @@ const (
 	EnumPair
 	EnumVector
 	EnumTypeVar
+	EnumError
 )
 
 var enumNames = map[Enum]string{
@@ -57,6 +58,7 @@ var enumNames = map[Enum]string{
 	EnumPair:           "pair",
 	EnumVector:         "vector",
 	EnumTypeVar:        "t",
+	EnumError:          "error",
 }
 
 func (e Enum) String() string {
@@ -74,7 +76,8 @@ func (e Enum) Super() Enum {
 		return EnumUnspecified
 
 	case EnumAny, EnumNil, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
-		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair, EnumVector:
+		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair,
+		EnumVector, EnumError:
 		return EnumAny
 
 	case EnumExactInteger, EnumExactFloat:
@@ -274,6 +277,11 @@ func Parse(arg string) (*Type, string, error) {
 		}
 		t.Return = rt
 		return t, name, nil
+	} else if typeName == "err" {
+		return &Type{
+			Enum: EnumError,
+			Kind: kind,
+		}, name, nil
 	} else {
 		return Unspecified, name, fmt.Errorf("unsupported argument: %v", arg)
 	}
@@ -428,6 +436,9 @@ var (
 	Vector = &Type{
 		Enum:    EnumVector,
 		Element: Any,
+	}
+	Error = &Type{
+		Enum: EnumError,
 	}
 )
 
