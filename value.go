@@ -30,6 +30,7 @@ var (
 	_ Value = Character('@')
 	_ Value = Keyword(0)
 	_ Value = String("string")
+	_ Value = &Error{}
 )
 
 // Value implements a Scheme value.

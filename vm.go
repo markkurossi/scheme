@@ -15,6 +15,76 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
+var (
+	_ error = &Error{}
+)
+
+// Error implements errors as Values.
+type Error struct {
+	loc       string
+	who       Value
+	msg       string
+	irritants []Value
+}
+
+// NewError creates a new Scheme error from the argument error.
+func NewError(err error) *Error {
+	e, ok := err.(*Error)
+	if ok {
+		return e
+	}
+	return &Error{
+		msg: err.Error(),
+	}
+}
+
+// SetLocation sets the error's source code location.
+func (v *Error) SetLocation(source string, line int) {
+	if len(source) == 0 && line == 0 {
+		return
+	}
+	v.loc = source
+	if line > 0 {
+		v.loc += fmt.Sprintf(":%v", line)
+	}
+}
+
+// Location returns the error's source code location.
+func (v *Error) Location() string {
+	return v.loc
+}
+
+// Error implements Error.Error()
+func (v *Error) Error() string {
+	return v.msg
+}
+
+// Scheme implements Value.Scheme.
+func (v *Error) Scheme() string {
+	return v.msg
+}
+
+// Eq implements Value.Eq.
+func (v *Error) Eq(o Value) bool {
+	return v.Equal(o)
+}
+
+// Equal implements Value.Equal.
+func (v *Error) Equal(o Value) bool {
+	ov, ok := o.(*Error)
+	return ok && v.msg == ov.msg
+}
+
+// Type implements Value.Type.
+func (v *Error) Type() *types.Type {
+	return types.Error
+}
+
+// Unbox implements Value.Unbox.
+func (v *Error) Unbox() (Value, *types.Type) {
+	return v, v.Type()
+}
+
 // Operand defines a Scheme bytecode instruction.
 type Operand int
 
@@ -452,10 +522,19 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 
 						goto call
 					}
-					if len(lambda.Impl.Name) != 0 {
-						err = scm.VMErrorf("%s: %v", lambda.Impl.Name, err)
+					schemeErr, ok := err.(*Error)
+					if ok {
+						// Error from the `error' precedure.
+						source, line, err2 := scm.Location()
+						if err2 == nil {
+							schemeErr.SetLocation(source, line)
+						}
 					} else {
-						err = scm.VMErrorf("%v", err)
+						if len(lambda.Impl.Name) != 0 {
+							err = scm.VMErrorf("%s: %v", lambda.Impl.Name, err)
+						} else {
+							err = scm.VMErrorf("%v", err)
+						}
 					}
 					goto errorHandler
 				}
@@ -512,9 +591,14 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 					goto errorHandler
 				}
 				nextFrame.Lambda = callFrame.Lambda
-				nextFrame.Toplevel = callFrame.Toplevel
-				nextFrame.Tail = callFrame.Tail
-				nextFrame.Handler = callFrame.Handler
+				// Copy exception handler only if defined in the call
+				// frame. Otherwise we could override it from the
+				// recycled frame.
+				if callFrame.Toplevel {
+					nextFrame.Toplevel = callFrame.Toplevel
+					nextFrame.Tail = callFrame.Tail
+					nextFrame.Handler = callFrame.Handler
+				}
 
 				callFrame.flNext = scm.frameFL
 				scm.frameFL = callFrame
@@ -793,7 +877,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			},
 			{
 				Op: OpConst,
-				V:  String(err.Error()), // XXX err
+				V:  NewError(err),
 			},
 			{
 				Op: OpLocalSet,
@@ -859,7 +943,7 @@ func (scm *Scheme) VMErrorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 
 	source, line, err := scm.Location()
-	if err != nil || line == 0 || len(source) == 0 {
+	if err != nil || len(source) == 0 {
 		return errors.New(msg)
 	} else if line == 0 {
 		return fmt.Errorf("%s: \u22a5 %s", source, msg)
@@ -1103,17 +1187,18 @@ var vmBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("invalid message: %v", args[1])
 			}
-			if len(args) == 2 {
-				return nil, fmt.Errorf("%v: %v", args[0], message)
+			err := &Error{
+				who: args[0],
+				msg: string(message),
 			}
-			var irritants string
 			for i := 2; i < len(args); i++ {
-				if len(irritants) != 0 {
-					irritants += ","
-				}
-				irritants += fmt.Sprintf("%v", args[i])
+				err.irritants = append(err.irritants, args[i])
 			}
-			return nil, fmt.Errorf("%v: %v: %v", args[0], message, irritants)
+			source, line, err2 := scm.Location()
+			if err2 == nil {
+				err.SetLocation(source, line)
+			}
+			return nil, err
 		},
 	},
 	{
@@ -1121,8 +1206,66 @@ var vmBuiltins = []Builtin{
 		Args:   []string{"obj"},
 		Return: types.Boolean,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			_, ok := args[0].(error)
+			_, ok := args[0].(*Error)
 			return Boolean(ok), nil
+		},
+	},
+	{
+		Name:   "error-location",
+		Args:   []string{"err"},
+		Return: types.Any,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			err, ok := args[0].(*Error)
+			if !ok {
+				return nil, fmt.Errorf("invalid error: %v", args[0])
+			}
+			return String(err.loc), nil
+		},
+	},
+	{
+		Name:   "error-who",
+		Args:   []string{"err"},
+		Return: types.Any,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			err, ok := args[0].(*Error)
+			if !ok {
+				return nil, fmt.Errorf("invalid error: %v", args[0])
+			}
+			return err.who, nil
+		},
+	},
+	{
+		Name:   "error-message",
+		Args:   []string{"err"},
+		Return: types.String,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			err, ok := args[0].(*Error)
+			if !ok {
+				return nil, fmt.Errorf("invalid error: %v", args[0])
+			}
+			return String(err.msg), nil
+		},
+	},
+	{
+		Name:   "error-irritants",
+		Args:   []string{"err"},
+		Return: types.Any,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			err, ok := args[0].(*Error)
+			if !ok {
+				return nil, fmt.Errorf("invalid error: %v", args[0])
+			}
+			var head, tail Pair
+			for _, irritant := range err.irritants {
+				item := NewPair(irritant, nil)
+				if head == nil {
+					head = item
+				} else {
+					tail.SetCdr(item)
+				}
+				tail = item
+			}
+			return head, nil
 		},
 	},
 	{
