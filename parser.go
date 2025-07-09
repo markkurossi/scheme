@@ -15,7 +15,7 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
-var qqNamedLet, qqGuard Value
+var qqNamedLet, qqGuard, qqUnless Value
 
 func init() {
 	qqNamedLet = MustParseSexpr(
@@ -25,6 +25,9 @@ func init() {
 		"`(with-exception-handler\n" +
 			"`(lambda `(,,,variable) `(cond ,,,@conditions))\n" +
 			"`(lambda () ,,@body))")
+	qqUnless = MustParseSexpr(
+		"`(if `(not ,,condition)\n" +
+			"`(begin ,,@body))")
 }
 
 // Parser implements the byte-code compiler.
@@ -261,6 +264,9 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 		}
 		if isKeyword(v.Car(), KwGuard) {
 			return p.parseGuard(env, list, tail, captures)
+		}
+		if IsSymbol(v.Car(), "unless") {
+			return p.parseUnless(env, list, tail, captures)
 		}
 
 		// Function call.
@@ -1157,6 +1163,25 @@ func (p *Parser) parseGuard(env *Env, list []Pair,
 	qqEnv.Set("body", list[2])
 
 	n, err := Eval(qqGuard, qqEnv)
+	if err != nil {
+		return nil, err
+	}
+	PatchLocation(n, list[0].From())
+
+	return p.parseValue(env, list[0], n, tail, captures)
+}
+
+func (p *Parser) parseUnless(env *Env, list []Pair,
+	tail, captures bool) (AST, error) {
+	if len(list) < 3 {
+		return nil, list[0].Errorf("unless: missing body")
+	}
+
+	qqEnv := NewEvalEnv(nil)
+	qqEnv.Set("condition", list[1].Car())
+	qqEnv.Set("body", list[2])
+
+	n, err := Eval(qqUnless, qqEnv)
 	if err != nil {
 		return nil, err
 	}
