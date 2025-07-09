@@ -102,7 +102,7 @@ Any
  - [ ] VM
    - [ ] Tail-call within same function as jump
    - [ ] 5.8. Multiple return values
-   - [ ] Error handlers
+   - [x] Error handlers
    - [ ] Call with current continuation
  - [ ] Compiler
    - [ ] Instantiate lambdas with different numeric argument values
@@ -207,11 +207,18 @@ Any
      - [ ] vector-sort!
    - [ ] 5. Control structures `(rnrs control (6))`
       - [ ] when
-      - [ ] unless
+      - [x] unless
       - [ ] do
       - [ ] case-lambda
    - [ ] 6. Records
    - [ ] 7. Exceptions and conditions
+     - [ ] 7.1. Exceptions
+       - [x] with-exception-handler
+       - [x] guard
+       - [ ] raise
+       - [ ] raise-continuable
+     - [ ] 7.2. Conditions
+     - [ ] 7.3. Standard condition types
    - [ ] 8. I/O
      - [ ] 8.2. Port I/O `(rnrs io ports (6))`
      - [ ] 8.3. Simple I/O `(rnrs io simple (6))`
