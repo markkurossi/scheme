@@ -56,7 +56,19 @@ func (v *Error) Location() string {
 
 // Error implements Error.Error()
 func (v *Error) Error() string {
-	return v.msg
+	if len(v.irritants) == 0 {
+		return v.msg
+	}
+	msg := v.msg + ": "
+
+	for idx, irritant := range v.irritants {
+		if idx > 0 {
+			msg += ", "
+		}
+		msg += ToString(irritant)
+	}
+
+	return msg
 }
 
 // Scheme implements Value.Scheme.
