@@ -2004,7 +2004,11 @@ func (ast *ASTAnd) Inferred(env *InferEnv) error {
 			return err
 		}
 	}
-	ast.t = ast.it.Type()
+	if ast.it == nil {
+		ast.t = types.Unspecified
+	} else {
+		ast.t = ast.it.Type()
+	}
 	return nil
 }
 
@@ -2047,7 +2051,11 @@ func (ast *ASTOr) Inferred(env *InferEnv) error {
 			return err
 		}
 	}
-	ast.t = ast.it.Type()
+	if ast.it == nil {
+		ast.t = types.Unspecified
+	} else {
+		ast.t = ast.it.Type()
+	}
 
 	return nil
 }
