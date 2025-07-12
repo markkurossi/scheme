@@ -102,8 +102,9 @@ func (p *SexprParser) Next() (Value, error) {
 
 		return NewLocationPair(t.From, t.To, kw, next), nil
 
-	case '(':
+	case '(', '[':
 		var list, cursor Pair
+		start := t.Type
 
 		for {
 			t, err = p.lexer.Get()
@@ -114,6 +115,14 @@ func (p *SexprParser) Next() (Value, error) {
 				return nil, err
 			}
 			if t.Type == ')' {
+				if start == '[' {
+					return nil, t.Errorf("unexpected token: %v, expected: ]", t)
+				}
+				return list, nil
+			} else if t.Type == ']' {
+				if start == '(' {
+					return nil, t.Errorf("unexpected token: %v, expected: )", t)
+				}
 				return list, nil
 			} else if t.Type == '.' {
 				if cursor == nil {

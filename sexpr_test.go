@@ -21,6 +21,10 @@ var parserTests = []struct {
 		o: NewPair(MakeNumber(1), NewPair(MakeNumber(2), nil)),
 	},
 	{
+		i: "[1 2]",
+		o: NewPair(MakeNumber(1), NewPair(MakeNumber(2), nil)),
+	},
+	{
 		i: "foo",
 		o: &Identifier{
 			Name: "foo",

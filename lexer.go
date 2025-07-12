@@ -441,7 +441,7 @@ func (l *Lexer) Get() (*Token, error) {
 				return nil, err
 			}
 
-		case '(', ')', '`':
+		case '(', ')', '[', ']', '`':
 			return l.Token(TokenType(r)), nil
 
 		case ',':
