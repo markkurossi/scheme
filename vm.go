@@ -1214,6 +1214,18 @@ var vmBuiltins = []Builtin{
 		},
 	},
 	{
+		Name:   "raise",
+		Args:   []string{"err"},
+		Return: types.Any,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			err, ok := args[0].(*Error)
+			if !ok {
+				return nil, fmt.Errorf("invalid error: %v", args[0])
+			}
+			return nil, err
+		},
+	},
+	{
 		Name:   "error?",
 		Args:   []string{"obj"},
 		Return: types.Boolean,

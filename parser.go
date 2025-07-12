@@ -15,7 +15,7 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
-var qqNamedLet, qqGuard, qqUnless Value
+var qqNamedLet, qqGuard, qqGuardRaise, qqUnless Value
 
 func init() {
 	qqNamedLet = MustParseSexpr(
@@ -24,6 +24,11 @@ func init() {
 	qqGuard = MustParseSexpr(
 		"`(with-exception-handler\n" +
 			"`(lambda `(,,,variable) `(cond ,,,@conditions))\n" +
+			"`(lambda () ,,@body))")
+	qqGuardRaise = MustParseSexpr(
+		"`(with-exception-handler\n" +
+			"`(lambda `(,,,variable)\n" +
+			"  `(cond ,,,@conditions `(else `(raise ,,,,,variable))))\n" +
 			"`(lambda () ,,@body))")
 	qqUnless = MustParseSexpr(
 		"`(if `(not ,,condition)\n" +
@@ -1155,14 +1160,22 @@ func (p *Parser) parseGuard(env *Env, list []Pair,
 	if !Symbolp(clauses[0].Car()) {
 		return nil, clauses[0].Errorf("guard: invalid variable")
 	}
-	// check if the clauses do not have else, then add (raise var)
+	// Check if the clauses do not have else, then add (raise var).
+	var qq Value
+	last := clauses[len(clauses)-1]
+	car, ok := Car(last.Car(), true)
+	if ok && isKeyword(car, KwElse) {
+		qq = qqGuard
+	} else {
+		qq = qqGuardRaise
+	}
 
 	qqEnv := NewEvalEnv(nil)
 	qqEnv.Set("variable", clauses[0].Car())
 	qqEnv.Set("conditions", clauses[1])
 	qqEnv.Set("body", list[2])
 
-	n, err := Eval(qqGuard, qqEnv)
+	n, err := Eval(qq, qqEnv)
 	if err != nil {
 		return nil, err
 	}
