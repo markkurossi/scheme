@@ -215,7 +215,7 @@ Any
      - [ ] 7.1. Exceptions
        - [x] with-exception-handler
        - [x] guard
-       - [ ] raise
+       - [x] raise
        - [ ] raise-continuable
      - [ ] 7.2. Conditions
      - [ ] 7.3. Standard condition types
