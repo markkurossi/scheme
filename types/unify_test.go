@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -83,6 +83,16 @@ func TestUnify(t *testing.T) {
 				Enum:    EnumVector,
 				Element: Number,
 			},
+		},
+		{
+			a: None,
+			b: InexactInteger,
+			u: InexactInteger,
+		},
+		{
+			a: InexactInteger,
+			b: None,
+			u: InexactInteger,
 		},
 	}
 	for idx, test := range tests {

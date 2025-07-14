@@ -37,6 +37,7 @@ const (
 	EnumVector
 	EnumTypeVar
 	EnumError
+	EnumNone
 )
 
 var enumNames = map[Enum]string{
@@ -59,6 +60,7 @@ var enumNames = map[Enum]string{
 	EnumVector:         "vector",
 	EnumTypeVar:        "t",
 	EnumError:          "error",
+	EnumNone:           "\u2205",
 }
 
 func (e Enum) String() string {
@@ -92,6 +94,9 @@ func (e Enum) Super() Enum {
 	case EnumTypeVar:
 		return EnumTypeVar
 
+	case EnumNone:
+		return EnumNone
+
 	default:
 		panic(fmt.Sprintf("unknown Enum %d", e))
 	}
@@ -103,10 +108,10 @@ func (e Enum) Unify(o Enum) Enum {
 	if e == EnumUnspecified || o == EnumUnspecified {
 		return EnumUnspecified
 	}
-	if e == EnumTypeVar {
+	if e == EnumTypeVar || e == EnumNone {
 		return o
 	}
-	if o == EnumTypeVar {
+	if o == EnumTypeVar || o == EnumNone {
 		return e
 	}
 
@@ -282,6 +287,11 @@ func Parse(arg string) (*Type, string, error) {
 			Enum: EnumError,
 			Kind: kind,
 		}, name, nil
+	} else if typeName == "none" || typeName == "\u2205" {
+		return &Type{
+			Enum: EnumNone,
+			Kind: kind,
+		}, name, nil
 	} else {
 		return Unspecified, name, fmt.Errorf("unsupported argument: %v", arg)
 	}
@@ -440,12 +450,15 @@ var (
 	Error = &Type{
 		Enum: EnumError,
 	}
+	None = &Type{
+		Enum: EnumNone,
+	}
 )
 
 // Concrete tests if the type is concrete.
 func (t *Type) Concrete() bool {
 	switch t.Enum {
-	case EnumUnspecified, EnumTypeVar:
+	case EnumUnspecified, EnumTypeVar, EnumNone:
 		return false
 
 	default:

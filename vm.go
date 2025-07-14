@@ -1193,7 +1193,7 @@ var vmBuiltins = []Builtin{
 	{
 		Name:   "error",
 		Args:   []string{"who", "message", "irritant..."},
-		Return: types.Any,
+		Return: types.None,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			message, ok := args[1].(String)
 			if !ok {
