@@ -193,85 +193,76 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 		}
 		length := len(list)
 
-		if IsSymbol(v.Car(), "pragma") {
-			return p.parsePragma(env, list)
-		}
-		if IsSymbol(v.Car(), "define") {
-			return p.parseDefine(env, list, 0, captures)
-		}
-		if IsSymbol(v.Car(), "define-constant") {
-			return p.parseDefine(env, list, FlagConst, captures)
-		}
-		if IsSymbol(v.Car(), "lambda") {
-			return p.parseLambda(env, false, 0, list)
-		}
-		if IsSymbol(v.Car(), "set!") {
-			return p.parseSet(env, list, captures)
-		}
-		if IsSymbol(v.Car(), "let") {
-			return p.parseLet(Let, env, list, tail, captures)
-		}
-		if IsSymbol(v.Car(), "let*") {
-			return p.parseLet(LetStar, env, list, tail, captures)
-		}
-		if IsSymbol(v.Car(), "letrec") {
-			return p.parseLet(Letrec, env, list, tail, captures)
-		}
-		if IsSymbol(v.Car(), "begin") {
-			seq := &ASTSequence{
-				From: loc,
-			}
-			err := MapPairs(func(idx int, pair Pair) error {
-				ast, err := p.parseValue(env, pair, pair.Car(),
-					tail && idx+1 >= length-1, captures)
-				if err != nil {
-					return err
+		sym, ok := v.Car().(*Identifier)
+		if ok {
+			switch sym.Name {
+			case "lambda":
+				return p.parseLambda(env, false, 0, list)
+			case "define":
+				return p.parseDefine(env, list, 0, captures)
+			case "define-constant":
+				return p.parseDefine(env, list, FlagConst, captures)
+			case "if":
+				return p.parseIf(env, list, tail, captures)
+			case "set!":
+				return p.parseSet(env, list, captures)
+			case "let":
+				return p.parseLet(Let, env, list, tail, captures)
+			case "let*":
+				return p.parseLet(LetStar, env, list, tail, captures)
+			case "letrec":
+				return p.parseLet(Letrec, env, list, tail, captures)
+			case "pragma":
+				return p.parsePragma(env, list)
+			case "cond":
+				return p.parseCond(env, list, tail, captures)
+			case "case":
+				return p.parseCase(env, list, tail, captures)
+			case "and":
+				return p.parseAnd(env, list, tail, captures)
+			case "or":
+				return p.parseOr(env, list, tail, captures)
+
+			case "begin":
+				seq := &ASTSequence{
+					From: loc,
 				}
-				seq.Add(ast)
-				return nil
-			}, v.Cdr())
-			if err != nil {
-				return nil, err
+				err := MapPairs(func(idx int, pair Pair) error {
+					ast, err := p.parseValue(env, pair, pair.Car(),
+						tail && idx+1 >= length-1, captures)
+					if err != nil {
+						return err
+					}
+					seq.Add(ast)
+					return nil
+				}, v.Cdr())
+				if err != nil {
+					return nil, err
+				}
+				return seq, nil
+
+			case "quote":
+				if length != 2 {
+					return nil, v.Errorf("invalid quote: %v", v)
+				}
+				quoted, _ := Unbox(list[1].Car())
+				return &ASTConstant{
+					From:   loc,
+					Quoted: true,
+					Value:  quoted,
+				}, nil
+
+			case "scheme::apply":
+				if length != 3 {
+					return nil, v.Errorf("invalid scheme::apply: %v", v)
+				}
+				return p.parseApply(env, v, tail, captures)
+
+			case "guard":
+				return p.parseGuard(env, list, tail, captures)
+			case "unless":
+				return p.parseUnless(env, list, tail, captures)
 			}
-			return seq, nil
-		}
-		if IsSymbol(v.Car(), "if") {
-			return p.parseIf(env, list, tail, captures)
-		}
-		if IsSymbol(v.Car(), "quote") {
-			if length != 2 {
-				return nil, v.Errorf("invalid quote: %v", v)
-			}
-			quoted, _ := Unbox(list[1].Car())
-			return &ASTConstant{
-				From:   loc,
-				Quoted: true,
-				Value:  quoted,
-			}, nil
-		}
-		if IsSymbol(v.Car(), "scheme::apply") {
-			if length != 3 {
-				return nil, v.Errorf("invalid scheme::apply: %v", v)
-			}
-			return p.parseApply(env, v, tail, captures)
-		}
-		if IsSymbol(v.Car(), "cond") {
-			return p.parseCond(env, list, tail, captures)
-		}
-		if IsSymbol(v.Car(), "case") {
-			return p.parseCase(env, list, tail, captures)
-		}
-		if IsSymbol(v.Car(), "and") {
-			return p.parseAnd(env, list, tail, captures)
-		}
-		if IsSymbol(v.Car(), "or") {
-			return p.parseOr(env, list, tail, captures)
-		}
-		if IsSymbol(v.Car(), "guard") {
-			return p.parseGuard(env, list, tail, captures)
-		}
-		if IsSymbol(v.Car(), "unless") {
-			return p.parseUnless(env, list, tail, captures)
 		}
 
 		// Function call.
