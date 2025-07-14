@@ -266,14 +266,16 @@ func (pair *PlainPair) String() string {
 	str.WriteRune('(')
 
 	i := Pair(pair)
-	first := true
+	var count int
+	turtle := pair
+
 loop:
 	for {
-		if first {
-			first = false
-		} else {
+		if count > 0 {
 			str.WriteRune(' ')
 		}
+		count++
+
 		if i.Car() == nil {
 			str.WriteString("nil")
 		} else {
@@ -290,6 +292,17 @@ loop:
 			str.WriteString(" . ")
 			str.WriteString(cdr.Scheme())
 			break loop
+		}
+		if i == turtle {
+			str.WriteString(" . \u221E")
+			break loop
+		}
+
+		if count%2 == 0 {
+			cdr, ok := turtle.Cdr().(*PlainPair)
+			if ok {
+				turtle = cdr
+			}
 		}
 	}
 	str.WriteRune(')')
