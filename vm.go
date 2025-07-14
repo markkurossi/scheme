@@ -56,10 +56,19 @@ func (v *Error) Location() string {
 
 // Error implements Error.Error()
 func (v *Error) Error() string {
-	if len(v.irritants) == 0 {
-		return v.msg
+	var msg string
+	if len(v.loc) > 0 {
+		msg = v.loc + ": "
 	}
-	msg := v.msg + ": "
+	if v.who != nil {
+		msg += ToString(v.who)
+		msg += ": "
+	}
+	msg += v.msg
+	if len(v.irritants) == 0 {
+		return msg
+	}
+	msg += ": "
 
 	for idx, irritant := range v.irritants {
 		if idx > 0 {
