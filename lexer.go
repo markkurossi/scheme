@@ -27,7 +27,6 @@ const (
 	TNumber
 	TCharacter
 	TString
-	TKeyword
 	THashLPar
 	TVU8LPar
 	TCommaAt
@@ -39,7 +38,6 @@ var tokenTypes = map[TokenType]string{
 	TNumber:     "number",
 	TCharacter:  "character",
 	TString:     "string",
-	TKeyword:    "keyword",
 	THashLPar:   "#(",
 	TVU8LPar:    "#vu8(",
 	TCommaAt:    ",@",
@@ -54,107 +52,6 @@ func (t TokenType) String() string {
 		return fmt.Sprintf("%c", t)
 	}
 	return fmt.Sprintf("{TokenType %d}", t)
-}
-
-// Keyword defines a Scheme keyword.
-type Keyword int
-
-// Scheme returns the value as a Scheme string.
-func (kw Keyword) Scheme() string {
-	return kw.String()
-}
-
-// Eq tests if the argument value is eq? to this value.
-func (kw Keyword) Eq(o Value) bool {
-	return kw.Equal(o)
-}
-
-// Equal tests if the argument value is equal to this value.
-func (kw Keyword) Equal(o Value) bool {
-	ov, ok := o.(Keyword)
-	return ok && kw == ov
-}
-
-// Type implements the Value.Type().
-func (kw Keyword) Type() *types.Type {
-	return types.Unspecified
-}
-
-// Unbox implements Value.Unbox.
-func (kw Keyword) Unbox() (Value, *types.Type) {
-	return kw, kw.Type()
-}
-
-func (kw Keyword) String() string {
-	name, ok := keywords[kw]
-	if ok {
-		return name
-	}
-	return fmt.Sprintf("{Keyword %d}", kw)
-}
-
-// Scheme keywords.
-const (
-	KwElse Keyword = iota
-	KwImplies
-	KwDefine
-	KwDefineConstant
-	KwUnquote
-	KwUnquoteSplicing
-	KwQuote
-	KwLambda
-	KwIf
-	KwSet
-	KwBegin
-	KwCond
-	KwAnd
-	KwOr
-	KwCase
-	KwLet
-	KwLetStar
-	KwLetrec
-	KwDo
-	KwDelay
-	KwQuasiquote
-	KwSchemeApply
-	KwPragma
-	KwGuard
-)
-
-var keywords = map[Keyword]string{
-	KwElse:            "else",
-	KwImplies:         "=>",
-	KwDefine:          "define",
-	KwDefineConstant:  "define-constant",
-	KwUnquote:         "unquote",
-	KwUnquoteSplicing: "unquote-splicing",
-	KwQuote:           "quote",
-	KwLambda:          "lambda",
-	KwIf:              "if",
-	KwSet:             "set!",
-	KwBegin:           "begin",
-	KwCond:            "cond",
-	KwAnd:             "and",
-	KwOr:              "or",
-	KwCase:            "case",
-	KwLet:             "let",
-	KwLetStar:         "let*",
-	KwLetrec:          "letrec",
-	KwDo:              "do",
-	KwDelay:           "delay",
-	KwQuasiquote:      "quasiquote",
-	KwSchemeApply:     "scheme::apply",
-	KwPragma:          "pragma",
-	KwGuard:           "guard",
-}
-
-var keywordNames map[string]Keyword
-
-func init() {
-	keywordNames = make(map[string]Keyword)
-	for k, v := range keywords {
-		keywordNames[v] = k
-	}
 }
 
 // Point defines a position in the input data.
@@ -270,7 +167,6 @@ type Token struct {
 	NumberType *types.Type
 	Char       rune
 	Str        string
-	Keyword    Keyword
 }
 
 // Errorf returns an error with the token location information.
@@ -300,9 +196,6 @@ func (t *Token) Equal(o *Token) bool {
 	case TString:
 		return t.Str == o.Str
 
-	case TKeyword:
-		return t.Keyword == o.Keyword
-
 	default:
 		return true
 	}
@@ -324,9 +217,6 @@ func (t *Token) String() string {
 
 	case TString:
 		return StringToScheme(t.Str)
-
-	case TKeyword:
-		return t.Keyword.String()
 
 	default:
 		if t.Type <= 0xff {
@@ -668,14 +558,6 @@ func (l *Lexer) Get() (*Token, error) {
 					}
 					id = append(id, r)
 				}
-				idName := string(id)
-				kw, ok := keywordNames[idName]
-				if ok {
-					token := l.Token(TKeyword)
-					token.Keyword = kw
-					return token, nil
-				}
-
 				token := l.Token(TIdentifier)
 				token.Identifier = string(id)
 				return token, nil

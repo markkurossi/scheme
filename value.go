@@ -28,7 +28,6 @@ var (
 	_ Value = &Vector{}
 	_ Value = Boolean(true)
 	_ Value = Character('@')
-	_ Value = Keyword(0)
 	_ Value = String("string")
 	_ Value = &Error{}
 )

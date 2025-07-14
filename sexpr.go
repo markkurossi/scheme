@@ -86,16 +86,16 @@ func (p *SexprParser) Next() (Value, error) {
 			next = NewPair(v, nil)
 		}
 
-		var kw Keyword
+		var kw Value
 		switch t.Type {
 		case '\'':
-			kw = KwQuote
+			kw = &Identifier{Name: "quote"}
 		case '`':
-			kw = KwQuasiquote
+			kw = &Identifier{Name: "quasiquote"}
 		case ',':
-			kw = KwUnquote
+			kw = &Identifier{Name: "unquote"}
 		case TCommaAt:
-			kw = KwUnquoteSplicing
+			kw = &Identifier{Name: "unquote-splicing"}
 		default:
 			panic("unknown keyword")
 		}
@@ -249,9 +249,6 @@ func (p *SexprParser) Next() (Value, error) {
 
 	case TString:
 		return String([]byte(t.Str)), nil
-
-	case TKeyword:
-		return t.Keyword, nil
 
 	default:
 		return nil, t.Errorf("unexpected token: %v", t)

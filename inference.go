@@ -988,7 +988,7 @@ func (ast *ASTLet) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	var err error
 
 	// Bind all names to their init ASTs with letrec.
-	if ast.Kind == KwLetrec {
+	if ast.Kind == Letrec {
 		for _, b := range ast.Bindings {
 			initEnv.SetAST(b.Name(), b.Init)
 		}
@@ -1010,7 +1010,7 @@ func (ast *ASTLet) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 
 		tv := initEnv.inferer.newTypeVar()
 
-		if ast.Kind == KwLet {
+		if ast.Kind == Let {
 			bodyBindings[b.Name()] = tv
 		} else {
 			initEnv.Set(b.Name(), tv)

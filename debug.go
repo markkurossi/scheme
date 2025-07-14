@@ -38,14 +38,7 @@ var debugBuiltins = []Builtin{
 							flags |= fNative
 						case "scheme":
 							flags |= fScheme
-
-						default:
-							return nil, fmt.Errorf("unknown flag: %v", arg)
-						}
-
-					case Keyword:
-						switch flag {
-						case KwLambda:
+						case "lambda":
 							flags |= fLambda
 
 						default:

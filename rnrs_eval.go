@@ -72,22 +72,22 @@ func Eval(value Value, env *EvalEnv) (Value, error) {
 			return v, nil
 		}
 		length := len(list)
-		if isKeyword(v.Car(), KwQuote) {
+		if IsSymbol(v.Car(), "quote") {
 			if length != 2 {
 				return nil, v.Errorf("invalid quote: %v", v)
 			}
 			quoted, _ := Unbox(list[1].Car())
 			return quoted, nil
 		}
-		if isKeyword(v.Car(), KwQuasiquote) {
+		if IsSymbol(v.Car(), "quasiquote") {
 			if length != 2 {
 				return nil, v.Errorf("invalid quasiquote: %v", v)
 			}
 			quoted, _ := Unbox(list[1].Car())
 			return evalQuasiquote(1, quoted, env)
 		}
-		if isKeyword(v.Car(), KwUnquote) ||
-			isKeyword(v.Car(), KwUnquoteSplicing) {
+		if IsSymbol(v.Car(), "unquote") ||
+			IsSymbol(v.Car(), "unquote-splicing") {
 			return v, nil
 		}
 		return nil, v.Errorf("eval: call not supported: %v", v)
@@ -113,14 +113,14 @@ func evalQuasiquote(level int, value Value, env *EvalEnv) (Value, error) {
 			lvl, kw, qv := unquote(item)
 			if lvl == level {
 				switch kw {
-				case KwUnquote:
+				case "unquote":
 					unquoted, err := Eval(qv, env)
 					if err != nil {
 						return nil, err
 					}
 					lb.AddPair(NewLocationPair(p.From(), p.To(), unquoted, nil))
 
-				case KwUnquoteSplicing:
+				case "unquote-splicing":
 					unquoted, err := Eval(qv, env)
 					if err != nil {
 						return nil, err
@@ -150,7 +150,7 @@ func evalQuasiquote(level int, value Value, env *EvalEnv) (Value, error) {
 				continue
 			}
 
-			if isKeyword(pair.Car(), KwQuasiquote) {
+			if IsSymbol(pair.Car(), "quasiquote") {
 				if len(ilist) != 2 {
 					return nil, pair.Errorf("invalid quasiquote")
 				}
@@ -169,8 +169,8 @@ func evalQuasiquote(level int, value Value, env *EvalEnv) (Value, error) {
 	}
 }
 
-func unquote(value Value) (int, Keyword, Value) {
-	var keyword Keyword
+func unquote(value Value) (int, string, Value) {
+	var keyword string
 
 	for level := 0; ; level++ {
 		pair, ok := value.(Pair)
@@ -181,15 +181,13 @@ func unquote(value Value) (int, Keyword, Value) {
 		if !ok || next.Cdr() != nil {
 			return level, keyword, value
 		}
-		car := pair.Car()
-		kw, ok := car.(Keyword)
-		if !ok {
+		if IsSymbol(pair.Car(), "unquote") {
+			keyword = "unquote"
+		} else if IsSymbol(pair.Car(), "unquote-splicing") {
+			keyword = "unquote-splicing"
+		} else {
 			return level, keyword, value
 		}
-		if kw != KwUnquote && kw != KwUnquoteSplicing {
-			return level, keyword, value
-		}
-		keyword = kw
 		value = next.Car()
 	}
 }

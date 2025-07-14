@@ -207,15 +207,15 @@ var lexerTests = []struct {
 	{
 		i: "else",
 		o: &Token{
-			Type:    TKeyword,
-			Keyword: KwElse,
+			Type:       TIdentifier,
+			Identifier: "else",
 		},
 	},
 	{
 		i: "=>",
 		o: &Token{
-			Type:    TKeyword,
-			Keyword: KwImplies,
+			Type:       TIdentifier,
+			Identifier: "=>",
 		},
 	},
 }

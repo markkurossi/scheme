@@ -160,12 +160,35 @@ func (ast *ASTSet) Bytecode(lib *Library) error {
 type ASTLet struct {
 	Typed
 	From     Locator
-	Kind     Keyword
+	Kind     LetType
 	Captures bool
 	Tail     bool
 	Bindings []*ASTLetBinding
 	Body     []AST
 }
+
+// LetType specifies the let type.
+type LetType byte
+
+func (lt LetType) String() string {
+	switch lt {
+	case Let:
+		return "let"
+	case LetStar:
+		return "let*"
+	case Letrec:
+		return "letrec"
+	default:
+		panic("invalid LetType")
+	}
+}
+
+// Let types.
+const (
+	Let LetType = iota
+	LetStar
+	Letrec
+)
 
 // ASTLetBinding implements a let binding.
 type ASTLetBinding struct {

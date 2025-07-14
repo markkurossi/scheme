@@ -44,15 +44,15 @@ var parserTests = []struct {
 	},
 	{
 		i: "else",
-		o: KwElse,
+		o: &Identifier{Name: "else"},
 	},
 	{
 		i: "`1",
-		o: List(KwQuasiquote, Int(1)),
+		o: List(&Identifier{Name: "quasiquote"}, Int(1)),
 	},
 	{
 		i: "`(1 2 3)",
-		o: List(KwQuasiquote, List(Int(1), Int(2), Int(3))),
+		o: List(&Identifier{Name: "quasiquote"}, List(Int(1), Int(2), Int(3))),
 	},
 }
 

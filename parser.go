@@ -193,31 +193,31 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 		}
 		length := len(list)
 
-		if isKeyword(v.Car(), KwPragma) {
+		if IsSymbol(v.Car(), "pragma") {
 			return p.parsePragma(env, list)
 		}
-		if isKeyword(v.Car(), KwDefine) {
+		if IsSymbol(v.Car(), "define") {
 			return p.parseDefine(env, list, 0, captures)
 		}
-		if isKeyword(v.Car(), KwDefineConstant) {
+		if IsSymbol(v.Car(), "define-constant") {
 			return p.parseDefine(env, list, FlagConst, captures)
 		}
-		if isKeyword(v.Car(), KwLambda) {
+		if IsSymbol(v.Car(), "lambda") {
 			return p.parseLambda(env, false, 0, list)
 		}
-		if isKeyword(v.Car(), KwSet) {
+		if IsSymbol(v.Car(), "set!") {
 			return p.parseSet(env, list, captures)
 		}
-		if isKeyword(v.Car(), KwLet) {
-			return p.parseLet(KwLet, env, list, tail, captures)
+		if IsSymbol(v.Car(), "let") {
+			return p.parseLet(Let, env, list, tail, captures)
 		}
-		if isKeyword(v.Car(), KwLetStar) {
-			return p.parseLet(KwLetStar, env, list, tail, captures)
+		if IsSymbol(v.Car(), "let*") {
+			return p.parseLet(LetStar, env, list, tail, captures)
 		}
-		if isKeyword(v.Car(), KwLetrec) {
-			return p.parseLet(KwLetrec, env, list, tail, captures)
+		if IsSymbol(v.Car(), "letrec") {
+			return p.parseLet(Letrec, env, list, tail, captures)
 		}
-		if isKeyword(v.Car(), KwBegin) {
+		if IsSymbol(v.Car(), "begin") {
 			seq := &ASTSequence{
 				From: loc,
 			}
@@ -235,10 +235,10 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 			}
 			return seq, nil
 		}
-		if isKeyword(v.Car(), KwIf) {
+		if IsSymbol(v.Car(), "if") {
 			return p.parseIf(env, list, tail, captures)
 		}
-		if isKeyword(v.Car(), KwQuote) {
+		if IsSymbol(v.Car(), "quote") {
 			if length != 2 {
 				return nil, v.Errorf("invalid quote: %v", v)
 			}
@@ -249,25 +249,25 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 				Value:  quoted,
 			}, nil
 		}
-		if isKeyword(v.Car(), KwSchemeApply) {
+		if IsSymbol(v.Car(), "scheme::apply") {
 			if length != 3 {
 				return nil, v.Errorf("invalid scheme::apply: %v", v)
 			}
 			return p.parseApply(env, v, tail, captures)
 		}
-		if isKeyword(v.Car(), KwCond) {
+		if IsSymbol(v.Car(), "cond") {
 			return p.parseCond(env, list, tail, captures)
 		}
-		if isKeyword(v.Car(), KwCase) {
+		if IsSymbol(v.Car(), "case") {
 			return p.parseCase(env, list, tail, captures)
 		}
-		if isKeyword(v.Car(), KwAnd) {
+		if IsSymbol(v.Car(), "and") {
 			return p.parseAnd(env, list, tail, captures)
 		}
-		if isKeyword(v.Car(), KwOr) {
+		if IsSymbol(v.Car(), "or") {
 			return p.parseOr(env, list, tail, captures)
 		}
-		if isKeyword(v.Car(), KwGuard) {
+		if IsSymbol(v.Car(), "guard") {
 			return p.parseGuard(env, list, tail, captures)
 		}
 		if IsSymbol(v.Car(), "unless") {
@@ -354,9 +354,6 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 			Global:  sym,
 		}, nil
 
-	case Keyword:
-		return nil, loc.Errorf("unexpected keyword: %s", v)
-
 	case Vector:
 		// Vector literals must be quoted like list constants.
 		return nil, loc.Errorf("invalid syntax: %v", v)
@@ -375,7 +372,7 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 		}, nil
 
 	default:
-		return nil, fmt.Errorf("parseValue: unsupported value: %v(%T)", v, v)
+		return nil, loc.Errorf("parseValue: unsupported value: %v(%T)", v, v)
 	}
 }
 
@@ -605,9 +602,9 @@ func (p *Parser) parseLambda(env *Env, define bool, flags Flags,
 	var ErrNext = errors.New("next")
 
 	checkLambda = func(idx int, p Pair) error {
-		if idx == 0 && (isKeyword(p.Car(), KwLambda) ||
-			isKeyword(p.Car(), KwDefine) ||
-			isKeyword(p.Car(), KwGuard)) {
+		if idx == 0 && (IsSymbol(p.Car(), "lambda") ||
+			IsSymbol(p.Car(), "define") ||
+			IsSymbol(p.Car(), "guard")) {
 			lambdas++
 			return ErrNext
 		}
@@ -717,7 +714,7 @@ func (p *Parser) parseSet(env *Env, list []Pair, captures bool) (AST, error) {
 	}, nil
 }
 
-func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
+func (p *Parser) parseLet(kind LetType, env *Env, list []Pair,
 	tail, captures bool) (AST, error) {
 
 	if len(list) < 3 {
@@ -729,7 +726,7 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 	case *Identifier:
 		namedLet = true
 	}
-	if kind == KwLet && namedLet {
+	if kind == Let && namedLet {
 		if len(list) < 4 {
 			return nil, list[0].Errorf("named let: missing body")
 		}
@@ -782,7 +779,7 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 		if !ok {
 			panic("named let")
 		}
-		return p.parseLet(KwLetrec, env, namedList, tail, true)
+		return p.parseLet(Letrec, env, namedList, tail, true)
 	}
 
 	// XXX check if the let inits or body captures and use that as the
@@ -807,7 +804,7 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 		if err != nil {
 			return nil, err
 		}
-		if kind != KwLetrec {
+		if kind != Letrec {
 			b.Disabled = true
 		}
 		letBindings = append(letBindings, b)
@@ -840,12 +837,12 @@ func (p *Parser) parseLet(kind Keyword, env *Env, list []Pair,
 		})
 
 		switch kind {
-		case KwLetStar:
+		case LetStar:
 			letBindings[idx].Disabled = false
 		}
 	}
 
-	if kind == KwLet {
+	if kind == Let {
 		for i := 0; i < len(letBindings); i++ {
 			letBindings[i].Disabled = false
 		}
@@ -955,7 +952,7 @@ func (p *Parser) parseCond(env *Env, list []Pair,
 		}
 
 		var isElse bool
-		if isKeyword(clause[0].Car(), KwElse) {
+		if IsSymbol(clause[0].Car(), "else") {
 			if i+1 < len(list) {
 				return nil,
 					clause[0].Errorf("cond: else must be the last clause")
@@ -979,7 +976,7 @@ func (p *Parser) parseCond(env *Env, list []Pair,
 			choice.Cond = condAST
 		}
 		// cond => func
-		if len(clause) > 1 && isKeyword(clause[1].Car(), KwImplies) {
+		if len(clause) > 1 && IsSymbol(clause[1].Car(), "=>") {
 			if len(clause) != 3 {
 				return nil, clause[0].Errorf("cond: invalid => clause")
 			}
@@ -1054,7 +1051,7 @@ func (p *Parser) parseCase(env *Env, list []Pair, tail, captures bool) (
 
 		// (else expr1 expr2...)
 		var isElse bool
-		if isKeyword(clause[0].Car(), KwElse) {
+		if IsSymbol(clause[0].Car(), "else") {
 			if i+1 < len(list) {
 				return nil,
 					clause[0].Errorf("case: else must be the last clause")
@@ -1164,7 +1161,7 @@ func (p *Parser) parseGuard(env *Env, list []Pair,
 	var qq Value
 	last := clauses[len(clauses)-1]
 	car, ok := Car(last.Car(), true)
-	if ok && isKeyword(car, KwElse) {
+	if ok && IsSymbol(car, "else") {
 		qq = qqGuard
 	} else {
 		qq = qqGuardRaise
@@ -1201,14 +1198,6 @@ func (p *Parser) parseUnless(env *Env, list []Pair,
 	PatchLocation(n, list[0].From())
 
 	return p.parseValue(env, list[0], n, tail, captures)
-}
-
-func isKeyword(value Value, keyword Keyword) bool {
-	kw, ok := value.(Keyword)
-	if !ok {
-		return false
-	}
-	return kw == keyword
 }
 
 func isIdentifier(value Value) (*Identifier, bool) {
