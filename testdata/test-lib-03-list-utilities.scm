@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2023 Markku Rossi
+;;; Copyright (c) 2023, 2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -18,7 +18,8 @@
     (runner 'test "find"
             (lambda () (eq? (find even? '(3 1 4 1 5 9)) 4))
             (lambda () (eq? (find even? '(3 1 5 1 5 9)) #f))
-            (lambda () (eq? (find even? loop) #f))
+            (lambda () (error? (guard (con (else con))
+                                      (find even? loop))))
             )
 
     (runner 'test "filter"
@@ -29,7 +30,8 @@
     (runner 'test "remp"
             (lambda () (equal? (remp even? '(3 1 4 1 5 9 2 6 5))
                                '(3 1 1 5 9 5)))
-            (lambda () (eq? (remp even? loop) #f))
+            (lambda () (error? (guard (con (else con))
+                                      (remp even? loop))))
             )
     (runner 'test "remove"
             (lambda () (equal? (remove 1 '(3 1 4 1 5 9 2 6 5))
@@ -47,7 +49,8 @@
     (runner 'test "memp"
             (lambda () (equal? (memp even? '(3 1 4 1 5 9 2 6 5))
                                '(4 1 5 9 2 6 5)))
-            (lambda () (eq? (memp even? loop) #f))
+            (lambda () (error? (guard (con (else con))
+                                      (memp even? loop))))
             ))
 
   (runner 'test "memq"
@@ -72,7 +75,8 @@
     (runner 'test "assp"
             (lambda () (equal? (assp even? d) '(4 c)))
             (lambda () (equal? (assp odd? d) '(3 a)))
-            (lambda () (eq? (assp even? loop) #f))
+            (lambda () (error? (guard (con (else con))
+                                      (assp even? loop))))
             ))
 
   (let ((e '((a 1) (b 2) (c 3))))

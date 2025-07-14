@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2023 Markku Rossi
+;;; Copyright (c) 2023-2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -19,8 +19,7 @@
                  ((null? list) #f)
                  ((or (not (pair? list))
                       (eq? turtle list))
-                  ;; XXX (error 'find "not a list" proc list)
-                  #f)
+                  (error 'find "not a list" list))
                  (else
                   (if even
                       (if (null? turtle)
@@ -51,8 +50,7 @@
                  ((null? list) head)
                  ((or (not (pair? list))
                       (eq? turtle list))
-                  ;; XXX (error 'remp "not a list" proc list)
-                  #f)
+                  (error 'remp "not a list" list))
                  (else
                   (if even
                       (if (null? turtle)
@@ -84,8 +82,7 @@
                  ((null? list) #f)
                  ((or (not (pair? list))
                       (eq? turtle list))
-                  ;; XXX (error 'memp "not a list" proc list)
-                  #f)
+                  (error 'memp "not a list" list))
                  (else
                   (if even
                       (if (null? turtle)
@@ -113,8 +110,7 @@
                  ((null? alist) #f)
                  ((or (not (pair? alist))
                       (eq? turtle alist))
-                  ;; XXX (error 'assp "not a list" proc alist)
-                  #f)
+                  (error 'assp "not a list" alist))
                  (else
                   (if even
                       (if (null? turtle)
