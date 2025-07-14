@@ -336,7 +336,7 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 		if !ok {
 			sym = p.scm.Intern(v.Name)
 		}
-		return &ASTIdentifier{
+		return &ASTSymbol{
 			From:    loc,
 			Name:    v.Name,
 			Binding: binding,

@@ -37,7 +37,7 @@ var (
 	_ AST = &ASTCallUnary{}
 	_ AST = &ASTLambda{}
 	_ AST = &ASTConstant{}
-	_ AST = &ASTIdentifier{}
+	_ AST = &ASTSymbol{}
 	_ AST = &ASTCond{}
 	_ AST = &ASTCase{}
 	_ AST = &ASTAnd{}
@@ -368,9 +368,9 @@ func (ast *ASTCall) Bytecode(lib *Library) error {
 	const calltAsJump bool = false
 
 	if !ast.Inline {
-		id, ok := ast.Func.(*ASTIdentifier)
-		if ok && id.Binding != nil && lib.current != nil &&
-			lib.current.Self == id.Init {
+		sym, ok := ast.Func.(*ASTSymbol)
+		if ok && sym.Binding != nil && lib.current != nil &&
+			lib.current.Self == sym.Init {
 			self = lib.current
 		}
 
@@ -543,8 +543,8 @@ func (ast *ASTConstant) Bytecode(lib *Library) error {
 	return nil
 }
 
-// ASTIdentifier implements identifer references.
-type ASTIdentifier struct {
+// ASTSymbol implements symbol references.
+type ASTSymbol struct {
 	Typed
 	From    Locator
 	Name    string
@@ -553,17 +553,17 @@ type ASTIdentifier struct {
 	Init    AST
 }
 
-func (ast *ASTIdentifier) String() string {
+func (ast *ASTSymbol) String() string {
 	return ast.Name
 }
 
 // Locator implements AST.Locator.
-func (ast *ASTIdentifier) Locator() Locator {
+func (ast *ASTSymbol) Locator() Locator {
 	return ast.From
 }
 
 // Bytecode implements AST.Bytecode.
-func (ast *ASTIdentifier) Bytecode(lib *Library) error {
+func (ast *ASTSymbol) Bytecode(lib *Library) error {
 	if ast.Binding != nil {
 		if ast.Binding.Frame.Type == TypeStack {
 			lib.addInstr(ast.From, OpLocal, nil,

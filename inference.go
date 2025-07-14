@@ -1266,7 +1266,7 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 
 		env.inferer.Debugf(ast, "Call: code: fnType=%v\n", fnType)
 		switch fn := ast.Func.(type) {
-		case *ASTIdentifier:
+		case *ASTSymbol:
 			fnName = fn.Name
 		default:
 			fnName = "lambda"
@@ -1359,17 +1359,17 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 
 	// Check typecheck predicates.
 	var branch *InferBranch
-	id, ok := ast.Func.(*ASTIdentifier)
+	sym, ok := ast.Func.(*ASTSymbol)
 	if ok && len(fnType.Args) == 1 {
-		t, ok := typePredicates[id.Name]
+		t, ok := typePredicates[sym.Name]
 		if ok {
-			argID, ok := ast.Args[0].(*ASTIdentifier)
+			argSym, ok := ast.Args[0].(*ASTSymbol)
 			if ok {
 				branch = &InferBranch{
 					pos: env.inferer.NewEnv(),
 				}
-				env.inferer.Debugf(ast, "%s: %v=%v\n", id.Name, argID, t)
-				branch.pos.bindings[argID.Name] = InferEnvBinding{
+				env.inferer.Debugf(ast, "%s: %v=%v\n", sym.Name, argSym, t)
+				branch.pos.bindings[argSym.Name] = InferEnvBinding{
 					t: t,
 				}
 			}
@@ -1576,7 +1576,7 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 	// Check pair? predicate.
 	var branch *InferBranch
 	if ast.Op == OpPairp {
-		id, ok := ast.Arg.(*ASTIdentifier)
+		sym, ok := ast.Arg.(*ASTSymbol)
 		if ok {
 			branch = &InferBranch{
 				pos: env.inferer.NewEnv(),
@@ -1586,8 +1586,8 @@ func (ast *ASTCallUnary) Infer(env *InferEnv) (
 				Car:  types.Any,
 				Cdr:  types.Any,
 			}
-			env.inferer.Debugf(ast, "%s %v=%v\n", ast.Op, id, t)
-			branch.pos.bindings[id.Name] = InferEnvBinding{
+			env.inferer.Debugf(ast, "%s %v=%v\n", ast.Op, sym, t)
+			branch.pos.bindings[sym.Name] = InferEnvBinding{
 				t: t,
 			}
 		}
@@ -1722,9 +1722,7 @@ func (ast *ASTConstant) Inferred(env *InferEnv) error {
 }
 
 // Infer implements AST.Infer.
-func (ast *ASTIdentifier) Infer(env *InferEnv) (
-	*InferBranch, *InferTypes, error) {
-
+func (ast *ASTSymbol) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 	env.inferer.Enter(ast)
 	defer env.inferer.Exit(ast)
 
@@ -1755,7 +1753,7 @@ func (ast *ASTIdentifier) Infer(env *InferEnv) (
 }
 
 // Inferred implements AST.Inferred.
-func (ast *ASTIdentifier) Inferred(env *InferEnv) error {
+func (ast *ASTSymbol) Inferred(env *InferEnv) error {
 	ast.t = env.Inferred().Apply(ast.t)
 	return nil
 }

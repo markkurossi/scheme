@@ -228,7 +228,7 @@ func (ast *ASTConstant) PP(w pp.Writer) {
 }
 
 // PP implements AST.PP.
-func (ast *ASTIdentifier) PP(w pp.Writer) {
+func (ast *ASTSymbol) PP(w pp.Writer) {
 	w.Printf("%s", ast.Name)
 	w.Type(ast.Type().String())
 }
