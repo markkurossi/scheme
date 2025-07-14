@@ -32,7 +32,7 @@ var debugBuiltins = []Builtin{
 			} else {
 				for _, arg := range args {
 					switch flag := arg.(type) {
-					case *Identifier:
+					case *Symbol:
 						switch flag.Name {
 						case "native":
 							flags |= fNative

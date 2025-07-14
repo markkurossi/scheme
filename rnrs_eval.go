@@ -59,7 +59,7 @@ func Eval(value Value, env *EvalEnv) (Value, error) {
 		String:
 		return v, nil
 
-	case *Identifier:
+	case *Symbol:
 		iv, ok := env.Get(v.Name)
 		if !ok {
 			return nil, fmt.Errorf("undefined symbol '%v'", v.Name)

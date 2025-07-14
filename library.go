@@ -80,12 +80,11 @@ func (lib *Library) parseLibraryHeader(list []Pair) error {
 
 	// Export.
 	l, ok = ListPairs(list[2].Car())
-	if !ok || len(l) == 0 || !isNamedIdentifier(l[0].Car(), "export") {
+	if !ok || len(l) == 0 || !IsSymbol(l[0].Car(), "export") {
 		return list[2].Errorf("expected (export ...)")
 	}
 	for i := 1; i < len(l); i++ {
-		_, ok := isIdentifier(l[i].Car())
-		if !ok {
+		if !Symbolp(l[i].Car()) {
 			return l[i].Errorf("invalid export name: %v", l[i])
 		}
 	}
@@ -377,7 +376,7 @@ type lambdaCompilation struct {
 	Label       *Instr
 	End         int
 	Self        AST
-	Name        *Identifier
+	Name        *Symbol
 	Args        Args
 	ArgBindings []*EnvBinding
 	Body        []AST

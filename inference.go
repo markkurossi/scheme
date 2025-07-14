@@ -2069,7 +2069,7 @@ func (ast *ASTPragma) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 		if len(d) != 2 {
 			return nil, nil, errf(ast, "invalid directive: %v", d)
 		}
-		id, ok := d[0].(*Identifier)
+		id, ok := d[0].(*Symbol)
 		if !ok {
 			return nil, nil,
 				errf(ast, "invalid directive '%v': expected identifier", d[0])

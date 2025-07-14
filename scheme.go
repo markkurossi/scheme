@@ -40,7 +40,7 @@ type Scheme struct {
 	sp      int
 	fp      int
 	stack   []Value
-	symbols map[string]*Identifier
+	symbols map[string]*Symbol
 	frameFL *Frame
 }
 
@@ -110,7 +110,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 		Stdout:  NewPort(os.Stdout),
 		Stderr:  NewPort(os.Stderr),
 		stack:   make([]Value, 4096), // XXX initial stack depth
-		symbols: make(map[string]*Identifier),
+		symbols: make(map[string]*Symbol),
 	}
 
 	scm.DefineBuiltins(booleanBuiltins)

@@ -106,7 +106,7 @@ func (ast *ASTSequence) Bytecode(lib *Library) error {
 type ASTDefine struct {
 	Typed
 	From  Locator
-	Name  *Identifier
+	Name  *Symbol
 	Flags Flags
 	Value AST
 }
@@ -448,7 +448,7 @@ func (ast *ASTCallUnary) Bytecode(lib *Library) error {
 type ASTLambda struct {
 	Typed
 	From        Locator
-	Name        *Identifier
+	Name        *Symbol
 	Args        Args
 	ArgBindings []*EnvBinding
 	Body        []AST
@@ -549,7 +549,7 @@ type ASTIdentifier struct {
 	From    Locator
 	Name    string
 	Binding *EnvBinding
-	Global  *Identifier
+	Global  *Symbol
 	Init    AST
 }
 
@@ -901,7 +901,7 @@ func (ast *ASTPragma) Bytecode(lib *Library) error {
 	return nil
 }
 
-func (lib *Library) define(loc Locator, name *Identifier, flags Flags) error {
+func (lib *Library) define(loc Locator, name *Symbol, flags Flags) error {
 	export, ok := lib.exported[name.Name]
 	if ok {
 		export.id = name

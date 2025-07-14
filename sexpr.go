@@ -89,13 +89,13 @@ func (p *SexprParser) Next() (Value, error) {
 		var kw Value
 		switch t.Type {
 		case '\'':
-			kw = &Identifier{Name: "quote"}
+			kw = NewSymbol("quote")
 		case '`':
-			kw = &Identifier{Name: "quasiquote"}
+			kw = NewSymbol("quasiquote")
 		case ',':
-			kw = &Identifier{Name: "unquote"}
+			kw = NewSymbol("unquote")
 		case TCommaAt:
-			kw = &Identifier{Name: "unquote-splicing"}
+			kw = NewSymbol("unquote-splicing")
 		default:
 			panic("unknown keyword")
 		}
@@ -233,7 +233,7 @@ func (p *SexprParser) Next() (Value, error) {
 		}
 
 	case TIdentifier:
-		return &Identifier{
+		return &Symbol{
 			Name:  t.Identifier,
 			Point: t.From,
 		}, nil

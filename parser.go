@@ -43,7 +43,7 @@ type Parser struct {
 
 type export struct {
 	from Locator
-	id   *Identifier
+	id   *Symbol
 }
 
 // NewParser creates a new bytecode compiler.
@@ -90,7 +90,7 @@ func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 			first = false
 
 			pair, ok := v.(Pair)
-			if ok && isNamedIdentifier(pair.Car(), "library") {
+			if ok && IsSymbol(pair.Car(), "library") {
 				list, ok := ListPairs(v)
 				if !ok || len(list) < 4 {
 					return nil, pair.Errorf("invalid library: %v", v)
@@ -124,12 +124,10 @@ func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 
 			// Not a library source.
 			library.ExportAll = true
-			library.Name = NewPair(&Identifier{
-				Name: "main",
-			}, nil)
+			library.Name = NewPair(NewSymbol("main"), nil)
 
 			// Check for top-level imports.
-			if ok && isNamedIdentifier(pair.Car(), "import") {
+			if ok && IsSymbol(pair.Car(), "import") {
 				_, ok := ListPairs(v)
 				if !ok {
 					return nil, pair.Errorf("expected (import ...)")
@@ -144,7 +142,7 @@ func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 		if ok {
 			from = locator.From()
 		} else {
-			id, ok := v.(*Identifier)
+			id, ok := v.(*Symbol)
 			if ok {
 				from = id.Point
 			}
@@ -193,7 +191,7 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 		}
 		length := len(list)
 
-		sym, ok := v.Car().(*Identifier)
+		sym, ok := v.Car().(*Symbol)
 		if ok {
 			switch sym.Name {
 			case "lambda":
@@ -332,8 +330,8 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 
 		return ast, nil
 
-	case *Identifier:
-		var sym *Identifier
+	case *Symbol:
+		var sym *Symbol
 		binding, ok := env.Lookup(v.Name)
 		if !ok {
 			sym = p.scm.Intern(v.Name)
@@ -383,21 +381,21 @@ var inlineUnaryBinary = map[string]Operand{
 }
 
 func (p *Parser) inlineUnary(env *Env, list []Pair) (bool, Operand, int) {
-	id, ok := list[0].Car().(*Identifier)
+	sym, ok := list[0].Car().(*Symbol)
 	if !ok {
 		return false, 0, 0
 	}
 
 	switch len(list) {
 	case 2:
-		op, ok := inlineUnary[id.Name]
+		op, ok := inlineUnary[sym.Name]
 		if !ok {
 			return false, 0, 0
 		}
 		return true, op, 0
 
 	case 3:
-		op, ok := inlineUnaryBinary[id.Name]
+		op, ok := inlineUnaryBinary[sym.Name]
 		if !ok {
 			return false, 0, 0
 		}
@@ -434,11 +432,11 @@ func (p *Parser) inlineBinary(env *Env, list []Pair) (bool, Operand) {
 	if len(list) != 3 {
 		return false, 0
 	}
-	id, ok := list[0].Car().(*Identifier)
+	sym, ok := list[0].Car().(*Symbol)
 	if !ok {
 		return false, 0
 	}
-	op, ok := inlineBinary[id.Name]
+	op, ok := inlineBinary[sym.Name]
 	if !ok {
 		return false, 0
 	}
@@ -468,7 +466,7 @@ func (p *Parser) parseDefine(env *Env, list []Pair, flags Flags,
 		return nil, list[0].Errorf("syntax error: %v", list[0])
 	}
 	// (define name value)
-	name, ok := isIdentifier(list[1].Car())
+	name, ok := list[1].Car().(*Symbol)
 	if ok {
 		ast, err := p.parseValue(env, list[2], list[2].Car(), false, captures)
 		if err != nil {
@@ -511,12 +509,12 @@ func (p *Parser) parseLambda(env *Env, define bool, flags Flags,
 		return nil, list[0].Errorf("missing lambda body: %v", list[0])
 	}
 
-	var name *Identifier
+	var name *Symbol
 	var args Args
 
 	seen := newSeen()
 
-	arg, ok := isIdentifier(list[1].Car())
+	arg, ok := list[1].Car().(*Symbol)
 	if ok {
 		if define {
 			return nil, list[1].Errorf("invalid define: %v", list[0])
@@ -539,7 +537,7 @@ func (p *Parser) parseLambda(env *Env, define bool, flags Flags,
 			}
 		}
 		for pair != nil {
-			arg, ok = isIdentifier(pair.Car())
+			arg, ok = pair.Car().(*Symbol)
 			if !ok {
 				return nil, pair.Errorf("invalid argument: %v", pair.Car())
 			}
@@ -556,7 +554,7 @@ func (p *Parser) parseLambda(env *Env, define bool, flags Flags,
 				})
 			}
 
-			arg, ok = isIdentifier(pair.Cdr())
+			arg, ok = pair.Cdr().(*Symbol)
 			if ok {
 				// Rest arguments.
 				err := seen.add(arg.Name)
@@ -685,7 +683,7 @@ func (p *Parser) parseSet(env *Env, list []Pair, captures bool) (AST, error) {
 	if len(list) != 3 {
 		return nil, list[0].Errorf("syntax error: %v", list[0])
 	}
-	name, ok := isIdentifier(list[1].Car())
+	name, ok := list[1].Car().(*Symbol)
 	if !ok {
 		return nil, list[1].Errorf("set!: expected variable name: %v",
 			list[1].Car())
@@ -714,7 +712,7 @@ func (p *Parser) parseLet(kind LetType, env *Env, list []Pair,
 	var idxBindings, idxBody int
 	var namedLet bool
 	switch list[1].Car().(type) {
-	case *Identifier:
+	case *Symbol:
 		namedLet = true
 	}
 	if kind == Let && namedLet {
@@ -787,7 +785,7 @@ func (p *Parser) parseLet(kind LetType, env *Env, list []Pair,
 			return nil, list[idxBindings].Errorf("%s: invalid init: %v",
 				kind, binding)
 		}
-		name, ok := def[0].Car().(*Identifier)
+		name, ok := def[0].Car().(*Symbol)
 		if !ok {
 			return nil, def[0].Errorf("%s: invalid variable: %v", kind, binding)
 		}
@@ -1189,14 +1187,4 @@ func (p *Parser) parseUnless(env *Env, list []Pair,
 	PatchLocation(n, list[0].From())
 
 	return p.parseValue(env, list[0], n, tail, captures)
-}
-
-func isIdentifier(value Value) (*Identifier, bool) {
-	id, ok := value.(*Identifier)
-	return id, ok
-}
-
-func isNamedIdentifier(value Value, name string) bool {
-	id, ok := isIdentifier(value)
-	return ok && id.Name == name
 }

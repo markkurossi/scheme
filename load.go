@@ -121,7 +121,7 @@ func (scm *Scheme) Load(source string, in io.Reader) (Value, error) {
 		}
 	}
 
-	return NewPair(&Identifier{Name: "library"},
+	return NewPair(NewSymbol("library"),
 		NewPair(library.Name,
 			NewPair(library.Exports,
 				NewPair(library.Imports,

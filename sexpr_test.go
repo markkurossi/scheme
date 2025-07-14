@@ -26,9 +26,7 @@ var parserTests = []struct {
 	},
 	{
 		i: "foo",
-		o: &Identifier{
-			Name: "foo",
-		},
+		o: NewSymbol("foo"),
 	},
 	{
 		i: "#t",
@@ -44,15 +42,15 @@ var parserTests = []struct {
 	},
 	{
 		i: "else",
-		o: &Identifier{Name: "else"},
+		o: NewSymbol("else"),
 	},
 	{
 		i: "`1",
-		o: List(&Identifier{Name: "quasiquote"}, Int(1)),
+		o: List(NewSymbol("quasiquote"), Int(1)),
 	},
 	{
 		i: "`(1 2 3)",
-		o: List(&Identifier{Name: "quasiquote"}, List(Int(1), Int(2), Int(3))),
+		o: List(NewSymbol("quasiquote"), List(Int(1), Int(2), Int(3))),
 	},
 }
 

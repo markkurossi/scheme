@@ -207,7 +207,7 @@ type Instr struct {
 	V   Value
 	I   int
 	J   int
-	Sym *Identifier
+	Sym *Symbol
 }
 
 func (i Instr) String() string {
@@ -1060,10 +1060,10 @@ func (scm *Scheme) StackTrace() []StackFrame {
 }
 
 // Intern interns the name and returns the interned symbol.
-func (scm *Scheme) Intern(name string) *Identifier {
+func (scm *Scheme) Intern(name string) *Symbol {
 	id, ok := scm.symbols[name]
 	if !ok {
-		id = &Identifier{
+		id = &Symbol{
 			Name:       name,
 			GlobalType: types.Unspecified,
 		}
