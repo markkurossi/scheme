@@ -477,27 +477,31 @@ func (inferred Inferred) Apply(t *types.Type) *types.Type {
 
 	case types.EnumTypeVar:
 		mapped, ok := inferred[t.TypeVar]
-		if ok {
-			if !mapped.Conclusive {
-				return types.Unspecified
-			}
-
-			var result *types.Type
-			var selfSkipped bool
-
-			for _, ti := range mapped.Types {
-				// Skip the type that is applied.
-				if ti.IsA(t) {
-					selfSkipped = true
-					continue
-				}
-				result = types.Unify(result, ti)
-			}
-			if result == nil && selfSkipped {
-				result = t
-			}
-			return result
+		if !ok {
+			return t
 		}
+		if !mapped.Conclusive {
+			return types.Unspecified
+		}
+
+		var result *types.Type
+		var selfSkipped bool
+
+		for _, ti := range mapped.Types {
+			// Skip the type that is applied.
+			if ti.IsA(t) {
+				selfSkipped = true
+				continue
+			}
+			result = types.Unify(result, ti)
+		}
+		if result == nil && selfSkipped {
+			result = t
+		}
+		copy := inferred.Copy()
+		delete(copy, t.TypeVar)
+
+		return copy.Apply(result)
 	}
 
 	return t
@@ -711,10 +715,6 @@ func (ieb InferEnvBinding) String() string {
 
 // Unify unifies type from to type to and returns the resulting type.
 func Unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
-	return unify(ast, env, from, to)
-}
-
-func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 	env.inferer.Debug2f(ast, " \u251c\u254c\u254c\u254c unify(%v,%v)\n",
 		from, to)
 	if from.Enum == types.EnumTypeVar {
@@ -750,13 +750,13 @@ func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 			Enum: types.EnumLambda,
 		}
 		for idx, arg := range from.Args {
-			t, err = unify(ast, env, arg, to.Args[idx])
+			t, err = Unify(ast, env, arg, to.Args[idx])
 			if err != nil {
 				return nil, fmt.Errorf("argument %d: %s", idx, err)
 			}
 			result.Args = append(result.Args, t)
 		}
-		t, err = unify(ast, env, from.Return, to.Return)
+		t, err = Unify(ast, env, from.Return, to.Return)
 		if err != nil {
 			return nil, err
 		}
@@ -771,13 +771,13 @@ func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 		result := &types.Type{
 			Enum: types.EnumPair,
 		}
-		t, err = unify(ast, env, from.Car, to.Car)
+		t, err = Unify(ast, env, from.Car, to.Car)
 		if err != nil {
 			return nil, err
 		}
 		result.Car = t
 
-		t, err = unify(ast, env, from.Cdr, to.Cdr)
+		t, err = Unify(ast, env, from.Cdr, to.Cdr)
 		if err != nil {
 			return nil, err
 		}
@@ -792,7 +792,7 @@ func unify(ast AST, env *InferEnv, from, to *types.Type) (*types.Type, error) {
 		result := &types.Type{
 			Enum: types.EnumVector,
 		}
-		t, err = unify(ast, env, from.Element, to.Element)
+		t, err = Unify(ast, env, from.Element, to.Element)
 		if err != nil {
 			return nil, err
 		}
