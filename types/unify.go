@@ -24,6 +24,12 @@ func Unify(a *Type, b *Type) *Type {
 	if a.Enum == EnumTypeVar || b.Enum == EnumTypeVar {
 		return Unspecified
 	}
+	if a.Enum == EnumNone {
+		return b
+	}
+	if b.Enum == EnumNone {
+		return a
+	}
 	if a.IsKindOf(b) {
 		return b
 	}
