@@ -1225,7 +1225,7 @@ var vmBuiltins = []Builtin{
 	{
 		Name:   "raise",
 		Args:   []string{"err"},
-		Return: types.Any,
+		Return: types.None,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			err, ok := args[0].(*Error)
 			if !ok {
@@ -1303,10 +1303,21 @@ var vmBuiltins = []Builtin{
 	},
 	{
 		Name:   "with-exception-handler",
-		Args:   []string{"handler<lambda(any)any>", "thunk<lambda()any>"},
+		Args:   []string{"handler<lambda(err)any>", "thunk<lambda()any>"},
 		Return: types.Any,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return nil, errGuard
+		},
+		Parametrize: func(args []*types.Type) (*types.Type, error) {
+			var returnType *types.Type
+			for _, t := range args {
+				if t.Enum != types.EnumLambda {
+					return nil, fmt.Errorf("invalid argument: %v, expected %v",
+						t, types.EnumLambda)
+				}
+				returnType = types.Unify(returnType, t.Return)
+			}
+			return returnType, nil
 		},
 	},
 	{
