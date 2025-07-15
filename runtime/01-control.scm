@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2022-2024 Markku Rossi
+;;; Copyright (c) 2022-2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -43,8 +43,7 @@
                ((null? (car lists)) head)
                ((or (not (pair? (car lists)))
                     (eq? turtle (car lists)))
-                ;; XXX (error 'map "not a list" f lists)
-                #f)
+                (error 'map "not a list" lists))
                (else
                 (if even
                     (if (null? turtle)
@@ -68,8 +67,7 @@
                ((null? (car lists)) #t)
                ((or (not (pair? (car lists)))
                     (eq? turtle (car lists)))
-                ;; XXX (error 'for-each "not a list" f lists)
-                #f)
+                (error 'for-each "not a list" lists))
                (else
                 (if even
                     (if (null? turtle)

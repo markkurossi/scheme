@@ -4,16 +4,15 @@
 ;;; All rights reserved.
 ;;;
 
-(define (list? obj) (for-each (lambda (x) #t) obj))
+(define (list? obj) (guard (con (else #f))
+                           (for-each (lambda (x) #t) obj)))
 
 (define (list . items) items)
 
-(define (length lst)
+(define (length list)
   (let ((count 0))
-    (if (for-each (lambda (x) (set! count (+ count 1))) lst)
-        count
-        ;; XXX (error 'length "not a list" lst)
-        -1)))
+    (for-each (lambda (x) (set! count (+ count 1))) list)
+    count))
 
 (define (append list . rest)
   (if (null? rest)
@@ -37,13 +36,11 @@
                           (begin
                             (set-cdr! tail (car rest))
                             head))
-                      (if (append-list (car rest))
-                          (iter (cdr rest))
-                          #f)))))
-        (if (append-list list)
-            (iter rest)
-            ;; XXX (error 'append "not a list" list rest)
-            #f))))
+                      (begin
+                        (append-list (car rest))
+                        (iter (cdr rest)))))))
+        (append-list list)
+        (iter rest))))
 
 (define (reverse list)
   (letrec ((turtle '())
@@ -53,8 +50,7 @@
                ((null? rest) result)
                ((or (not (pair? rest))
                     (eq? turtle rest))
-                ;; XXX (error 'reverse "not a list" list)
-                #f)
+                (error 'reverse "not a list" list))
                (else
                 (if even
                     (if (null? turtle)
@@ -68,43 +64,37 @@
 (define (list-tail list k)
   (letrec ((turtle '())
            (iter
-            (lambda (even list k)
+            (lambda (even lst index)
               (cond
-               ((zero? k) list)
-               ((null? list)
-                ;; XXX (error 'list-tail "index out of range" list k)
-                #f)
-               ((or (not (pair? list))
-                    (eq? turtle list))
-                ;; XXX (error 'list-tail "not a list" list k)
-                #f)
+               ((zero? index) lst)
+               ((null? lst)
+                (error 'list-tail "index out of range" list k))
+               ((or (not (pair? lst))
+                    (eq? turtle lst))
+                (error 'list-tail "not a list" list))
                (else
                 (if even
                     (if (null? turtle)
-                        (set! turtle list)
+                        (set! turtle lst)
                         (set! turtle (cdr turtle))))
-                (iter (not even) (cdr list) (- k 1)))))))
-    ;; XXX (assertion-violation 'list-tail "index out of range" list k)
+                (iter (not even) (cdr lst) (- index 1)))))))
     (iter #t list k)))
 
 (define (list-ref list k)
   (letrec ((turtle '())
            (iter
-            (lambda (even list k)
+            (lambda (even lst index)
               (cond
-               ((null? list)
-                ;; XXX (error 'list-ref "index out of range" list k)
-                #f)
-               ((or (not (pair? list))
-                    (eq? turtle list))
-                ;; XXX (error 'list-ref "not a list" list k)
-                #f)
-               ((zero? k) (car list))
+               ((null? lst)
+                (error 'list-ref "index out of range" list k))
+               ((or (not (pair? lst))
+                    (eq? turtle lst))
+                (error 'list-ref "not a list" list))
+               ((zero? index) (car lst))
                (else
                 (if even
                     (if (null? turtle)
-                        (set! turtle list)
+                        (set! turtle lst)
                         (set! turtle (cdr turtle))))
-                (iter (not even) (cdr list) (- k 1)))))))
-    ;; XXX (assertion-violation 'list-ref "index out of range" list k)
+                (iter (not even) (cdr lst) (- index 1)))))))
     (iter #t list k)))

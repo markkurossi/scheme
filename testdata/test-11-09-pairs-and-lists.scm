@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2023 Markku Rossi
+;;; Copyright (c) 2023-2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -76,9 +76,13 @@
 
 (runner 'test "list-tail"
         (lambda () (equal? (list-tail '(a b c d) 2) '(c d)))
+        (lambda () (error? (guard (con (else con))
+                                  (list-tail '(1 2 3) 4))))
         )
 (runner 'test "list-ref"
         (lambda () (equal? (list-ref '(a b c d) 2) 'c))
+        (lambda () (error? (guard (con (else con))
+                                  (list-ref '(1 2 3) 3))))
         )
 
 (runner 'test "map"
@@ -113,21 +117,35 @@
   (runner 'test "loop"
           (lambda () (eq? (list? loop-odd) #f))
           (lambda () (eq? (list? loop-even) #f))
-          (lambda () (eq? (length loop-odd) -1))
-          (lambda () (eq? (length loop-even) -1))
-          (lambda () (eq? (append '() loop-odd '(1 2)) #f))
-          (lambda () (eq? (append '() loop-even '(1 2)) #f))
-          (lambda () (eq? (reverse loop-odd) #f))
-          (lambda () (eq? (reverse loop-even) #f))
+          (lambda () (error? (guard (con (else con))
+                                    (length loop-odd))))
+          (lambda () (error? (guard (con (else con))
+                                    (length loop-even))))
+
+          (lambda () (error? (guard (con (else con))
+                                    (append '() loop-odd '(1 2)))))
+          (lambda () (error? (guard (con (else con))
+                                    (append '() loop-even '(1 2)))))
+
+          (lambda () (error? (guard (con (else con))
+                                    (reverse loop-odd))))
+          (lambda () (error? (guard (con (else con))
+                                    (reverse loop-even))))
 
           ;; Index must be big enough to detect the loop.
-          (lambda () (eq? (list-tail loop-odd 100) #f))
-          (lambda () (eq? (list-tail loop-even 100) #f))
-          (lambda () (eq? (list-ref loop-odd 100) #f))
-          (lambda () (eq? (list-ref loop-even 100) #f))
+          (lambda () (error? (guard (con (else con))
+                                    (list-tail loop-odd 100))))
+          (lambda () (error? (guard (con (else con))
+                                    (list-tail loop-even 100))))
+          (lambda () (error? (guard (con (else con))
+                                    (list-ref loop-odd 100))))
 
-          (lambda () (eq? (for-each (lambda (x) #t) loop-odd) #f))
-          (lambda () (eq? (for-each (lambda (x) #t) loop-even) #f))
-          (lambda () (eq? (map (lambda (x) x) loop-odd) #f))
-          (lambda () (eq? (map (lambda (x) x) loop-even) #f))
+          (lambda () (error? (guard (con (else con))
+                                    (for-each (lambda (x) #t) loop-odd))))
+          (lambda () (error? (guard (con (else con))
+                                    (for-each (lambda (x) #t) loop-even))))
+          (lambda () (error? (guard (con (else con))
+                                    (map (lambda (x) x) loop-odd))))
+          (lambda () (error? (guard (con (else con))
+                                    (map (lambda (x) x) loop-even))))
           ))
