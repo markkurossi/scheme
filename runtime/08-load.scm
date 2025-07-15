@@ -120,8 +120,8 @@
                ((equal? obj (caar alist)) (car alist))
                (else (assoc obj (cdr alist))))))
 
-           ;; The importer imports all library imports and returns a
-           ;; boolean success status.
+           ;; The importer imports all library imports. The function
+           ;; raises an error if any of the imports fail.
            (importer
             (lambda (imports)
               (if (null? imports)
@@ -138,13 +138,14 @@
                       (set! lib (assoc lib-name scheme::libraries))
                       (if (and lib (eq? (lib-status lib) 'initialized))
                           (importer (cdr imports))
-                          #f))
+                          (error 'importer "dependency not initialized"
+                                 lib-name)))
                      ((eq? (lib-status lib) 'initialized)
                       ;; Import initialized.
                       (importer (cdr imports)))
                      (else
                       ;; Dependency error.
-                      #f)))))))
+                      (error 'importer "dependency error" lib-name))))))))
 
     (let* ((lib-name (parse-lib-name (cadr library)))
            (lib-version (parse-lib-version (cadr library)))
@@ -173,16 +174,20 @@
             (if (not (main? lib-name))
                 (set! scheme::libraries (cons this scheme::libraries)))
 
-            ;; Imports.
-            (if (importer lib-imports)
-                (begin
-                  ;; Imports loaded, now init this module.
-                  (let ((init (scheme::compile lib-library #t)))
-                    (if init-self
-                        (set! result (init))
-                        (set! result #t)))
-                  (set-lib-status! this 'initialized))
-                (set-lib-status! this 'error))
+            (guard (con
+                    (else
+                     (set-lib-status! this 'error)
+                     (raise con)))
 
-            ;; XXX return an error if init fails
+                   ;; Imports.
+                   (importer lib-imports)
+
+                   ;; Imports loaded, now init this module.
+                   (let ((init (scheme::compile lib-library #t)))
+                     (if init-self
+                         (set! result (init))
+                         (set! result #t)))
+                   (set-lib-status! this 'initialized))
+
+            ;; Return the result value form the init.
             result)))))
