@@ -5,7 +5,7 @@
 ;;;
 
 (define (list? obj) (guard (con (else #f))
-                           (for-each (lambda (x) #t) obj)))
+                           (for-each null? obj)))
 
 (define (list . items) items)
 
