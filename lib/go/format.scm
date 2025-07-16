@@ -148,7 +148,12 @@
                                    chars args))
                       ((#\v)
                        (format-arg right-align padding width
-                                   any->string
+                                   (lambda (arg)
+                                     (cond
+                                      ((boolean? arg)
+                                       (if arg "true" "false"))
+                                      (else
+                                       (any->string arg))))
                                    chars args))
                       ((#\x)
                        (format-arg right-align padding width
