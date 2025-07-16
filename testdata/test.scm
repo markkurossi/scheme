@@ -73,7 +73,8 @@
 
 (runner 'section "11. Base library")
 
-;; XXX 11.1. Base types
+(load "test-11-01-base-types.scm")
+
 ;; XXX 11.2. Definitions
 ;; XXX 11.3. Bodies
 
