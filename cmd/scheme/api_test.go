@@ -51,3 +51,34 @@ func TestAPI(t *testing.T) {
 		t.Errorf("expected 42, got %v", number)
 	}
 }
+
+func TestAPIGuard(t *testing.T) {
+	scm, err := scheme.New()
+	if err != nil {
+		t.Fatalf("scheme.New(): %v", err)
+	}
+
+	v, err := scm.Eval("{data}", strings.NewReader(`
+(define (foo)
+  (guard (con (else (raise con)))
+         #t))
+`))
+	if err != nil {
+		t.Fatalf("scheme.Eval: %v", err)
+	}
+	f, err := scm.Global("foo")
+	if err != nil {
+		t.Fatalf("scm.Global: %v", err)
+	}
+	v, err = scm.Apply(f, nil)
+	if err != nil {
+		t.Fatalf("scm.Apply: %v", err)
+	}
+	b, ok := v.(scheme.Boolean)
+	if !ok {
+		t.Fatalf("unexpected result: %v", v)
+	}
+	if !bool(b) {
+		t.Fatalf("unexpected result: %v", b)
+	}
+}

@@ -437,6 +437,8 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			frame.Index = len(scm.stack)
 			frame.Next = scm.fp
 			frame.Toplevel = instr.I != 0
+			frame.Tail = 0
+			frame.Handler = nil
 			frame.Lambda = lambda
 
 			scm.stack[scm.sp] = frame
@@ -531,8 +533,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 						scm.sp = scm.fp + 1
 
 						// Make with-exception-handler call frame a
-						// top-level frame for thunk.
-						callFrame.Toplevel = true
+						// handler frame for thunk.
 						callFrame.Tail = int8(instr.I)
 						callFrame.Handler = handler
 						callFrame.Lambda = lambda
@@ -615,8 +616,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 				// Copy exception handler only if defined in the call
 				// frame. Otherwise we could override it from the
 				// recycled frame.
-				if callFrame.Toplevel {
-					nextFrame.Toplevel = callFrame.Toplevel
+				if callFrame.Handler != nil {
 					nextFrame.Tail = callFrame.Tail
 					nextFrame.Handler = callFrame.Handler
 				}
@@ -982,7 +982,7 @@ func (scm *Scheme) popToplevel() *Frame {
 				fp, scm.stack[fp], scm.stack[fp])
 			panic("corrupted stack")
 		}
-		if frame.Toplevel {
+		if frame.Toplevel || frame.Handler != nil {
 			scm.sp = fp
 			scm.fp = frame.Next
 			return frame
@@ -1090,7 +1090,7 @@ func (scm *Scheme) popFrame() bool {
 	frame.flNext = scm.frameFL
 	scm.frameFL = frame
 
-	return frame.Toplevel && frame.Handler == nil
+	return frame.Toplevel
 }
 
 // Frame implements a SCM call stack frame.
@@ -1161,8 +1161,12 @@ func (f *Frame) String() string {
 	if f.Toplevel {
 		toplevel = "#t"
 	}
-	return fmt.Sprintf("frame: next=%v, toplevel=%v, \u03BB=%v",
+	result := fmt.Sprintf("frame: next=%v, toplevel=%v, \u03BB=%v",
 		f.Next, toplevel, f.Lambda)
+	if f.Handler != nil {
+		result += fmt.Sprintf(", handler=%v", f.Handler)
+	}
+	return result
 }
 
 func (scm *Scheme) printStack() {
