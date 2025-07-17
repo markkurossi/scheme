@@ -67,7 +67,9 @@
         (lambda () (equal? 2 2))
         (lambda () (equal? (make-vector 5 'a)
                            (make-vector 5 'a)))
-        ;; XXX u8-list->bytevector
+        (lambda () (equal? '#vu8(1 2 3 4 5)
+                           (u8-list->bytevector
+                            '(1 2 3 4 5))))
         (lambda () (equal? (let* ((x (list 'a))
                                   (y (list 'a))
                                   (z (list x y)))

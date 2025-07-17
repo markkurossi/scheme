@@ -137,7 +137,7 @@ var rnrsBytevectorBuiltins = []Builtin{
 		},
 	},
 	{
-		Name:   "bytevector-fill",
+		Name:   "bytevector-fill!",
 		Args:   []string{"bytevector", "fill<int>"},
 		Return: types.Bytevector,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
@@ -257,6 +257,30 @@ var rnrsBytevectorBuiltins = []Builtin{
 			}
 
 			return MakeNumber(int(int8(v[k]))), nil
+		},
+	},
+	// XXX bytevector-u8-set!
+	// XXX bytevector-s8-set!
+	// XXX bytevector->u8-list
+	{
+		Name:   "u8-list->bytevector",
+		Args:   []string{"pair"},
+		Return: types.Bytevector,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			var result Bytevector
+
+			err := Map(func(idx int, v Value) error {
+				b, err := Int64(v)
+				if err != nil || b < 0 || b > 255 {
+					return fmt.Errorf("invalid element %v: %v", idx, b)
+				}
+				result = append(result, byte(b))
+				return nil
+			}, args[0])
+			if err != nil {
+				return nil, err
+			}
+			return result, nil
 		},
 	},
 }

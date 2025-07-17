@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2023 Markku Rossi
+;;; Copyright (c) 2023-2025 Markku Rossi
 ;;;
 ;;; All rights reserved.
 ;;;
@@ -30,7 +30,7 @@
           (lambda () (not (bytevector=? #vu8(1 2 3) #vu8())))
           )
   (runner 'test "bytevector-fill"
-          (lambda () (bytevector=? (bytevector-fill (make-bytevector 5) 42)
+          (lambda () (bytevector=? (bytevector-fill! (make-bytevector 5) 42)
                                    #vu8(42 42 42 42 42)))
           )
   (runner 'test "bytevector-copy!"
