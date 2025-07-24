@@ -220,6 +220,8 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 				return p.parseAnd(env, list, tail, captures)
 			case "or":
 				return p.parseOr(env, list, tail, captures)
+			case "define-syntax":
+				return p.parseMacro(env, MacroDefine, list)
 
 			case "begin":
 				seq := &ASTSequence{
