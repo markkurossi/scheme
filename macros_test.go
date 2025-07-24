@@ -13,19 +13,28 @@ import (
 )
 
 var macroPatternTests = []struct {
-	symbol  string
 	pattern string
 	source  string
 }{
 	{
-		symbol:  "def",
 		pattern: `(def f (p ...) body)`,
 		source:  `(def f (x) (+ x 42))`,
 	},
 	{
-		symbol:  "def",
 		pattern: `(def _ f (p ...) body)`,
 		source:  `(def "comment" f (x) (+ x 42))`,
+	},
+	{
+		pattern: `(bind-to-zero id)`,
+		source:  `(bind-to-zero x)`,
+	},
+	{
+		pattern: `(when test result1 result2 ...)`,
+		source:  `(when #t (display "true") (newline))`,
+	},
+	{
+		pattern: `(unless test result1 result2 ...)`,
+		source:  `(unless #t (display "true\n"))`,
 	},
 }
 
@@ -39,7 +48,15 @@ func TestMacroPattern(t *testing.T) {
 		macro := &ASTMacro{
 			Literals: make(map[string]bool),
 		}
-		macro.Literals[test.symbol] = true
+		pair, ok := v.(Pair)
+		if !ok {
+			t.Fatalf("expected pair: %v", v)
+		}
+		sym, ok := pair.Car().(*Symbol)
+		if !ok {
+			t.Fatalf("expected symbol: %v", pair.Car())
+		}
+		macro.Literals[sym.Name] = true
 
 		srpattern, err := parser.parseSyntaxRule(macro, v)
 		if err != nil {

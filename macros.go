@@ -303,17 +303,14 @@ func (p MacroPatternParen) match(env *EvalEnv, pattern []MacroPattern,
 	if len(pattern) == 0 {
 		return tmpl, env, len(tmpl) == 0
 	}
-	if len(tmpl) == 0 {
-		return tmpl, nil, false
-	}
 
 	many, ok := pattern[0].(*MacroPatternMany)
 	if ok {
-		tmpl, env, ok = p.matchMany(env, many.p, pattern[1:], tmpl)
-		if ok {
-			// accumulate env
-		}
-		return tmpl, env, ok
+		return p.matchMany(env, many.p, pattern[1:], tmpl)
+	}
+
+	if len(tmpl) == 0 {
+		return tmpl, nil, false
 	}
 
 	var e *EvalEnv
@@ -375,7 +372,7 @@ func (p MacroPatternParen) matchMany(env *EvalEnv, many MacroPattern,
 			break
 		}
 	}
-	return t, nil, false
+	return t, nil, len(pattern) == 0 && len(tmpl) == 0
 }
 
 func (p MacroPatternParen) String() string {
