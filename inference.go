@@ -2093,7 +2093,7 @@ func (ast *ASTPragma) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 			return nil, nil, errf(ast, "unknown pragma '%s'", id.Name)
 		}
 	}
-	ast.t = types.Unspecified
+	ast.t = types.None
 	ast.it = &InferTypes{
 		Conclusive: true,
 		Types:      []*types.Type{ast.t},
@@ -2104,5 +2104,24 @@ func (ast *ASTPragma) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 
 // Inferred implements AST.Inferred.
 func (ast *ASTPragma) Inferred(env *InferEnv) error {
+	return nil
+}
+
+// Infer implements AST.Infer.
+func (ast *ASTMacro) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
+	env.inferer.Enter(ast)
+	defer env.inferer.Exit(ast)
+
+	ast.t = types.None
+	ast.it = &InferTypes{
+		Conclusive: true,
+		Types:      []*types.Type{ast.t},
+	}
+
+	return nil, ast.it, nil
+}
+
+// Inferred implements AST.Inferred.
+func (ast *ASTMacro) Inferred(env *InferEnv) error {
 	return nil
 }
