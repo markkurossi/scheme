@@ -593,11 +593,20 @@ func (p *Parser) parseLambda(env *Env, define bool, flags Flags,
 	var ErrNext = errors.New("next")
 
 	checkLambda = func(idx int, p Pair) error {
-		if idx == 0 && (IsSymbol(p.Car(), "lambda") ||
-			IsSymbol(p.Car(), "define") ||
-			IsSymbol(p.Car(), "guard")) {
-			lambdas++
-			return ErrNext
+		if idx == 0 {
+			if IsSymbol(p.Car(), "lambda") ||
+				IsSymbol(p.Car(), "define") ||
+				IsSymbol(p.Car(), "guard") {
+				lambdas++
+				return ErrNext
+			}
+			cdr, ok := p.Cdr().(Pair)
+			if ok && IsSymbol(p.Car(), "let") && Symbolp(cdr.Car()) {
+				// Named let captures as the loop is implemented as
+				// letrec+lambda.
+				lambdas++
+				return ErrNext
+			}
 		}
 		car, ok := p.Car().(Pair)
 		if !ok {
