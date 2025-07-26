@@ -469,8 +469,12 @@ func (inferred Inferred) Apply(t *types.Type) *types.Type {
 		t.Return = inferred.Apply(t.Return)
 
 	case types.EnumPair:
-		t.Car = inferred.Apply(t.Car)
-		t.Cdr = inferred.Apply(t.Cdr)
+		if t.Car != t {
+			t.Car = inferred.Apply(t.Car)
+		}
+		if t.Cdr != t {
+			t.Cdr = inferred.Apply(t.Cdr)
+		}
 
 	case types.EnumVector:
 		t.Element = inferred.Apply(t.Element)

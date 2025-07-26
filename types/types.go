@@ -370,7 +370,19 @@ func (t *Type) String() string {
 		}
 
 	case EnumPair:
-		result = result + "(" + t.Car.String() + " " + t.Cdr.String() + ")"
+		result = result + "("
+		if t.Car == t {
+			result += "\u21A9"
+		} else {
+			result += t.Car.String()
+		}
+		result += " "
+		if t.Cdr == t {
+			result += "\u21A9"
+		} else {
+			result += t.Cdr.String()
+		}
+		result += ")"
 
 	case EnumVector:
 		result = result + "(" + t.Element.String() + ")"
@@ -489,7 +501,17 @@ func (t *Type) IsA(o *Type) bool {
 		return t.Return.IsA(o.Return)
 
 	case EnumPair:
-		return t.Car.IsA(o.Car) && t.Cdr.IsA(o.Cdr)
+		if t.Car == t {
+			if o.Car != o {
+				return false
+			}
+		} else if !t.Car.IsA(o.Car) {
+			return false
+		}
+		if t.Cdr == t {
+			return o.Cdr == o
+		}
+		return t.Cdr.IsA(o.Cdr)
 
 	case EnumVector:
 		return t.Element.IsA(o.Element)
@@ -552,7 +574,17 @@ func (t *Type) IsKindOf(o *Type) bool {
 		return t.Return.IsKindOf(o.Return)
 
 	case EnumPair:
-		return t.Car.IsKindOf(o.Car) && t.Cdr.IsKindOf(o.Cdr)
+		if t.Car == t {
+			if o.Car != o {
+				return false
+			}
+		} else if !t.Car.IsKindOf(o.Car) {
+			return false
+		}
+		if t.Cdr == t {
+			return o.Cdr == o
+		}
+		return t.Cdr.IsKindOf(o.Cdr)
 
 	case EnumVector:
 		return t.Element.IsKindOf(o.Element)
