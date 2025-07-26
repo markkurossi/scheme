@@ -443,6 +443,13 @@ func (l *Lexer) Get() (*Token, error) {
 				l.UnreadRune()
 				return l.parseNumber()
 
+			case '!':
+				// #!<identifier>
+				_, err := l.readIdentifier()
+				if err != nil {
+					return nil, err
+				}
+
 			default:
 				l.UnreadRune()
 				return l.Token('#'), nil
@@ -543,23 +550,13 @@ func (l *Lexer) Get() (*Token, error) {
 
 		default:
 			if isIdentifierInitial(r) {
-				id := []rune{r}
-				for {
-					r, _, err := l.ReadRune()
-					if err != nil {
-						if err == io.EOF {
-							break
-						}
-						return nil, err
-					}
-					if !isIdentifierSubsequent(r) {
-						l.UnreadRune()
-						break
-					}
-					id = append(id, r)
+				l.UnreadRune()
+				id, err := l.readIdentifier()
+				if err != nil {
+					return nil, err
 				}
 				token := l.Token(TIdentifier)
-				token.Identifier = string(id)
+				token.Identifier = id
 				return token, nil
 			}
 			if isDigit10(r) {
@@ -573,6 +570,34 @@ func (l *Lexer) Get() (*Token, error) {
 			return nil, l.errf("unexpected character: %c", r)
 		}
 	}
+}
+
+func (l *Lexer) readIdentifier() (string, error) {
+	r, _, err := l.ReadRune()
+	if err != nil {
+		return "", err
+	}
+	if !isIdentifierInitial(r) {
+		l.UnreadRune()
+		return "", l.errf("invalid identifier initial: %c", r)
+	}
+
+	id := []rune{r}
+	for {
+		r, _, err := l.ReadRune()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return "", err
+		}
+		if !isIdentifierSubsequent(r) {
+			l.UnreadRune()
+			break
+		}
+		id = append(id, r)
+	}
+	return string(id), nil
 }
 
 func (l *Lexer) newNumber(exact, inexact, negative bool, ival *big.Int,
