@@ -51,24 +51,12 @@ var loadBuiltins = []Builtin{
 			Cdr: types.Any,
 		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			stack := scm.StackTrace()
-
-			var result, tail Pair
-
-			for _, frame := range stack {
-				p := NewPair(
-					NewPair(String(frame.Source),
-						MakeNumber(frame.Line)),
-					nil)
-				if tail == nil {
-					result = p
-				} else {
-					tail.SetCdr(p)
-				}
-				tail = p
+			var result ListBuilder
+			for _, frame := range scm.StackTrace() {
+				result.Add(NewPair(String(frame.Source),
+					MakeNumber(frame.Line)))
 			}
-
-			return result, nil
+			return result.Head, nil
 		},
 	},
 	{

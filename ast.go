@@ -905,11 +905,12 @@ func (ast *ASTPragma) Bytecode(lib *Library) error {
 // ASTMacro implements scheme macros.
 type ASTMacro struct {
 	Typed
-	From     Locator
-	Scope    MacroScope
-	Kind     MacroKind
-	Symbol   *Symbol
-	Literals map[string]bool
+	From      Locator
+	Scope     MacroScope
+	Kind      MacroKind
+	Symbol    *Symbol
+	Literals  map[string]*Symbol
+	Variables map[string]*Symbol
 }
 
 // MacroScope defines macro scopes.

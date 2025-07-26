@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -24,18 +24,11 @@ var rnrsProgramsBuiltins = []Builtin{
 			Cdr:  types.Any,
 		},
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			var head, tail Pair
-
+			var result ListBuilder
 			for _, arg := range os.Args {
-				pair := NewPair(String(arg), nil)
-				if tail == nil {
-					head = pair
-				} else {
-					tail.SetCdr(pair)
-				}
-				tail = pair
+				result.Add(String(arg))
 			}
-			return head, nil
+			return result.Head, nil
 		},
 	},
 	{

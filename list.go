@@ -49,18 +49,11 @@ func DerivePair(from Pair, car, cdr Value) Pair {
 
 // List creates a list from the argument values.
 func List(values ...Value) Value {
-	var head, tail Pair
+	var result ListBuilder
 	for _, v := range values {
-		pair := NewPair(v, nil)
-		if head == nil {
-			head = pair
-		} else {
-			tail.SetCdr(pair)
-		}
-		tail = pair
+		result.Add(v)
 	}
-
-	return head
+	return result.Head
 }
 
 // ListBuilder builds scheme lists.

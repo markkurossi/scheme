@@ -292,17 +292,11 @@ var stringBuiltins = []Builtin{
 			}
 			runes := []rune(string(str))
 
-			var head, tail Pair
+			var result ListBuilder
 			for i := 0; i < len(runes); i++ {
-				item := NewPair(Character(runes[i]), nil)
-				if head == nil {
-					head = item
-				} else {
-					tail.SetCdr(item)
-				}
-				tail = item
+				result.Add(Character(runes[i]))
 			}
-			return head, nil
+			return result.Head, nil
 		},
 	},
 	{

@@ -22,9 +22,11 @@ func (p *Parser) parseMacro(env *Env, scope MacroScope, list []Pair) (
 			scope, list[1].Car())
 	}
 	macro := &ASTMacro{
-		From:   list[0],
-		Scope:  scope,
-		Symbol: sym,
+		From:      list[0],
+		Scope:     scope,
+		Symbol:    sym,
+		Literals:  make(map[string]*Symbol),
+		Variables: make(map[string]*Symbol),
 	}
 
 	expr, ok := ListPairs(list[2].Car())
@@ -69,8 +71,7 @@ func (p *Parser) parseSyntaxRules(env *Env, macro *ASTMacro, list []Pair) (
 			list[0].Car(), list[1].Car())
 	}
 
-	macro.Literals = make(map[string]bool)
-	macro.Literals[macro.Symbol.Name] = true
+	macro.Literals[macro.Symbol.Name] = macro.Symbol
 
 	for _, id := range ids {
 		sym, ok := id.Car().(*Symbol)
@@ -88,7 +89,7 @@ func (p *Parser) parseSyntaxRules(env *Env, macro *ASTMacro, list []Pair) (
 				return nil, id.Errorf("%v: symbol %v already defined",
 					list[0].Car(), sym)
 			}
-			macro.Literals[sym.Name] = true
+			macro.Literals[sym.Name] = sym
 		}
 	}
 
@@ -110,6 +111,13 @@ func (p *Parser) parseSyntaxRules(env *Env, macro *ASTMacro, list []Pair) (
 				list[0].Car())
 		}
 		fmt.Printf("srpattern: %v\n", paren)
+
+		template, err := p.parseTemplate(macro, parts[1].Car(), 0)
+		if err != nil {
+			return nil, parts[1].Errorf("%v: invalid template: %v",
+				list[0].Car(), err)
+		}
+		fmt.Printf("template : %\n", template)
 	}
 
 	return nil, list[0].Errorf("%v not implemented yet", list[0].Car())
@@ -171,12 +179,23 @@ func (p *Parser) parseSyntaxRule(macro *ASTMacro, value Value) (
 		case "...":
 			return MacroPatternEllipsis("..."), nil
 		default:
+			macro.Variables[v.Name] = v
 			return MacroPatternVar(v.Name), nil
 		}
 
 	default:
 		return nil, fmt.Errorf("invalid syntax rule: %v", v)
 	}
+}
+
+func (p *Parser) parseTemplate(macro *ASTMacro, value Value, nesting int) (
+	Value, error) {
+	switch v := value.(type) {
+	case Pair:
+		// XXX
+		_ = v
+	}
+	return nil, fmt.Errorf("parseTemplate not implemented yet")
 }
 
 // MacroPattern implements macro patterns.
@@ -349,19 +368,11 @@ func (p MacroPatternParen) matchMany(env *EvalEnv, many MacroPattern,
 				if env == nil {
 					env = NewEvalEnv(nil)
 				}
-				var head, tail Pair
-
+				var result ListBuilder
 				for j := 0; j < i; j++ {
-					pair := DerivePair(tmpl[j], tmpl[j].Car(), nil)
-					if head == nil {
-						head = pair
-					} else {
-						tail.SetCdr(pair)
-					}
-					tail = pair
+					result.AddPair(DerivePair(tmpl[j], tmpl[j].Car(), nil))
 				}
-
-				env.Set(string(v), head)
+				env.Set(string(v), result.Head)
 			}
 			return t, env, ok
 		}

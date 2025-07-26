@@ -104,7 +104,7 @@ func evalQuasiquote(level int, value Value, env *EvalEnv) (Value, error) {
 		if !ok {
 			return v, nil
 		}
-		lb := new(ListBuilder)
+		var lb ListBuilder
 
 	list:
 		for _, p := range list {

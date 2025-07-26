@@ -295,17 +295,10 @@ func (i Instr) String() string {
 //	                   |
 //	                   v
 func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
-	var argsList, tail Pair
+	var argsList ListBuilder
 
 	for _, arg := range args {
-		item := NewPair(arg, nil)
-
-		if argsList == nil {
-			argsList = item
-		} else {
-			tail.SetCdr(item)
-		}
-		tail = item
+		argsList.Add(arg)
 	}
 
 	var err error
@@ -319,7 +312,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 		},
 		{
 			Op: OpConst,
-			V:  argsList,
+			V:  argsList.Head,
 		},
 		{
 			Op: OpPushA,
@@ -1292,17 +1285,11 @@ var vmBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("invalid error: %v", args[0])
 			}
-			var head, tail Pair
+			var result ListBuilder
 			for _, irritant := range err.irritants {
-				item := NewPair(irritant, nil)
-				if head == nil {
-					head = item
-				} else {
-					tail.SetCdr(item)
-				}
-				tail = item
+				result.Add(irritant)
 			}
-			return head, nil
+			return result.Head, nil
 		},
 	},
 	{

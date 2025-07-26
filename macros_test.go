@@ -46,7 +46,8 @@ func TestMacroPattern(t *testing.T) {
 		}
 		parser := NewParser(nil)
 		macro := &ASTMacro{
-			Literals: make(map[string]bool),
+			Literals:  make(map[string]*Symbol),
+			Variables: make(map[string]*Symbol),
 		}
 		pair, ok := v.(Pair)
 		if !ok {
@@ -56,13 +57,18 @@ func TestMacroPattern(t *testing.T) {
 		if !ok {
 			t.Fatalf("expected symbol: %v", pair.Car())
 		}
-		macro.Literals[sym.Name] = true
+		macro.Literals[sym.Name] = sym
 
 		srpattern, err := parser.parseSyntaxRule(macro, v)
 		if err != nil {
 			t.Fatal(err)
 		}
 		fmt.Printf("%v => %v\n", test.pattern, srpattern)
+		fmt.Printf(" - variables:")
+		for k := range macro.Variables {
+			fmt.Printf(" %v", k)
+		}
+		fmt.Println()
 
 		v, err = parseSexpr(test.source)
 		if err != nil {
