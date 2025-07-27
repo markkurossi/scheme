@@ -105,22 +105,22 @@ func (p *Parser) parseSyntaxRules(env *Env, macro *ASTMacro, list []Pair) (
 			return nil, parts[0].Errorf("%v: invalid syntax rule pattern: %v",
 				list[0].Car(), err)
 		}
-		paren, ok := srpattern.(*MacroPatternParen)
+		_, ok = srpattern.(*MacroPatternParen)
 		if !ok {
 			return nil, parts[0].Errorf("%v: invalid syntax rule pattern",
 				list[0].Car())
 		}
-		fmt.Printf("srpattern: %v\n", paren)
+		macro.Pattern = srpattern
 
-		template, err := p.parseTemplate(macro, parts[1].Car(), 0)
+		template, err := p.parseTemplate(macro, parts[1].Car(), 0, false)
 		if err != nil {
 			return nil, parts[1].Errorf("%v: invalid template: %v",
 				list[0].Car(), err)
 		}
-		fmt.Printf("template : %\n", template)
+		macro.Template = template
 	}
 
-	return nil, list[0].Errorf("%v not implemented yet", list[0].Car())
+	return macro, nil
 }
 
 func (p *Parser) parseSyntaxRule(macro *ASTMacro, value Value) (
@@ -188,14 +188,75 @@ func (p *Parser) parseSyntaxRule(macro *ASTMacro, value Value) (
 	}
 }
 
-func (p *Parser) parseTemplate(macro *ASTMacro, value Value, nesting int) (
-	Value, error) {
+func (p *Parser) parseTemplate(macro *ASTMacro, value Value, nesting int,
+	splicing bool) (Value, error) {
+
 	switch v := value.(type) {
 	case Pair:
-		// XXX
-		_ = v
+		nesting++
+
+		var result ListBuilder
+
+		for v != nil {
+			this := v.Car()
+
+			var splicing bool
+
+			next, ok := v.Cdr().(Pair)
+			if ok && IsSymbol(next.Car(), "...") {
+				splicing = true
+				value = next.Cdr()
+			} else {
+				value = v.Cdr()
+			}
+			car, err := p.parseTemplate(macro, this, nesting, splicing)
+			if err != nil {
+				return nil, err
+			}
+			result.AddPair(DerivePair(v, car, nil))
+
+			switch cdr := value.(type) {
+			case Pair:
+				v = cdr
+			case nil:
+				v = nil
+			default:
+				cdrv, err := p.parseTemplate(macro, cdr, nesting, false)
+				if err != nil {
+					return nil, err
+				}
+				result.Tail.SetCdr(cdrv)
+				v = nil
+			}
+		}
+		var qq ListBuilder
+		qq.Add(NewSymbol("quasiquote"))
+		qq.Add(result.B())
+
+		return qq.B(), nil
+
+	case *Symbol:
+		_, ok := macro.Variables[v.Name]
+		if !ok {
+			return v, nil
+		}
+		var result Value = v
+
+		for i := 0; i < nesting; i++ {
+			var uq ListBuilder
+			if i == 0 && splicing {
+				uq.Add(NewSymbol("unquote-splicing"))
+			} else {
+				uq.Add(NewSymbol("unquote"))
+			}
+			uq.Add(result)
+			result = uq.B()
+		}
+		return result, nil
+
+	default:
+		return v, nil
 	}
-	return nil, fmt.Errorf("parseTemplate not implemented yet")
 }
 
 // MacroPattern implements macro patterns.
@@ -372,13 +433,13 @@ func (p MacroPatternParen) matchMany(env *EvalEnv, many MacroPattern,
 				for j := 0; j < i; j++ {
 					result.AddPair(DerivePair(tmpl[j], tmpl[j].Car(), nil))
 				}
-				env.Set(string(v), result.Head)
+				env.Set(string(v), result.B())
 			}
 			return t, env, ok
 		}
 
 		// Try one more match of `many'.
-		t, env, ok = many.Match(t)
+		t, _, ok = many.Match(t)
 		if !ok {
 			break
 		}

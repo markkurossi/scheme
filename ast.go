@@ -910,6 +910,8 @@ type ASTMacro struct {
 	Kind      MacroKind
 	Symbol    *Symbol
 	Literals  map[string]*Symbol
+	Pattern   MacroPattern
+	Template  Value
 	Variables map[string]*Symbol
 }
 

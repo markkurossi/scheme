@@ -17,24 +17,46 @@ var macroPatternTests = []struct {
 	source  string
 }{
 	{
-		pattern: `(def f (p ...) body)`,
-		source:  `(def f (x) (+ x 42))`,
+		pattern: `
+(define-syntax def
+  (syntax-rules ()
+    ((def f (p ...) body)
+     (define (f p ...)
+       (body)))))`,
+		source: `(def f (x) (+ x 42))`,
 	},
 	{
-		pattern: `(def _ f (p ...) body)`,
-		source:  `(def "comment" f (x) (+ x 42))`,
+		pattern: `
+(define-syntax def
+  (syntax-rules ()
+    ((def _ f (p ...) body)
+     (define (f p ...)
+       body))))`,
+		source: `(def "comment" f (x) (+ x 42))`,
 	},
 	{
-		pattern: `(bind-to-zero id)`,
-		source:  `(bind-to-zero x)`,
+		pattern: `
+(define-syntax bind-to-zero
+  (syntax-rules ()
+    ((bind-to-zero id)
+     (define id 0))))`,
+		source: `(bind-to-zero x)`,
 	},
 	{
-		pattern: `(when test result1 result2 ...)`,
-		source:  `(when #t (display "true") (newline))`,
+		pattern: `
+(define-syntax when
+  (syntax-rules ()
+    ((when test result1 result2 ...)
+     (if test (begin result1 result2 ...)))))`,
+		source: `(when #t (display "true") (newline))`,
 	},
 	{
-		pattern: `(unless test result1 result2 ...)`,
-		source:  `(unless #t (display "true\n"))`,
+		pattern: `
+(define-syntax unless
+  (syntax-rules()
+    ((unless test result1 result2 ...)
+     (if (not test) (begin result1 result2 ...)))))`,
+		source: `(unless #t (display "true\n"))`,
 	},
 }
 
@@ -45,26 +67,19 @@ func TestMacroPattern(t *testing.T) {
 			t.Fatal(err)
 		}
 		parser := NewParser(nil)
-		macro := &ASTMacro{
-			Literals:  make(map[string]*Symbol),
-			Variables: make(map[string]*Symbol),
-		}
-		pair, ok := v.(Pair)
-		if !ok {
-			t.Fatalf("expected pair: %v", v)
-		}
-		sym, ok := pair.Car().(*Symbol)
-		if !ok {
-			t.Fatalf("expected symbol: %v", pair.Car())
-		}
-		macro.Literals[sym.Name] = sym
 
-		srpattern, err := parser.parseSyntaxRule(macro, v)
-		if err != nil {
-			t.Fatal(err)
+		list, ok := ListPairs(v)
+		if !ok {
+			t.Fatalf("invalid value: %v", v)
 		}
-		fmt.Printf("%v => %v\n", test.pattern, srpattern)
-		fmt.Printf(" - variables:")
+
+		ast, err := parser.parseMacro(nil, MacroDefine, list)
+		if err != nil {
+			t.Fatalf("test-%v: %v", idx, err)
+		}
+		macro := ast.(*ASTMacro)
+
+		fmt.Printf("test-%v: variables:", idx)
 		for k := range macro.Variables {
 			fmt.Printf(" %v", k)
 		}
@@ -75,17 +90,18 @@ func TestMacroPattern(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		_, env, ok := srpattern.Match([]Pair{
+		_, env, ok := macro.Pattern.Match([]Pair{
 			NewPair(v, nil),
 		})
 		if !ok {
 			t.Errorf("test-%v: no match", idx)
 		}
 		if env != nil {
-			fmt.Printf("matches:\n")
+			fmt.Printf("test-%v: matches:", idx)
 			for k, v := range env.bindings {
-				fmt.Printf(" - %-10v: %v\n", k, v)
+				fmt.Printf(" %v=%v", k, v)
 			}
+			fmt.Println()
 		}
 	}
 }
