@@ -905,14 +905,13 @@ func (ast *ASTPragma) Bytecode(lib *Library) error {
 // ASTMacro implements scheme macros.
 type ASTMacro struct {
 	Typed
-	From      Locator
-	Scope     MacroScope
-	Kind      MacroKind
-	Symbol    *Symbol
-	Literals  map[string]*Symbol
-	Pattern   MacroPattern
-	Template  Value
-	Variables map[string]*Symbol
+	From        Locator
+	Scope       MacroScope
+	Kind        MacroKind
+	Symbol      *Symbol
+	Literals    map[string]*Symbol
+	Variables   map[string]*Symbol
+	SyntaxRules []*SyntaxRule
 }
 
 // MacroScope defines macro scopes.
@@ -948,6 +947,12 @@ const (
 	MacroIdentifierSyntax
 	MacroSyntaxCase
 )
+
+// SyntaxRule implements macro syntax rules.
+type SyntaxRule struct {
+	Pattern  MacroPattern
+	Template Value
+}
 
 // Locator implements AST.Locator.
 func (ast *ASTMacro) Locator() Locator {

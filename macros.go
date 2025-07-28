@@ -10,6 +10,20 @@ import (
 	"fmt"
 )
 
+// Match matches the macro with the value.
+func (ast *ASTMacro) Match(v Value) (*SyntaxRule, *EvalEnv) {
+	input := []Pair{
+		NewPair(v, nil),
+	}
+	for _, rule := range ast.SyntaxRules {
+		_, env, ok := rule.Pattern.Match(input)
+		if ok {
+			return rule, env
+		}
+	}
+	return nil, nil
+}
+
 func (p *Parser) parseMacro(env *Env, scope MacroScope, list []Pair) (
 	AST, error) {
 
@@ -54,7 +68,6 @@ func (p *Parser) parseMacro(env *Env, scope MacroScope, list []Pair) (
 		return nil, expr[0].Errorf("%v: invalid macro syntax: %v",
 			scope, kind.Name)
 	}
-
 }
 
 func (p *Parser) parseSyntaxRules(env *Env, macro *ASTMacro, list []Pair) (
@@ -110,14 +123,17 @@ func (p *Parser) parseSyntaxRules(env *Env, macro *ASTMacro, list []Pair) (
 			return nil, parts[0].Errorf("%v: invalid syntax rule pattern",
 				list[0].Car())
 		}
-		macro.Pattern = srpattern
 
 		template, err := p.parseTemplate(macro, parts[1].Car(), 0, false)
 		if err != nil {
 			return nil, parts[1].Errorf("%v: invalid template: %v",
 				list[0].Car(), err)
 		}
-		macro.Template = template
+
+		macro.SyntaxRules = append(macro.SyntaxRules, &SyntaxRule{
+			Pattern:  srpattern,
+			Template: template,
+		})
 	}
 
 	return macro, nil

@@ -7,7 +7,6 @@
 package scheme
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 )
@@ -15,6 +14,7 @@ import (
 var macroPatternTests = []struct {
 	pattern string
 	source  string
+	result  string
 }{
 	{
 		pattern: `
@@ -22,8 +22,9 @@ var macroPatternTests = []struct {
   (syntax-rules ()
     ((def f (p ...) body)
      (define (f p ...)
-       (body)))))`,
+       body))))`,
 		source: `(def f (x) (+ x 42))`,
+		result: `(define (f x) (+ x 42))`,
 	},
 	{
 		pattern: `
@@ -33,6 +34,7 @@ var macroPatternTests = []struct {
      (define (f p ...)
        body))))`,
 		source: `(def "comment" f (x) (+ x 42))`,
+		result: `(define (f x) (+ x 42))`,
 	},
 	{
 		pattern: `
@@ -41,6 +43,7 @@ var macroPatternTests = []struct {
     ((bind-to-zero id)
      (define id 0))))`,
 		source: `(bind-to-zero x)`,
+		result: `(define x 0)`,
 	},
 	{
 		pattern: `
@@ -49,6 +52,7 @@ var macroPatternTests = []struct {
     ((when test result1 result2 ...)
      (if test (begin result1 result2 ...)))))`,
 		source: `(when #t (display "true") (newline))`,
+		result: `(if #t (begin (display "true") (newline)))`,
 	},
 	{
 		pattern: `
@@ -57,6 +61,7 @@ var macroPatternTests = []struct {
     ((unless test result1 result2 ...)
      (if (not test) (begin result1 result2 ...)))))`,
 		source: `(unless #t (display "true\n"))`,
+		result: `(if (not #t) (begin (display "true\n")))`,
 	},
 }
 
@@ -79,29 +84,30 @@ func TestMacroPattern(t *testing.T) {
 		}
 		macro := ast.(*ASTMacro)
 
-		fmt.Printf("test-%v: variables:", idx)
-		for k := range macro.Variables {
-			fmt.Printf(" %v", k)
-		}
-		fmt.Println()
-
 		v, err = parseSexpr(test.source)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		_, env, ok := macro.Pattern.Match([]Pair{
-			NewPair(v, nil),
-		})
-		if !ok {
+		rule, env := macro.Match(v)
+		if rule == nil {
 			t.Errorf("test-%v: no match", idx)
+			continue
 		}
-		if env != nil {
-			fmt.Printf("test-%v: matches:", idx)
-			for k, v := range env.bindings {
-				fmt.Printf(" %v=%v", k, v)
-			}
-			fmt.Println()
+		expanded, err := Eval(rule.Template, env)
+		if err != nil {
+			t.Errorf("test-%v: template expansion failed: %v", idx, err)
+			continue
+		}
+
+		expected, err := parseSexpr(test.result)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !Equal(expanded, expected) {
+			t.Errorf("test-%v: expansion failed: got %v, expected %v",
+				idx, expanded, expected)
 		}
 	}
 }
