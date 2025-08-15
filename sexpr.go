@@ -14,15 +14,23 @@ import (
 	"strings"
 )
 
+// ErrSexprNext signals the S-expression parser to parse the next
+// expression. This error can be returned from the SexprParser.Filter.
+var ErrSexprNext = errors.New("next-sexpr")
+
 // SexprParser implements S-expression parser.
 type SexprParser struct {
-	lexer *Lexer
+	lexer  *Lexer
+	Filter func(v Value) (Value, error)
 }
 
 // NewSexprParser creates a new parser for the input file.
 func NewSexprParser(source string, in io.Reader) *SexprParser {
 	return &SexprParser{
 		lexer: NewLexer(source, in),
+		Filter: func(v Value) (Value, error) {
+			return v, nil
+		},
 	}
 }
 
@@ -64,6 +72,20 @@ func (p *SexprParser) Infof(format string, a ...interface{}) {
 
 // Next parses the next value.
 func (p *SexprParser) Next() (Value, error) {
+	for {
+		v, err := p.parseNext()
+		if err != nil {
+			return nil, err
+		}
+		v, err = p.Filter(v)
+		if err == ErrSexprNext {
+			continue
+		}
+		return v, err
+	}
+}
+
+func (p *SexprParser) parseNext() (Value, error) {
 	t, err := p.lexer.Get()
 	if err != nil {
 		return nil, err

@@ -32,6 +32,7 @@ type Scheme struct {
 	Stderr  *Port
 	Parsing bool
 
+	macros     map[string]*Macro
 	hasRuntime bool
 
 	nextTypeVar int
@@ -109,6 +110,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 		Params:  params,
 		Stdout:  NewPort(os.Stdout),
 		Stderr:  NewPort(os.Stderr),
+		macros:  make(map[string]*Macro),
 		stack:   make([]Value, 4096), // XXX initial stack depth
 		symbols: make(map[string]*Symbol),
 	}

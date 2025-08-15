@@ -2110,22 +2110,3 @@ func (ast *ASTPragma) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 func (ast *ASTPragma) Inferred(env *InferEnv) error {
 	return nil
 }
-
-// Infer implements AST.Infer.
-func (ast *ASTMacro) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
-	env.inferer.Enter(ast)
-	defer env.inferer.Exit(ast)
-
-	ast.t = types.None
-	ast.it = &InferTypes{
-		Conclusive: true,
-		Types:      []*types.Type{ast.t},
-	}
-
-	return nil, ast.it, nil
-}
-
-// Inferred implements AST.Inferred.
-func (ast *ASTMacro) Inferred(env *InferEnv) error {
-	return nil
-}

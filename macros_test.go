@@ -78,11 +78,10 @@ func TestMacroPattern(t *testing.T) {
 			t.Fatalf("invalid value: %v", v)
 		}
 
-		ast, err := parser.parseMacro(nil, MacroDefine, list)
+		macro, err := parser.parseMacro(MacroDefine, list)
 		if err != nil {
 			t.Fatalf("test-%v: %v", idx, err)
 		}
-		macro := ast.(*ASTMacro)
 
 		v, err = parseSexpr(test.source)
 		if err != nil {

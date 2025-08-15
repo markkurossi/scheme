@@ -76,3 +76,15 @@
                 (apply f (scheme::list-heads lists))
                 (iter (not even) (scheme::list-tails lists)))))))
     (iter #t lists)))
+
+(define-syntax when
+  (syntax-rules ()
+    ((when test expr1 exprn ...)
+     (if test
+         (begin expr1 exprn ...)))))
+
+(define-syntax unless
+  (syntax-rules ()
+    ((unless test expr1 exprn ...)
+     (if (not test)
+         (begin expr1 exprn ...)))))

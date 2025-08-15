@@ -43,7 +43,6 @@ var (
 	_ AST = &ASTAnd{}
 	_ AST = &ASTOr{}
 	_ AST = &ASTPragma{}
-	_ AST = &ASTMacro{}
 )
 
 // Typed implements AST type information.
@@ -899,68 +898,6 @@ func (ast *ASTPragma) Locator() Locator {
 
 // Bytecode implements AST.Bytecode.
 func (ast *ASTPragma) Bytecode(lib *Library) error {
-	return nil
-}
-
-// ASTMacro implements scheme macros.
-type ASTMacro struct {
-	Typed
-	From        Locator
-	Scope       MacroScope
-	Kind        MacroKind
-	Symbol      *Symbol
-	Literals    map[string]*Symbol
-	Variables   map[string]*Symbol
-	SyntaxRules []*SyntaxRule
-}
-
-// MacroScope defines macro scopes.
-type MacroScope int
-
-// Macro scopes.
-const (
-	MacroDefine MacroScope = iota
-	MacroLet
-	MacroLetrec
-)
-
-var macroScopeNames = map[MacroScope]string{
-	MacroDefine: "define-syntax",
-	MacroLet:    "let-syntax",
-	MacroLetrec: "letrec-syntax",
-}
-
-func (scope MacroScope) String() string {
-	name, ok := macroScopeNames[scope]
-	if ok {
-		return name
-	}
-	panic("unknown MacroScope")
-}
-
-// MacroKind specifies the macro type.
-type MacroKind int
-
-// Macro types.
-const (
-	MacroSyntaxRules MacroKind = iota
-	MacroIdentifierSyntax
-	MacroSyntaxCase
-)
-
-// SyntaxRule implements macro syntax rules.
-type SyntaxRule struct {
-	Pattern  MacroPattern
-	Template Value
-}
-
-// Locator implements AST.Locator.
-func (ast *ASTMacro) Locator() Locator {
-	return ast.From
-}
-
-// Bytecode implements AST.Bytecode.
-func (ast *ASTMacro) Bytecode(lib *Library) error {
 	return nil
 }
 

@@ -15,7 +15,7 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
-var qqNamedLet, qqGuard, qqGuardRaise, qqUnless Value
+var qqNamedLet, qqGuard, qqGuardRaise Value
 
 func init() {
 	qqNamedLet = MustParseSexpr(
@@ -30,9 +30,6 @@ func init() {
 			"`(lambda `(,,,variable)\n" +
 			"  `(cond ,,,@conditions `(else `(raise ,,,,,variable))))\n" +
 			"`(lambda () ,,@body))")
-	qqUnless = MustParseSexpr(
-		"`(if `(not ,,condition)\n" +
-			"`(begin ,,@body))")
 }
 
 // Parser implements the byte-code compiler.
@@ -56,6 +53,10 @@ func NewParser(scm *Scheme) *Parser {
 // Parse parses the source.
 func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 	sexpr := NewSexprParser(source, in)
+
+	sexpr.Filter = func(v Value) (Value, error) {
+		return p.filterSexpr(v)
+	}
 
 	p.source = source
 	p.scm.Parsing = true
@@ -176,6 +177,57 @@ func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 	return library, nil
 }
 
+func (p *Parser) filterSexpr(value Value) (Value, error) {
+	switch v := value.(type) {
+	case *Symbol:
+		return v, nil
+
+	case Pair:
+		list, ok := ListPairs(v)
+		if !ok {
+			return v, nil
+		}
+		if len(list) == 0 {
+			return v, nil
+		}
+		sym, ok := list[0].Car().(*Symbol)
+		if !ok {
+			return v, nil
+		}
+		macro, ok := p.scm.macros[sym.Name]
+		if ok {
+			rule, env := macro.Match(v)
+			if rule == nil {
+				return nil, sym.Point.Errorf("%s: no matching syntax rule", sym)
+			}
+			expanded, err := Eval(rule.Template, env)
+			if err != nil {
+				return nil, err
+			}
+			return expanded, nil
+		}
+		switch sym.Name {
+		case "define-syntax":
+			macro, err := p.parseMacro(MacroDefine, list)
+			if err != nil {
+				return nil, err
+			}
+			_, ok := p.scm.macros[macro.Symbol.Name]
+			if ok {
+				return nil, fmt.Errorf("macro %v redefined", macro.Symbol.Name)
+			}
+			p.scm.macros[macro.Symbol.Name] = macro
+			return nil, ErrSexprNext
+
+		default:
+			return v, nil
+		}
+
+	default:
+		return v, nil
+	}
+}
+
 // parseValue parses the value into AST. XXX we should run the macro
 // expansion (and the hard-coded ones too (named let, guard)) before
 // calling parseValue. Now we have to detect closures in parseLambda
@@ -220,8 +272,6 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 				return p.parseAnd(env, list, tail, captures)
 			case "or":
 				return p.parseOr(env, list, tail, captures)
-			case "define-syntax":
-				return p.parseMacro(env, MacroDefine, list)
 
 			case "begin":
 				seq := &ASTSequence{
@@ -260,8 +310,6 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 
 			case "guard":
 				return p.parseGuard(env, list, tail, captures)
-			case "unless":
-				return p.parseUnless(env, list, tail, captures)
 			}
 		}
 
@@ -1173,25 +1221,6 @@ func (p *Parser) parseGuard(env *Env, list []Pair,
 	qqEnv.Set("body", list[2])
 
 	n, err := Eval(qq, qqEnv)
-	if err != nil {
-		return nil, err
-	}
-	PatchLocation(n, list[0].From())
-
-	return p.parseValue(env, list[0], n, tail, captures)
-}
-
-func (p *Parser) parseUnless(env *Env, list []Pair,
-	tail, captures bool) (AST, error) {
-	if len(list) < 3 {
-		return nil, list[0].Errorf("unless: missing body")
-	}
-
-	qqEnv := NewEvalEnv(nil)
-	qqEnv.Set("condition", list[1].Car())
-	qqEnv.Set("body", list[2])
-
-	n, err := Eval(qqUnless, qqEnv)
 	if err != nil {
 		return nil, err
 	}

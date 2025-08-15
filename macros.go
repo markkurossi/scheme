@@ -10,8 +10,59 @@ import (
 	"fmt"
 )
 
+// Macro implements scheme macros.
+type Macro struct {
+	From        Locator
+	Scope       MacroScope
+	Kind        MacroKind
+	Symbol      *Symbol
+	Literals    map[string]*Symbol
+	Variables   map[string]*Symbol
+	SyntaxRules []*SyntaxRule
+}
+
+// MacroScope defines macro scopes.
+type MacroScope int
+
+// Macro scopes.
+const (
+	MacroDefine MacroScope = iota
+	MacroLet
+	MacroLetrec
+)
+
+var macroScopeNames = map[MacroScope]string{
+	MacroDefine: "define-syntax",
+	MacroLet:    "let-syntax",
+	MacroLetrec: "letrec-syntax",
+}
+
+func (scope MacroScope) String() string {
+	name, ok := macroScopeNames[scope]
+	if ok {
+		return name
+	}
+	panic("unknown MacroScope")
+}
+
+// MacroKind specifies the macro type.
+type MacroKind int
+
+// Macro types.
+const (
+	MacroSyntaxRules MacroKind = iota
+	MacroIdentifierSyntax
+	MacroSyntaxCase
+)
+
+// SyntaxRule implements macro syntax rules.
+type SyntaxRule struct {
+	Pattern  MacroPattern
+	Template Value
+}
+
 // Match matches the macro with the value.
-func (ast *ASTMacro) Match(v Value) (*SyntaxRule, *EvalEnv) {
+func (ast *Macro) Match(v Value) (*SyntaxRule, *EvalEnv) {
 	input := []Pair{
 		NewPair(v, nil),
 	}
@@ -24,9 +75,7 @@ func (ast *ASTMacro) Match(v Value) (*SyntaxRule, *EvalEnv) {
 	return nil, nil
 }
 
-func (p *Parser) parseMacro(env *Env, scope MacroScope, list []Pair) (
-	AST, error) {
-
+func (p *Parser) parseMacro(scope MacroScope, list []Pair) (*Macro, error) {
 	if len(list) != 3 {
 		return nil, list[0].Errorf("%v: expected <keyword> <expression>", scope)
 	}
@@ -35,7 +84,7 @@ func (p *Parser) parseMacro(env *Env, scope MacroScope, list []Pair) (
 		return nil, list[1].Errorf("%v: not an identifier: %v",
 			scope, list[1].Car())
 	}
-	macro := &ASTMacro{
+	macro := &Macro{
 		From:      list[0],
 		Scope:     scope,
 		Symbol:    sym,
@@ -58,7 +107,7 @@ func (p *Parser) parseMacro(env *Env, scope MacroScope, list []Pair) (
 	}
 	switch kind.Name {
 	case "syntax-rules":
-		return p.parseSyntaxRules(env, macro, expr)
+		return p.parseSyntaxRules(macro, expr)
 
 	case "identifier-syntax":
 		return nil, expr[0].Errorf("%v: %v not implemented yet",
@@ -70,8 +119,7 @@ func (p *Parser) parseMacro(env *Env, scope MacroScope, list []Pair) (
 	}
 }
 
-func (p *Parser) parseSyntaxRules(env *Env, macro *ASTMacro, list []Pair) (
-	AST, error) {
+func (p *Parser) parseSyntaxRules(macro *Macro, list []Pair) (*Macro, error) {
 
 	if len(list) < 3 {
 		return nil,
@@ -139,7 +187,7 @@ func (p *Parser) parseSyntaxRules(env *Env, macro *ASTMacro, list []Pair) (
 	return macro, nil
 }
 
-func (p *Parser) parseSyntaxRule(macro *ASTMacro, value Value) (
+func (p *Parser) parseSyntaxRule(macro *Macro, value Value) (
 	MacroPattern, error) {
 
 	switch v := value.(type) {
@@ -204,7 +252,7 @@ func (p *Parser) parseSyntaxRule(macro *ASTMacro, value Value) (
 	}
 }
 
-func (p *Parser) parseTemplate(macro *ASTMacro, value Value, nesting int,
+func (p *Parser) parseTemplate(macro *Macro, value Value, nesting int,
 	splicing bool) (Value, error) {
 
 	switch v := value.(type) {

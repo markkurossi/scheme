@@ -398,9 +398,3 @@ func (ast *ASTPragma) PP(w pp.Writer) {
 	w.Printf(")")
 	w.Pop()
 }
-
-// PP implements AST.PP.
-func (ast *ASTMacro) PP(w pp.Writer) {
-	w.Printf("(xxx macro xxx")
-	w.Printf(")")
-}
