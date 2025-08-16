@@ -349,6 +349,24 @@ func (pair *LocationPair) Eq(o Value) bool {
 	return ok && pair == ov
 }
 
+// Unbox implements Value.Unbox.
+func (pair *LocationPair) Unbox() (Value, *types.Type) {
+	result := &LocationPair{
+		from:      pair.from,
+		to:        pair.to,
+		PlainPair: pair.PlainPair,
+	}
+	if result.car != nil {
+		v, _ := result.car.Unbox()
+		result.car = v
+	}
+	if result.cdr != nil {
+		v, _ := result.cdr.Unbox()
+		result.cdr = v
+	}
+	return result, pair.Type()
+}
+
 // Errorf implements Locator.Errorf.
 func (pair *LocationPair) Errorf(format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)

@@ -105,7 +105,7 @@ func (p *SexprParser) parseNext() (Value, error) {
 		if ok {
 			next = NewLocationPair(locator.From(), locator.To(), v, nil)
 		} else {
-			next = NewPair(v, nil)
+			next = NewLocationPair(p.lexer.tokenStart, p.lexer.point, v, nil)
 		}
 
 		var kw Value

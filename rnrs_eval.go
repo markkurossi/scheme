@@ -146,7 +146,7 @@ func evalQuasiquote(level int, value Value, env *EvalEnv) (Value, error) {
 			}
 			ilist, ok := ListPairs(pair)
 			if !ok {
-				lb.AddPair(NewLocationPair(p.From(), p.To(), item, nil))
+				lb.AddPair(NewLocationPair(pair.From(), pair.To(), item, nil))
 				continue
 			}
 
@@ -159,7 +159,7 @@ func evalQuasiquote(level int, value Value, env *EvalEnv) (Value, error) {
 				if err != nil {
 					return nil, err
 				}
-				lb.AddPair(NewLocationPair(p.From(), p.To(), unquoted, nil))
+				lb.AddPair(NewLocationPair(pair.From(), pair.To(), unquoted, nil))
 			}
 		}
 		return lb.B(), nil

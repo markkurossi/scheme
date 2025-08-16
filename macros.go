@@ -63,8 +63,15 @@ type SyntaxRule struct {
 
 // Match matches the macro with the value.
 func (ast *Macro) Match(v Value) (*SyntaxRule, *EvalEnv) {
+	var pair Pair
+	locator, ok := v.(Locator)
+	if ok {
+		pair = NewLocationPair(locator.From(), locator.To(), v, nil)
+	} else {
+		pair = NewPair(v, nil)
+	}
 	input := []Pair{
-		NewPair(v, nil),
+		pair,
 	}
 	for _, rule := range ast.SyntaxRules {
 		_, env, ok := rule.Pattern.Match(input)
@@ -258,6 +265,7 @@ func (p *Parser) parseTemplate(macro *Macro, value Value, nesting int,
 	switch v := value.(type) {
 	case Pair:
 		nesting++
+		head := v
 
 		var result ListBuilder
 
@@ -294,8 +302,8 @@ func (p *Parser) parseTemplate(macro *Macro, value Value, nesting int,
 			}
 		}
 		var qq ListBuilder
-		qq.Add(NewSymbol("quasiquote"))
-		qq.Add(result.B())
+		qq.AddPair(DerivePair(head, NewSymbol("quasiquote"), nil))
+		qq.AddPair(DerivePair(head, result.B(), nil))
 
 		return qq.B(), nil
 
@@ -309,11 +317,13 @@ func (p *Parser) parseTemplate(macro *Macro, value Value, nesting int,
 		for i := 0; i < nesting; i++ {
 			var uq ListBuilder
 			if i == 0 && splicing {
-				uq.Add(NewSymbol("unquote-splicing"))
+				uq.AddPair(NewLocationPair(v.Point, v.Point,
+					NewSymbol("unquote-splicing"), nil))
 			} else {
-				uq.Add(NewSymbol("unquote"))
+				uq.AddPair(NewLocationPair(v.Point, v.Point,
+					NewSymbol("unquote"), nil))
 			}
-			uq.Add(result)
+			uq.AddPair(NewLocationPair(v.Point, v.Point, result, nil))
 			result = uq.B()
 		}
 		return result, nil
