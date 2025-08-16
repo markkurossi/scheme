@@ -113,11 +113,11 @@ Any
      - [ ] xxx
    - [ ] 8. Top-level programs
    - [ ] 9. Primitive syntax
-     - [ ] 9.2. Macros
+     - [x] 9.2. Macros
    - [ ] 10. Expansion process
  - [ ] 11. Base Library `(rnrs base (6))`
    - [ ] 11.2.2. Syntax definitions
-     - [ ] define-syntax
+     - [x] define-syntax
    - [ ] 11.3. Bodies
    - [ ] 11.7. Arithmetic
      - [ ] complex?
@@ -206,7 +206,7 @@ Any
      - [X] vector-sort
      - [ ] vector-sort!
    - [ ] 5. Control structures `(rnrs control (6))`
-      - [ ] when
+      - [x] when
       - [x] unless
       - [ ] do
       - [ ] case-lambda
@@ -244,7 +244,7 @@ Any
    - [ ] 13. Hashtables `(rnrs hashtables (6))`
    - [ ] 14. Enumerations `(rnrs enums (6))`
    - [ ] 15. Composite library `(rnrs (6))`
-   - [ ] 16. Eval `(rnrs eval (6))`
+   - [x] 16. Eval `(rnrs eval (6))`
    - [X] 17. Mutable pairs `(rnrs mutable-pairs (6))`
    - [ ] 18. Mutable strings `(rnrs mutable-strings (6))`
 	 - [ ] string-set!
