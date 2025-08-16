@@ -88,3 +88,28 @@
     ((unless test expr1 exprn ...)
      (if (not test)
          (begin expr1 exprn ...)))))
+
+(define-syntax guard
+  (syntax-rules (else)
+    ((guard (var
+                condClause ...
+                (else elseBody ...))
+               body ...)
+     (with-exception-handler
+      (lambda (var)
+        (cond
+         condClause ...
+         (else elseBody ...)))
+      (lambda ()
+        body ...)))
+    ((guard (var
+                condClause ...)
+               body ...)
+     (with-exception-handler
+      (lambda (var)
+        (cond
+         condClause ...
+         (else (raise var))))
+      (lambda ()
+        body ...)))
+    ))

@@ -15,21 +15,12 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
-var qqNamedLet, qqGuard, qqGuardRaise Value
+var qqNamedLet Value
 
 func init() {
 	qqNamedLet = MustParseSexpr(
 		"`(letrec `(`(,,,name `(lambda ,,,,args ,,,,@body))) " +
 			"`(,,@init))")
-	qqGuard = MustParseSexpr(
-		"`(with-exception-handler\n" +
-			"`(lambda `(,,,variable) `(cond ,,,@conditions))\n" +
-			"`(lambda () ,,@body))")
-	qqGuardRaise = MustParseSexpr(
-		"`(with-exception-handler\n" +
-			"`(lambda `(,,,variable)\n" +
-			"  `(cond ,,,@conditions `(else `(raise ,,,,,variable))))\n" +
-			"`(lambda () ,,@body))")
 }
 
 // Parser implements the byte-code compiler.
@@ -228,10 +219,7 @@ func (p *Parser) filterSexpr(value Value) (Value, error) {
 	}
 }
 
-// parseValue parses the value into AST. XXX we should run the macro
-// expansion (and the hard-coded ones too (named let, guard)) before
-// calling parseValue. Now we have to detect closures in parseLambda
-// and it must also check the guard keyword.
+// parseValue parses the value into AST.
 func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 	tail, captures bool) (AST, error) {
 
@@ -307,9 +295,6 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 					return nil, v.Errorf("invalid scheme::apply: %v", v)
 				}
 				return p.parseApply(env, v, tail, captures)
-
-			case "guard":
-				return p.parseGuard(env, list, tail, captures)
 			}
 		}
 
@@ -643,8 +628,7 @@ func (p *Parser) parseLambda(env *Env, define bool, flags Flags,
 	checkLambda = func(idx int, p Pair) error {
 		if idx == 0 {
 			if IsSymbol(p.Car(), "lambda") ||
-				IsSymbol(p.Car(), "define") ||
-				IsSymbol(p.Car(), "guard") {
+				IsSymbol(p.Car(), "define") {
 				lambdas++
 				return ErrNext
 			}
@@ -1185,46 +1169,4 @@ func (p *Parser) parseOr(env *Env, list []Pair,
 	}
 
 	return ast, nil
-}
-
-func (p *Parser) parseGuard(env *Env, list []Pair,
-	tail, captures bool) (AST, error) {
-
-	// (guard (variable			=> (with-exception-handler
-	//         condClause...)        (lambda (variable)
-	//        body)                    (cond condClause...))
-	//                               (lambda ()
-	//                                 body))
-	if len(list) < 3 {
-		return nil, list[0].Errorf("guard: missing body")
-	}
-	clauses, ok := ListPairs(list[1].Car())
-	if !ok || len(clauses) < 2 {
-		return nil, list[1].Errorf("guard: invalid clauses")
-	}
-	if !Symbolp(clauses[0].Car()) {
-		return nil, clauses[0].Errorf("guard: invalid variable")
-	}
-	// Check if the clauses do not have else, then add (raise var).
-	var qq Value
-	last := clauses[len(clauses)-1]
-	car, ok := Car(last.Car(), true)
-	if ok && IsSymbol(car, "else") {
-		qq = qqGuard
-	} else {
-		qq = qqGuardRaise
-	}
-
-	qqEnv := NewEvalEnv(nil)
-	qqEnv.Set("variable", clauses[0].Car())
-	qqEnv.Set("conditions", clauses[1])
-	qqEnv.Set("body", list[2])
-
-	n, err := Eval(qq, qqEnv)
-	if err != nil {
-		return nil, err
-	}
-	PatchLocation(n, list[0].From())
-
-	return p.parseValue(env, list[0], n, tail, captures)
 }

@@ -361,6 +361,9 @@ type MacroPatternVar string
 
 // Match implements MacroPattern.Match.
 func (p MacroPatternVar) Match(tmpl []Pair) ([]Pair, *EvalEnv, bool) {
+	if len(tmpl) == 0 {
+		return tmpl, nil, false
+	}
 	env := NewEvalEnv(nil)
 	env.Set(string(p), tmpl[0].Car())
 
