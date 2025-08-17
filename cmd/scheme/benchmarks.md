@@ -17,6 +17,18 @@ Best version: cde886da0f7e3cc79909a86b049eab6a503f455d
 | Inline <=        |  0.270 |          | 1.3555 | 29.730 |          | 1.1971 |
 | {+,-}const       |  0.220 |          | 1.6636 | 24.023 |          | 1.4815 |
 
+Showing top 10 nodes out of 23
+      flat  flat%   sum%        cum   cum%
+    18.95s 83.22% 83.22%     21.81s 95.78%  github.com/markkurossi/scheme.(*Scheme).Apply
+     0.81s  3.56% 86.78%      0.81s  3.56%  runtime.pthread_cond_signal
+     0.74s  3.25% 90.03%      0.76s  3.34%  github.com/markkurossi/scheme.numGt
+     0.46s  2.02% 92.05%      0.98s  4.30%  github.com/markkurossi/scheme.numAdd
+     0.44s  1.93% 93.98%      0.44s  1.93%  github.com/markkurossi/scheme.(*Scheme).popFrame (inline)
+     0.38s  1.67% 95.65%      0.77s  3.38%  runtime.convT64
+     0.36s  1.58% 97.23%      0.39s  1.71%  runtime.mallocgcTiny
+     0.27s  1.19% 98.42%      0.27s  1.19%  github.com/markkurossi/scheme.IsTrue (inline)
+     0.18s  0.79% 99.21%      0.18s  0.79%  runtime.asyncPreempt
+         0     0% 99.21%     21.81s 95.78%  github.com/markkurossi/scheme.(*Scheme).Eval
 
 Master:
 
