@@ -19,6 +19,28 @@ type Macro struct {
 	Literals    map[string]*Symbol
 	Variables   map[string]*Symbol
 	SyntaxRules []*SyntaxRule
+	nextSymbol  int
+}
+
+// NextSymbol returns the next unused symbol name for the macro.
+func (macro *Macro) NextSymbol() string {
+	for {
+		name := fmt.Sprintf("_var%v", macro.nextSymbol)
+		macro.nextSymbol++
+
+		if macro.Symbol.Name == name {
+			continue
+		}
+		_, ok := macro.Literals[name]
+		if ok {
+			continue
+		}
+		_, ok = macro.Variables[name]
+		if ok {
+			continue
+		}
+		return name
+	}
 }
 
 // MacroScope defines macro scopes.
@@ -57,12 +79,72 @@ const (
 
 // SyntaxRule implements macro syntax rules.
 type SyntaxRule struct {
-	Pattern  MacroPattern
-	Template Value
+	Pattern      MacroPattern
+	Template     Value
+	SubTemplates []*SubTemplate
+}
+
+// Expand expands the syntax rule with the values from env.
+func (sr *SyntaxRule) Expand(env *EvalEnv) (Value, error) {
+	// Expand all sub templates.
+	for _, tmpl := range sr.SubTemplates {
+		expanded, err := tmpl.Expand(env)
+		if err != nil {
+			return nil, err
+		}
+		env.Set(tmpl.Name, expanded)
+	}
+	return Eval(sr.Template, env)
+}
+
+// SubTemplate implements a parenthized sub-template.
+type SubTemplate struct {
+	Name      string
+	Template  Value
+	Variables map[string]*Symbol
+}
+
+// Expand expands the sub-template with the values from env.
+func (tmpl *SubTemplate) Expand(env *EvalEnv) (Value, error) {
+	vars := make(map[string][]Pair)
+	length := -1
+
+	for k := range tmpl.Variables {
+		envValue, ok := env.Get(k)
+		if !ok {
+			return nil, fmt.Errorf("undefined symbol '%v'", k)
+		}
+		pairs, ok := ListPairs(envValue)
+		if !ok {
+			return nil, fmt.Errorf("invalid value for symbol '%v'", k)
+		}
+		if length < 0 {
+			length = len(pairs)
+		} else if length != len(pairs) {
+			return nil, fmt.Errorf("different value length for symbol '%v'", k)
+		}
+		vars[k] = pairs
+	}
+
+	// Expand template for all values.
+	var result ListBuilder
+	for i := 0; i < length; i++ {
+		e := NewEvalEnv(nil)
+		for k := range tmpl.Variables {
+			e.Set(k, vars[k][i].Car())
+		}
+		expanded, err := Eval(tmpl.Template, e)
+		if err != nil {
+			return nil, err
+		}
+		result.Add(expanded)
+	}
+
+	return result.B(), nil
 }
 
 // Match matches the macro with the value.
-func (ast *Macro) Match(v Value) (*SyntaxRule, *EvalEnv) {
+func (macro *Macro) Match(v Value) (*SyntaxRule, *EvalEnv) {
 	var pair Pair
 	locator, ok := v.(Locator)
 	if ok {
@@ -73,7 +155,7 @@ func (ast *Macro) Match(v Value) (*SyntaxRule, *EvalEnv) {
 	input := []Pair{
 		pair,
 	}
-	for _, rule := range ast.SyntaxRules {
+	for _, rule := range macro.SyntaxRules {
 		_, env, ok := rule.Pattern.Match(input)
 		if ok {
 			return rule, env
@@ -114,7 +196,7 @@ func (p *Parser) parseMacro(scope MacroScope, list []Pair) (*Macro, error) {
 	}
 	switch kind.Name {
 	case "syntax-rules":
-		return p.parseSyntaxRules(macro, expr)
+		return macro.parseSyntaxRules(expr)
 
 	case "identifier-syntax":
 		return nil, expr[0].Errorf("%v: %v not implemented yet",
@@ -126,7 +208,7 @@ func (p *Parser) parseMacro(scope MacroScope, list []Pair) (*Macro, error) {
 	}
 }
 
-func (p *Parser) parseSyntaxRules(macro *Macro, list []Pair) (*Macro, error) {
+func (macro *Macro) parseSyntaxRules(list []Pair) (*Macro, error) {
 
 	if len(list) < 3 {
 		return nil,
@@ -168,7 +250,8 @@ func (p *Parser) parseSyntaxRules(macro *Macro, list []Pair) (*Macro, error) {
 			return nil, list[i].Errorf("%v: expected (<srpattern> <template>)",
 				list[0].Car())
 		}
-		srpattern, err := p.parseSyntaxRule(macro, parts[0].Car())
+
+		srpattern, err := macro.parseSyntaxRule(parts[0].Car())
 		if err != nil {
 			return nil, parts[0].Errorf("%v: invalid syntax rule pattern: %v",
 				list[0].Car(), err)
@@ -179,23 +262,24 @@ func (p *Parser) parseSyntaxRules(macro *Macro, list []Pair) (*Macro, error) {
 				list[0].Car())
 		}
 
-		template, err := p.parseTemplate(macro, parts[1].Car(), 0, false)
+		sr := &SyntaxRule{
+			Pattern: srpattern,
+		}
+
+		template, err := macro.parseTemplate(sr, parts[1].Car(), 0, false, nil)
 		if err != nil {
 			return nil, parts[1].Errorf("%v: invalid template: %v",
 				list[0].Car(), err)
 		}
+		sr.Template = template
 
-		macro.SyntaxRules = append(macro.SyntaxRules, &SyntaxRule{
-			Pattern:  srpattern,
-			Template: template,
-		})
+		macro.SyntaxRules = append(macro.SyntaxRules, sr)
 	}
 
 	return macro, nil
 }
 
-func (p *Parser) parseSyntaxRule(macro *Macro, value Value) (
-	MacroPattern, error) {
+func (macro *Macro) parseSyntaxRule(value Value) (MacroPattern, error) {
 
 	switch v := value.(type) {
 	case Pair:
@@ -208,7 +292,7 @@ func (p *Parser) parseSyntaxRule(macro *Macro, value Value) (
 			return nil, fmt.Errorf("empty syntax rule")
 		}
 		for _, item := range list {
-			pattern, err := p.parseSyntaxRule(macro, item.Car())
+			pattern, err := macro.parseSyntaxRule(item.Car())
 			if err != nil {
 				return nil, err
 			}
@@ -230,10 +314,14 @@ func (p *Parser) parseSyntaxRule(macro *Macro, value Value) (
 		switch first := srp.items[0].(type) {
 		case MacroPatternID, MacroPatternVar, MacroPatternAny:
 		case *MacroPatternMany:
-			_, ok := first.p.(MacroPatternVar)
-			if !ok {
-				return nil, fmt.Errorf("expected an identifier or _: %v", first)
+			switch first.p.(type) {
+			case MacroPatternVar, *MacroPatternParen:
+			default:
+				return nil,
+					fmt.Errorf("expected an identifier, pattern, or _: %v",
+						first.p)
 			}
+
 		default:
 			return nil, fmt.Errorf("expected an identifier or _: %v", first)
 		}
@@ -259,8 +347,8 @@ func (p *Parser) parseSyntaxRule(macro *Macro, value Value) (
 	}
 }
 
-func (p *Parser) parseTemplate(macro *Macro, value Value, nesting int,
-	splicing bool) (Value, error) {
+func (macro *Macro) parseTemplate(sr *SyntaxRule, value Value, nesting int,
+	splicing bool, vars map[string]*Symbol) (Value, error) {
 
 	switch v := value.(type) {
 	case Pair:
@@ -281,11 +369,35 @@ func (p *Parser) parseTemplate(macro *Macro, value Value, nesting int,
 			} else {
 				value = v.Cdr()
 			}
-			car, err := p.parseTemplate(macro, this, nesting, splicing)
-			if err != nil {
-				return nil, err
+
+			subTemplate, ok := this.(Pair)
+			if splicing && ok {
+				sub := &SubTemplate{
+					Name: macro.NextSymbol(),
+				}
+				subVars := make(map[string]*Symbol)
+				parsed, err := macro.parseTemplate(sr, subTemplate, 0, false,
+					subVars)
+				if err != nil {
+					return nil, err
+				}
+				sub.Template = parsed
+				sub.Variables = subVars
+				sr.SubTemplates = append(sr.SubTemplates, sub)
+
+				sym := NewSymbol(sub.Name)
+				sym.Point = subTemplate.From()
+
+				result.AddPair(DerivePair(v, macro.uq(sym, nesting, splicing),
+					nil))
+			} else {
+				car, err := macro.parseTemplate(sr, this, nesting, splicing,
+					vars)
+				if err != nil {
+					return nil, err
+				}
+				result.AddPair(DerivePair(v, car, nil))
 			}
-			result.AddPair(DerivePair(v, car, nil))
 
 			switch cdr := value.(type) {
 			case Pair:
@@ -293,7 +405,7 @@ func (p *Parser) parseTemplate(macro *Macro, value Value, nesting int,
 			case nil:
 				v = nil
 			default:
-				cdrv, err := p.parseTemplate(macro, cdr, nesting, false)
+				cdrv, err := macro.parseTemplate(sr, cdr, nesting, false, vars)
 				if err != nil {
 					return nil, err
 				}
@@ -312,25 +424,32 @@ func (p *Parser) parseTemplate(macro *Macro, value Value, nesting int,
 		if !ok {
 			return v, nil
 		}
-		var result Value = v
-
-		for i := 0; i < nesting; i++ {
-			var uq ListBuilder
-			if i == 0 && splicing {
-				uq.AddPair(NewLocationPair(v.Point, v.Point,
-					NewSymbol("unquote-splicing"), nil))
-			} else {
-				uq.AddPair(NewLocationPair(v.Point, v.Point,
-					NewSymbol("unquote"), nil))
-			}
-			uq.AddPair(NewLocationPair(v.Point, v.Point, result, nil))
-			result = uq.B()
+		if vars != nil {
+			vars[v.Name] = v
 		}
-		return result, nil
+		return macro.uq(v, nesting, splicing), nil
 
 	default:
 		return v, nil
 	}
+}
+
+func (macro *Macro) uq(v *Symbol, nesting int, splicing bool) Value {
+	var result Value = v
+
+	for i := 0; i < nesting; i++ {
+		var uq ListBuilder
+		if i == 0 && splicing {
+			uq.AddPair(NewLocationPair(v.Point, v.Point,
+				NewSymbol("unquote-splicing"), nil))
+		} else {
+			uq.AddPair(NewLocationPair(v.Point, v.Point,
+				NewSymbol("unquote"), nil))
+		}
+		uq.AddPair(NewLocationPair(v.Point, v.Point, result, nil))
+		result = uq.B()
+	}
+	return result
 }
 
 // MacroPattern implements macro patterns.
@@ -498,27 +617,57 @@ func (p MacroPatternParen) matchMany(env *EvalEnv, many MacroPattern,
 	var ok bool
 	t := tmpl
 
+	var accu map[string]*ListBuilder
+
+	switch many.(type) {
+	case MacroPatternVar:
+	case *MacroPatternParen:
+		accu = make(map[string]*ListBuilder)
+	default:
+		panic(fmt.Sprintf("invalid MacroPatternMany element: %T", many))
+	}
+
 	for i := 0; i <= len(tmpl); i++ {
 		t, env, ok = p.match(env, pattern, t)
 		if ok {
-			v, ok := many.(MacroPatternVar)
-			if ok {
-				if env == nil {
-					env = NewEvalEnv(nil)
-				}
+			if env == nil {
+				env = NewEvalEnv(nil)
+			}
+
+			switch v := many.(type) {
+			case MacroPatternVar:
 				var result ListBuilder
 				for j := 0; j < i; j++ {
 					result.AddPair(DerivePair(tmpl[j], tmpl[j].Car(), nil))
 				}
 				env.Set(string(v), result.B())
+
+			case *MacroPatternParen:
+				for k, v := range accu {
+					env.Set(k, v.B())
+				}
+
+			default:
+				panic("invalid MacroPatternMany element")
 			}
 			return t, env, ok
 		}
 
 		// Try one more match of `many'.
-		t, _, ok = many.Match(t)
+		var e *EvalEnv
+		t, e, ok = many.Match(t)
 		if !ok {
 			break
+		}
+		if accu != nil {
+			for k, v := range e.bindings {
+				builder, ok := accu[k]
+				if !ok {
+					builder = new(ListBuilder)
+					accu[k] = builder
+				}
+				builder.Add(v)
+			}
 		}
 	}
 	return t, nil, len(pattern) == 0 && len(tmpl) == 0

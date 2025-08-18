@@ -191,7 +191,7 @@ func (p *Parser) filterSexpr(value Value) (Value, error) {
 			if rule == nil {
 				return nil, sym.Point.Errorf("%s: no matching syntax rule", sym)
 			}
-			expanded, err := Eval(rule.Template, env)
+			expanded, err := rule.Expand(env)
 			if err != nil {
 				return nil, err
 			}

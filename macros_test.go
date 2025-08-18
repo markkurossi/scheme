@@ -63,6 +63,33 @@ var macroPatternTests = []struct {
 		source: `(unless #t (display "true\n"))`,
 		result: `(if (not #t) (begin (display "true\n")))`,
 	},
+	{
+		pattern: `
+(define-syntax do
+  (syntax-rules ()
+    ;; Pattern: (do ((var init step) ...) (test result ...) body ...)
+    ((do ((var init step) ...)
+         (test result ...)
+         body ...)
+     ;; Expansion: Create a named let loop
+     (let loop ((var init) ...)
+       (if test
+           (begin result ...)
+           (begin
+             body ...
+             (loop step ...)))))))`,
+		source: `
+(do ((i 1 (+ i 1))
+     (sum 0 (+ sum i)))
+    ((> i 10) sum))`,
+		result: `
+(let loop ((i 1)
+           (sum 0))
+  (if (> i 10)
+      (begin sum)
+      (begin
+        (loop (+ i 1) (+ sum i)))))`,
+	},
 }
 
 func TestMacroPattern(t *testing.T) {
@@ -93,9 +120,13 @@ func TestMacroPattern(t *testing.T) {
 			t.Errorf("test-%v: no match", idx)
 			continue
 		}
-		expanded, err := Eval(rule.Template, env)
+		expanded, err := rule.Expand(env)
 		if err != nil {
 			t.Errorf("test-%v: template expansion failed: %v", idx, err)
+			t.Logf("Template: %v\n", rule.Template)
+			for idx, tmpl := range rule.SubTemplates {
+				t.Logf(" %v: %v=%v\n", idx, tmpl.Name, tmpl.Template)
+			}
 			continue
 		}
 
