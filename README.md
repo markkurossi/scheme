@@ -208,7 +208,7 @@ Any
    - [ ] 5. Control structures `(rnrs control (6))`
       - [x] when
       - [x] unless
-      - [ ] do
+      - [x] do
       - [ ] case-lambda
    - [ ] 6. Records
    - [ ] 7. Exceptions and conditions

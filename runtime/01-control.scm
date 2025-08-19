@@ -89,6 +89,29 @@
      (if (not test)
          (begin expr1 exprn ...)))))
 
+(define-syntax do
+  (syntax-rules ()
+    ((do ((var init step ...) ...)
+         (test expr ...)
+       command ...)
+     (letrec
+         ((loop
+           (lambda (var ...)
+             (if test
+                 (begin
+                   #f ; avoid empty begin
+                   expr ...)
+                 (begin
+                   command
+                   ...
+                   (loop (do "step" var step ...)
+                         ...))))))
+       (loop init ...)))
+    ((do "step" x)
+     x)
+    ((do "step" x y)
+     y)))
+
 (define-syntax guard
   (syntax-rules (else)
     ((guard (var

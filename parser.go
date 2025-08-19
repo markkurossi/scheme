@@ -45,10 +45,6 @@ func NewParser(scm *Scheme) *Parser {
 func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 	sexpr := NewSexprParser(source, in)
 
-	sexpr.Filter = func(v Value) (Value, error) {
-		return p.filterSexpr(v)
-	}
-
 	p.source = source
 	p.scm.Parsing = true
 
@@ -68,7 +64,7 @@ func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 	}
 
 	for {
-		v, err := sexpr.Next()
+		v, err := p.nextSexpr(sexpr)
 		if err != nil {
 			if err != io.EOF {
 				return nil, err
@@ -104,7 +100,7 @@ func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 
 				// Check that the file does not have any trailing garbage
 				// after the library specification.
-				v, err = sexpr.Next()
+				v, err = p.nextSexpr(sexpr)
 				if err == nil {
 					return nil, fmt.Errorf("garbage after library: %v", v)
 				}
@@ -168,54 +164,19 @@ func (p *Parser) Parse(source string, in io.Reader) (*Library, error) {
 	return library, nil
 }
 
-func (p *Parser) filterSexpr(value Value) (Value, error) {
-	switch v := value.(type) {
-	case *Symbol:
-		return v, nil
-
-	case Pair:
-		list, ok := ListPairs(v)
-		if !ok {
+func (p *Parser) nextSexpr(sexpr *SexprParser) (Value, error) {
+	for {
+		v, err := sexpr.Next()
+		if err != nil {
+			return nil, err
+		}
+		v, skip, err := p.macroExpand(v)
+		if err != nil {
+			return nil, err
+		}
+		if !skip {
 			return v, nil
 		}
-		if len(list) == 0 {
-			return v, nil
-		}
-		sym, ok := list[0].Car().(*Symbol)
-		if !ok {
-			return v, nil
-		}
-		macro, ok := p.scm.macros[sym.Name]
-		if ok {
-			rule, env := macro.Match(v)
-			if rule == nil {
-				return nil, sym.Point.Errorf("%s: no matching syntax rule", sym)
-			}
-			expanded, err := rule.Expand(env)
-			if err != nil {
-				return nil, err
-			}
-			return expanded, nil
-		}
-		switch sym.Name {
-		case "define-syntax":
-			macro, err := p.parseMacro(MacroDefine, list)
-			if err != nil {
-				return nil, err
-			}
-			_, ok := p.scm.macros[macro.Symbol.Name]
-			if ok {
-				return nil, fmt.Errorf("macro %v redefined", macro.Symbol.Name)
-			}
-			p.scm.macros[macro.Symbol.Name] = macro
-			return nil, ErrSexprNext
-
-		default:
-			return v, nil
-		}
-
-	default:
-		return v, nil
 	}
 }
 

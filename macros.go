@@ -164,6 +164,91 @@ func (macro *Macro) Match(v Value) (*SyntaxRule, *EvalEnv) {
 	return nil, nil
 }
 
+func (p *Parser) macroExpand(value Value) (Value, bool, error) {
+	var count int
+	for ; ; count++ {
+		switch v := value.(type) {
+		case *Symbol:
+			return v, false, nil
+
+		case Pair:
+			sym, ok := v.Car().(*Symbol)
+			if ok {
+				macro, ok := p.scm.macros[sym.Name]
+				if ok {
+					rule, env := macro.Match(v)
+					if rule == nil {
+						return nil, false,
+							sym.Point.Errorf("%s: no matching syntax rule", sym)
+					}
+					expanded, err := rule.Expand(env)
+					if err != nil {
+						return nil, false, err
+					}
+					value = expanded
+					continue
+				}
+				switch sym.Name {
+				case "define-syntax":
+					list, ok := ListPairs(v)
+					if !ok {
+						return v, false, nil
+					}
+					if len(list) == 0 {
+						return v, false, nil
+					}
+					macro, err := p.parseMacro(MacroDefine, list)
+					if err != nil {
+						return nil, false, err
+					}
+					_, ok = p.scm.macros[macro.Symbol.Name]
+					if ok {
+						return nil, false, fmt.Errorf("macro %v redefined",
+							macro.Symbol.Name)
+					}
+					p.scm.macros[macro.Symbol.Name] = macro
+					return nil, true, nil
+
+				default:
+				}
+			}
+
+			for v != nil {
+				// Expand car.
+				expanded, skip, err := p.macroExpand(v.Car())
+				if err != nil {
+					return nil, false, err
+				}
+				if skip {
+					return nil, false, v.Errorf("syntax error")
+				}
+				v.SetCar(expanded)
+
+				// Handle cdr by its type.
+				switch cdr := v.Cdr().(type) {
+				case Pair:
+					v = cdr
+
+				default:
+					expanded, skip, err := p.macroExpand(cdr)
+					if err != nil {
+						return nil, false, err
+					}
+					if skip {
+						return nil, false, v.Errorf("syntax error")
+					}
+					v.SetCdr(expanded)
+					v = nil
+				}
+			}
+			return value, false, nil
+
+		default:
+			return value, false, nil
+		}
+	}
+}
+
 func (p *Parser) parseMacro(scope MacroScope, list []Pair) (*Macro, error) {
 	if len(list) != 3 {
 		return nil, list[0].Errorf("%v: expected <keyword> <expression>", scope)
@@ -342,6 +427,9 @@ func (macro *Macro) parseSyntaxRule(value Value) (MacroPattern, error) {
 			return MacroPatternVar(v.Name), nil
 		}
 
+	case String:
+		return MacroPatternConst{v: v}, nil
+
 	default:
 		return nil, fmt.Errorf("invalid syntax rule: %v", v)
 	}
@@ -513,7 +601,7 @@ func (p MacroPatternConst) Match(tmpl []Pair) ([]Pair, *EvalEnv, bool) {
 	if !Equal(p.v, tmpl[0].Car()) {
 		return tmpl, nil, false
 	}
-	return tmpl[1:], nil, false
+	return tmpl[1:], nil, true
 }
 
 func (p MacroPatternConst) String() string {
