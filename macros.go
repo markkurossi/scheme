@@ -203,7 +203,7 @@ func (p *Parser) macroExpand(value Value) (Value, bool, error) {
 					}
 					_, ok = p.scm.macros[macro.Symbol.Name]
 					if ok {
-						return nil, false, fmt.Errorf("macro %v redefined",
+						return nil, false, list[1].Errorf("macro %v redefined",
 							macro.Symbol.Name)
 					}
 					p.scm.macros[macro.Symbol.Name] = macro
