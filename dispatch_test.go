@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023, 2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -154,7 +154,7 @@ func BenchmarkInstrScheme(b *testing.B) {
 	}
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		benchmarkInstrScheme(b, code, scm)
 	}
 }
@@ -228,7 +228,7 @@ func BenchmarkInstrPtr(b *testing.B) {
 	stack := make([]Value, 4096)
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		benchmarkInstrPtr(b, code, stack)
 	}
 }
@@ -302,7 +302,7 @@ func BenchmarkInstr(b *testing.B) {
 	stack := make([]Value, 4096)
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		benchmarkInstr(b, code, stack)
 	}
 }
@@ -416,7 +416,7 @@ func BenchmarkBC(b *testing.B) {
 	stack := make([]Value, 4096)
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		benchmarkBC(b, code, consts, stack)
 	}
 }
