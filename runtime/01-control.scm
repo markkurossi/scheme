@@ -4,6 +4,19 @@
 ;;; All rights reserved.
 ;;;
 
+(define-syntax let
+  (syntax-rules ()
+    ((let ((var init) ...)
+       body ...)
+     (scheme::let ((var init) ...)
+       body ...))
+    ((let name ((var init) ...)
+       body ...)
+     (letrec ((name (lambda (var ...)
+                      body ...)))
+       (name init ...)))
+    ))
+
 (define-constant (apply proc arg . args)
   (if (null? args)
       (scheme::apply proc arg)

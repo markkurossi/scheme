@@ -166,7 +166,10 @@ func (macro *Macro) Match(v Value) (*SyntaxRule, *EvalEnv) {
 
 func (p *Parser) macroExpand(value Value) (Value, bool, error) {
 	var count int
-	for ; ; count++ {
+
+	locator, locatorOK := value.(Locator)
+
+	for ; count < 1000; count++ {
 		switch v := value.(type) {
 		case *Symbol:
 			return v, false, nil
@@ -247,6 +250,14 @@ func (p *Parser) macroExpand(value Value) (Value, bool, error) {
 			return value, false, nil
 		}
 	}
+
+	if locatorOK {
+		return nil, false,
+			locator.From().Errorf("macro expansion loop (tried %v times)",
+				count)
+	}
+	return nil, false, fmt.Errorf("macro expansion loop (tried %v times)",
+		count)
 }
 
 func (p *Parser) parseMacro(scope MacroScope, list []Pair) (*Macro, error) {

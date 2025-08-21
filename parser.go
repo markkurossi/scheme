@@ -15,14 +15,6 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
-var qqNamedLet Value
-
-func init() {
-	qqNamedLet = MustParseSexpr(
-		"`(letrec `(`(,,,name `(lambda ,,,,args ,,,,@body))) " +
-			"`(,,@init))")
-}
-
 // Parser implements the byte-code compiler.
 type Parser struct {
 	scm    *Scheme
@@ -205,7 +197,7 @@ func (p *Parser) parseValue(env *Env, loc Locator, value Value,
 				return p.parseIf(env, list, tail, captures)
 			case "set!":
 				return p.parseSet(env, list, captures)
-			case "let":
+			case "scheme::let":
 				return p.parseLet(Let, env, list, tail, captures)
 			case "let*":
 				return p.parseLet(LetStar, env, list, tail, captures)
@@ -593,13 +585,6 @@ func (p *Parser) parseLambda(env *Env, define bool, flags Flags,
 				lambdas++
 				return ErrNext
 			}
-			cdr, ok := p.Cdr().(Pair)
-			if ok && IsSymbol(p.Car(), "let") && Symbolp(cdr.Car()) {
-				// Named let captures as the loop is implemented as
-				// letrec+lambda.
-				lambdas++
-				return ErrNext
-			}
 		}
 		car, ok := p.Car().(Pair)
 		if !ok {
@@ -713,66 +698,13 @@ func (p *Parser) parseLet(kind LetType, env *Env, list []Pair,
 	if len(list) < 3 {
 		return nil, list[0].Errorf("%s: missing bindings or body", kind)
 	}
-	var idxBindings, idxBody int
-	var namedLet bool
-	switch list[1].Car().(type) {
-	case *Symbol:
-		namedLet = true
-	}
-	if kind == Let && namedLet {
-		if len(list) < 4 {
-			return nil, list[0].Errorf("named let: missing body")
-		}
-		idxBindings = 2
-		idxBody = 3
-	} else {
-		namedLet = false
-		idxBindings = 1
-		idxBody = 2
-	}
+	const idxBindings int = 1
+	const idxBody int = 2
+
 	bindings, ok := ListPairs(list[idxBindings].Car())
 	if !ok {
 		return nil, list[idxBindings].Errorf("%s: invalid bindings: %v",
 			kind, list[idxBindings].Car())
-	}
-	if namedLet {
-		// (let name ((vn initn)   => (letrec ((name (lambda (vn...)
-		//            ...)                             body)))
-		//   body)                      (name initn...))
-
-		argsBuilder := new(ListBuilder)
-		initBuilder := new(ListBuilder)
-
-		initBuilder.AddPair(DerivePair(list[1], list[1].Car(), nil))
-
-		for _, binding := range bindings {
-			def, ok := ListPairs(binding.Car())
-			if !ok || len(def) != 2 {
-				return nil,
-					list[idxBindings].Errorf("named let: invalid init: %v",
-						binding)
-			}
-			argsBuilder.AddPair(DerivePair(def[0], def[0].Car(), nil))
-			initBuilder.AddPair(DerivePair(def[1], def[1].Car(), nil))
-		}
-
-		qqEnv := NewEvalEnv(nil)
-		qqEnv.Set("name", list[1].Car())
-		qqEnv.Set("args", argsBuilder.B())
-		qqEnv.Set("init", initBuilder.B())
-		qqEnv.Set("body", list[idxBody])
-
-		n, err := Eval(qqNamedLet, qqEnv)
-		if err != nil {
-			return nil, err
-		}
-		PatchLocation(n, list[0].From())
-
-		namedList, ok := ListPairs(n)
-		if !ok {
-			panic("named let")
-		}
-		return p.parseLet(Letrec, env, namedList, tail, true)
 	}
 
 	// XXX check if the let inits or body captures and use that as the
