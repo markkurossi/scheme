@@ -449,6 +449,11 @@ func (l *Lexer) Get() (*Token, error) {
 				if err != nil {
 					return nil, err
 				}
+				// #! is treated as a comment.
+				err = l.FlushEOL()
+				if err != nil {
+					return nil, err
+				}
 
 			default:
 				l.UnreadRune()
