@@ -28,6 +28,7 @@ var runtime embed.FS
 // Scheme implements Scheme interpreter and virtual machine.
 type Scheme struct {
 	Params  Params
+	Stdin   *Port
 	Stdout  *Port
 	Stderr  *Port
 	Parsing bool
@@ -108,6 +109,7 @@ func New() (*Scheme, error) {
 func NewWithParams(params Params) (*Scheme, error) {
 	scm := &Scheme{
 		Params:  params,
+		Stdin:   NewPort(os.Stdin),
 		Stdout:  NewPort(os.Stdout),
 		Stderr:  NewPort(os.Stderr),
 		macros:  make(map[string]*Macro),
@@ -130,6 +132,7 @@ func NewWithParams(params Params) (*Scheme, error) {
 	scm.DefineBuiltins(rnrsUnicodeBuiltins)
 	scm.DefineBuiltins(rnrsBytevectorBuiltins)
 	scm.DefineBuiltins(rnrsIOSimpleBuiltins)
+	scm.DefineBuiltins(rnrsIOPortsBuiltins)
 	scm.DefineBuiltins(rnrsFilesBuiltins)
 	scm.DefineBuiltins(rnrsMutablePairsBuiltins)
 	scm.DefineBuiltins(rnrsMutableStringsBuiltins)

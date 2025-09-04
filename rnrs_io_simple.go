@@ -43,6 +43,14 @@ func (p *Port) Println(a ...interface{}) (n int, err error) {
 	return 0, fmt.Errorf("invalid output port: %s", p)
 }
 
+func (p *Port) Read(buf []byte) (int, error) {
+	reader, ok := p.Native.(io.Reader)
+	if ok {
+		return reader.Read(buf)
+	}
+	return 0, fmt.Errorf("invalid input port: %s", p)
+}
+
 // Scheme returns the value as a Scheme string.
 func (p *Port) Scheme() string {
 	return p.String()
@@ -85,7 +93,64 @@ func (p *Port) Unbox() (Value, *types.Type) {
 	return p, p.Type()
 }
 
+// EOFObject implements end-of-file object.
+type EOFObject struct {
+	eof error
+}
+
+// EOF implements the end-of-file object.
+var EOF = &EOFObject{
+	eof: io.EOF,
+}
+
+// Scheme implements Value.Scheme.
+func (p *EOFObject) Scheme() string {
+	return p.String()
+}
+
+func (p *EOFObject) String() string {
+	return "#<end-of-file>"
+}
+
+// Eq tests if the argument value is eq? to this value.
+func (p *EOFObject) Eq(o Value) bool {
+	_, ok := o.(*EOFObject)
+	return ok
+}
+
+// Equal tests if the argument value is equal to this number.
+func (p *EOFObject) Equal(o Value) bool {
+	return p.Eq(o)
+}
+
+// Type implements Value.Type.
+func (p *EOFObject) Type() *types.Type {
+	// XXX
+	return types.Any
+}
+
+// Unbox implements Value.Unbox.
+func (p *EOFObject) Unbox() (Value, *types.Type) {
+	return p, p.Type()
+}
+
 var rnrsIOSimpleBuiltins = []Builtin{
+	{
+		Name:   "eof-object",
+		Return: types.Any, // XXX
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			return EOF, nil
+		},
+	},
+	{
+		Name:   "eof-object?",
+		Args:   []string{"obj"},
+		Return: types.Boolean,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			_, ok := args[0].(*EOFObject)
+			return Boolean(ok), nil
+		},
+	},
 	{
 		Name:   "input-port?",
 		Args:   []string{"obj"},
@@ -110,6 +175,13 @@ var rnrsIOSimpleBuiltins = []Builtin{
 			}
 			_, ok = port.Native.(io.Writer)
 			return Boolean(ok), nil
+		},
+	},
+	{
+		Name:   "current-input-port",
+		Return: types.Port,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			return scm.Stdin, nil
 		},
 	},
 	{

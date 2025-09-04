@@ -107,6 +107,7 @@
 (load "test-lib-05-control.scm")
 
 (load "test-lib-07-exceptions.scm")
+(load "test-lib-08-io.scm")
 
 (runner 'stats)
 (runner 'status)

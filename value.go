@@ -24,6 +24,7 @@ var (
 	_ Value = &Lambda{}
 	_ Value = &PlainPair{}
 	_ Value = &Port{}
+	_ Value = &EOFObject{}
 	_ Value = &Vector{}
 	_ Value = Boolean(true)
 	_ Value = Character('@')

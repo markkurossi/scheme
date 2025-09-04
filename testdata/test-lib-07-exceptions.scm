@@ -3,8 +3,6 @@
 ;;;
 ;;; All rights reserved.
 ;;;
-;;; Tests for the r6rs lists library.
-;;;
 
 (runner 'sub-section "7. Exceptions and conditions")
 
