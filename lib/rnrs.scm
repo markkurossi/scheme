@@ -10,7 +10,7 @@
           (rnrs control)
           ;; (rnrs conditions)
           (rnrs exceptions)
-          ;; (rnrs io ports)
+          (rnrs io ports)
           (rnrs io simple)
           (rnrs files)
           (rnrs programs)

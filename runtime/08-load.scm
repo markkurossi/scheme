@@ -77,6 +77,7 @@
     ((rnrs eval) (6) initialized)
     ((rnrs files) (6) initialized)
     ((rnrs io simple) (6) initialized)
+    ((rnrs io ports) (6) initialized)
     ((rnrs programs) (6) initialized)
     ((rnrs mutable-pairs) (6) initialized)
     ((rnrs mutable-strings) (6) initialized)
