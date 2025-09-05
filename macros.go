@@ -743,8 +743,14 @@ func (p MacroPatternParen) matchMany(env *EvalEnv, many MacroPattern,
 				env.Set(string(v), result.B())
 
 			case *MacroPatternParen:
-				for k, v := range accu {
-					env.Set(k, v.B())
+				if i == 0 {
+					// Zero matches of `many', collect all variables
+					// from the non-matched pattern.
+					v.collectVars(env)
+				} else {
+					for k, v := range accu {
+						env.Set(k, v.B())
+					}
 				}
 
 			default:
@@ -771,6 +777,21 @@ func (p MacroPatternParen) matchMany(env *EvalEnv, many MacroPattern,
 		}
 	}
 	return t, nil, len(pattern) == 0 && len(tmpl) == 0
+}
+
+func (p MacroPatternParen) collectVars(env *EvalEnv) {
+	for _, item := range p.items {
+		switch v := item.(type) {
+		case MacroPatternVar:
+			_, ok := env.Get(string(v))
+			if !ok {
+				env.Set(string(v), nil)
+			}
+
+		case MacroPatternParen:
+			v.collectVars(env)
+		}
+	}
 }
 
 func (p MacroPatternParen) String() string {

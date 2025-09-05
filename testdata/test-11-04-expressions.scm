@@ -129,6 +129,7 @@
                                 (z (+ x y)))
                             (* z x)))
                         35))
+        (lambda () (eq? (let () 42) 42))
         )
 (runner 'test "let*"
         (lambda () (eq? (let ((x 2) (y 3))
