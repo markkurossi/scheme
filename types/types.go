@@ -32,6 +32,7 @@ const (
 	EnumExactFloat
 	EnumInexactFloat
 	EnumPort
+	EnumEOF
 	EnumLambda
 	EnumPair
 	EnumVector
@@ -55,6 +56,7 @@ var enumNames = map[Enum]string{
 	EnumExactFloat:     "#efloat",
 	EnumInexactFloat:   "float",
 	EnumPort:           "port",
+	EnumEOF:            "eof",
 	EnumLambda:         "\u03bb",
 	EnumPair:           "pair",
 	EnumVector:         "vector",
@@ -78,7 +80,7 @@ func (e Enum) Super() Enum {
 		return EnumUnspecified
 
 	case EnumAny, EnumNil, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
-		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair,
+		EnumBytevector, EnumNumber, EnumPort, EnumEOF, EnumLambda, EnumPair,
 		EnumVector, EnumError, EnumNone:
 		return EnumAny
 
@@ -224,6 +226,11 @@ func Parse(arg string) (*Type, string, error) {
 	} else if strings.HasPrefix(typeName, "port") {
 		return &Type{
 			Enum: EnumPort,
+			Kind: kind,
+		}, name, nil
+	} else if strings.HasPrefix(typeName, "eof") {
+		return &Type{
+			Enum: EnumEOF,
 			Kind: kind,
 		}, name, nil
 	} else if strings.HasPrefix(typeName, "string") ||
@@ -446,6 +453,9 @@ var (
 	}
 	Port = &Type{
 		Enum: EnumPort,
+	}
+	EOF = &Type{
+		Enum: EnumEOF,
 	}
 	Pair = &Type{
 		Enum: EnumPair,

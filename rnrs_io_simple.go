@@ -125,8 +125,7 @@ func (p *EOFObject) Equal(o Value) bool {
 
 // Type implements Value.Type.
 func (p *EOFObject) Type() *types.Type {
-	// XXX
-	return types.Any
+	return types.EOF
 }
 
 // Unbox implements Value.Unbox.
@@ -137,7 +136,7 @@ func (p *EOFObject) Unbox() (Value, *types.Type) {
 var rnrsIOSimpleBuiltins = []Builtin{
 	{
 		Name:   "eof-object",
-		Return: types.Any, // XXX
+		Return: types.EOF,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return EOF, nil
 		},

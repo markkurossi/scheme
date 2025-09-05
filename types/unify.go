@@ -43,7 +43,7 @@ func Unify(a *Type, b *Type) *Type {
 
 	case EnumAny, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
 		EnumBytevector, EnumNumber, EnumExactInteger, EnumInexactInteger,
-		EnumExactFloat, EnumInexactFloat, EnumPort:
+		EnumExactFloat, EnumInexactFloat, EnumPort, EnumEOF:
 		return &Type{
 			Enum: e,
 		}

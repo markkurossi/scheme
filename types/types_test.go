@@ -14,7 +14,7 @@ import (
 func TestSuper(t *testing.T) {
 	for _, e := range []Enum{
 		EnumAny, EnumBoolean, EnumString, EnumCharacter, EnumSymbol, EnumVector,
-		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair} {
+		EnumBytevector, EnumNumber, EnumPort, EnumEOF, EnumLambda, EnumPair} {
 		if e.Super() != EnumAny {
 			t.Errorf("%v.Super() != %v", e, EnumAny)
 		}
@@ -39,7 +39,8 @@ func TestSuper(t *testing.T) {
 func TestEnumUnify(t *testing.T) {
 	directs := []Enum{
 		EnumAny, EnumBoolean, EnumString, EnumCharacter, EnumSymbol,
-		EnumBytevector, EnumNumber, EnumPort, EnumLambda, EnumPair, EnumVector,
+		EnumBytevector, EnumNumber, EnumPort, EnumEOF, EnumLambda, EnumPair,
+		EnumVector,
 	}
 	for _, a := range directs {
 		for _, b := range directs {
