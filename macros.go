@@ -182,11 +182,11 @@ func (p *Parser) macroExpand(value Value) (Value, bool, error) {
 					rule, env := macro.Match(v)
 					if rule == nil {
 						return nil, false,
-							sym.Point.Errorf("%s: no matching syntax rule", sym)
+							v.Errorf("%s: no matching syntax rule", sym)
 					}
 					expanded, err := rule.Expand(env)
 					if err != nil {
-						return nil, false, err
+						return nil, false, v.Errorf("%v", err)
 					}
 					value = expanded
 					continue
@@ -202,7 +202,7 @@ func (p *Parser) macroExpand(value Value) (Value, bool, error) {
 					}
 					macro, err := p.parseMacro(MacroDefine, list)
 					if err != nil {
-						return nil, false, err
+						return nil, false, v.Errorf("%v", err)
 					}
 					_, ok = p.scm.macros[macro.Symbol.Name]
 					if ok {
@@ -220,7 +220,7 @@ func (p *Parser) macroExpand(value Value) (Value, bool, error) {
 				// Expand car.
 				expanded, skip, err := p.macroExpand(v.Car())
 				if err != nil {
-					return nil, false, err
+					return nil, false, v.Errorf("%v", err)
 				}
 				if skip {
 					return nil, false, v.Errorf("syntax error")
@@ -235,7 +235,7 @@ func (p *Parser) macroExpand(value Value) (Value, bool, error) {
 				default:
 					expanded, skip, err := p.macroExpand(cdr)
 					if err != nil {
-						return nil, false, err
+						return nil, false, v.Errorf("%v", err)
 					}
 					if skip {
 						return nil, false, v.Errorf("syntax error")
