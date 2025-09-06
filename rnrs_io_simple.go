@@ -9,6 +9,7 @@ package scheme
 import (
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/markkurossi/scheme/types"
 )
@@ -195,6 +196,39 @@ var rnrsIOSimpleBuiltins = []Builtin{
 		Return: types.Port,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			return scm.Stderr, nil
+		},
+	},
+	{
+		Name:        "open-input-file",
+		Permissions: PermFSRead,
+		Args:        []string{"filename<string>"},
+		Return:      types.Port,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			filename, ok := args[0].(String)
+			if !ok {
+				return nil, fmt.Errorf("invalid filename: %v", args[0])
+			}
+			f, err := os.Open(string(filename))
+			if err != nil {
+				return nil, err
+			}
+			return NewPort(f), nil
+		},
+	},
+	{
+		Name:   "close-input-port",
+		Args:   []string{"port"},
+		Return: types.Any,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			port, ok := args[0].(*Port)
+			if !ok {
+				return nil, fmt.Errorf("invalid port: %v", args[1])
+			}
+			closer, ok := port.Native.(io.Closer)
+			if !ok {
+				return nil, nil
+			}
+			return nil, closer.Close()
 		},
 	},
 	{

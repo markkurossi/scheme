@@ -48,6 +48,11 @@ type Scheme struct {
 
 // Params define the configuration parameters for Scheme.
 type Params struct {
+	// Permissions define the runtime permissions. As a default, no
+	// permissions are defined i.e. only safe procedures can be
+	// executed.
+	Permissions Permissions
+
 	// Verbosity level.
 	Verbosity int
 
@@ -65,6 +70,37 @@ type Params struct {
 	Pragma  Pragmas
 	pragmas []Pragmas
 }
+
+// Permissions define the runtime permissions.
+type Permissions uint64
+
+var permissionNames = []string{
+	"fs-read",
+	"fs-write",
+}
+
+func (p Permissions) String() string {
+	var result string
+
+	for idx, name := range permissionNames {
+		if p&(1<<idx) != 0 {
+			if len(result) > 0 {
+				result += ","
+			}
+			result += name
+		}
+	}
+
+	return result
+}
+
+// Runtime permissions.
+const (
+	PermFSRead Permissions = 1 << iota
+	PermFSWrite
+
+	PermAll Permissions = 0xffffffffffffffff
+)
 
 // Verbose returns true if verbose output is enabled.
 func (p *Params) Verbose() bool {
@@ -235,6 +271,7 @@ func (scm *Scheme) DefineBuiltin(builtin Builtin) {
 	lambda := &Lambda{
 		Impl: &LambdaImpl{
 			Name:         builtin.Name,
+			Permissions:  builtin.Permissions,
 			Args:         args,
 			Return:       builtin.Return,
 			Native:       builtin.Native,

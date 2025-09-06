@@ -506,6 +506,12 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 			scm.fp = scm.sp - numArgs - 1
 
 		call:
+			permissions := lambda.Impl.Permissions & scm.Params.Permissions
+			if permissions != lambda.Impl.Permissions {
+				err = fmt.Errorf("permission denied: %s",
+					lambda.Impl.Permissions^permissions)
+				goto errorHandler
+			}
 			if lambda.Impl.Native != nil {
 				accu, err = callFrame.Lambda.Impl.Native(scm, args)
 				if err != nil {

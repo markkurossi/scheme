@@ -102,6 +102,7 @@ func (v *Lambda) MapPC(pc int) (source string, line int) {
 // LambdaImpl implements lambda functions.
 type LambdaImpl struct {
 	Name         string
+	Permissions  Permissions
 	Args         Args
 	Return       *types.Type
 	Captures     bool
@@ -280,6 +281,7 @@ type Parametrize func(args []*types.Type) (*types.Type, error)
 type Builtin struct {
 	Name        string
 	Aliases     []string
+	Permissions Permissions
 	Args        []string
 	Return      *types.Type
 	Flags       Flags

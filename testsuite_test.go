@@ -16,7 +16,9 @@ type logger struct {
 }
 
 func newTestScheme(t *testing.T) *Scheme {
-	scm, err := New()
+	scm, err := NewWithParams(Params{
+		Permissions: PermAll,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

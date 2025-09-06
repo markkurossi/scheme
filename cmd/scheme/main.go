@@ -126,8 +126,9 @@ func main() {
 	}
 
 	params := scheme.Params{
-		Verbosity: int(verbose),
-		NoRuntime: *noRuntime,
+		Permissions: scheme.PermAll,
+		Verbosity:   int(verbose),
+		NoRuntime:   *noRuntime,
 	}
 	for _, p := range pragmas {
 		switch p.key {

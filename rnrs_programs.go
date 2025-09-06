@@ -11,6 +11,7 @@ package scheme
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/markkurossi/scheme/types"
 )
@@ -72,6 +73,22 @@ var rnrsProgramsBuiltins = []Builtin{
 				return Boolean(false), nil
 			}
 			return String(val), nil
+		},
+	},
+	{
+		Name:   "env->alist",
+		Return: types.Pair,
+		Native: func(scm *Scheme, args []Value) (Value, error) {
+			var result Value
+			for _, item := range os.Environ() {
+				idx := strings.IndexByte(item, '=')
+				if idx >= 0 {
+					result = NewPair(
+						NewPair(String(item[:idx]), String(item[idx+1:])),
+						result)
+				}
+			}
+			return result, nil
 		},
 	},
 }
