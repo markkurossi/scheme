@@ -16,17 +16,6 @@ import (
 	"github.com/markkurossi/scheme/types"
 )
 
-var instantiateTests = []struct {
-	t      *types.Type
-	result *types.Type
-}{
-	{
-		t:      types.InexactInteger,
-		result: types.InexactInteger,
-	},
-	{},
-}
-
 var inferenceTests = []struct {
 	d string
 	t *types.Type

@@ -296,9 +296,7 @@ func benchmarkInstr(b *testing.B, code []Instr, stack []Value) {
 
 func BenchmarkInstr(b *testing.B) {
 	var code []Instr
-	for _, c := range benchmarkDispatchCode {
-		code = append(code, c)
-	}
+	code = append(code, benchmarkDispatchCode...)
 	stack := make([]Value, 4096)
 	b.ResetTimer()
 

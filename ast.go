@@ -204,7 +204,7 @@ func (b *ASTLetBinding) Name() string {
 			return k
 		}
 	}
-	panic(fmt.Sprintf("let binding's name not found"))
+	panic("let binding's name not found")
 }
 
 // Locator implements AST.Locator.

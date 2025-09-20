@@ -109,7 +109,7 @@ var vectorBuiltins = []Builtin{
 			if len(args) == 2 {
 				fill = args[1]
 			}
-			elements := make([]Value, length, length)
+			elements := make([]Value, length)
 			for i := 0; i < int(length); i++ {
 				elements[i] = fill
 			}

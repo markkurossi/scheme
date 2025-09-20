@@ -125,7 +125,7 @@ var stringBuiltins = []Builtin{
 				}
 				fill = rune(ch)
 			}
-			str := make([]rune, length, length)
+			str := make([]rune, length)
 			for i := 0; i < int(length); i++ {
 				str[i] = fill
 			}
@@ -139,7 +139,7 @@ var stringBuiltins = []Builtin{
 		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
 			length := len(args)
-			str := make([]byte, length, length)
+			str := make([]byte, length)
 
 			for i := 0; i < length; i++ {
 				ch, ok := args[i].(Character)
@@ -329,7 +329,7 @@ var stringBuiltins = []Builtin{
 				return nil, fmt.Errorf("invalid string: %v", args[0])
 			}
 			runes := []rune(string(str))
-			new := make([]rune, len(runes), len(runes))
+			new := make([]rune, len(runes))
 			copy(new, runes)
 			return String(string(new)), nil
 		},

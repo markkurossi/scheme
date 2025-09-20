@@ -40,14 +40,14 @@ var srfi28Builtins = []Builtin{
 				case 'a':
 					if argIdx >= len(args) {
 						return nil,
-							fmt.Errorf("No value for escape sequence ~a")
+							fmt.Errorf("no value for escape sequence ~a")
 					}
 					fragment = ToString(args[argIdx])
 					argIdx++
 				case 's':
 					if argIdx >= len(args) {
 						return nil,
-							fmt.Errorf("No value for escape sequence ~s")
+							fmt.Errorf("no value for escape sequence ~s")
 					}
 					fragment = ToScheme(args[argIdx])
 					argIdx++
@@ -56,7 +56,7 @@ var srfi28Builtins = []Builtin{
 				case '~':
 					fragment = "~"
 				default:
-					return nil, fmt.Errorf("Unrecognized escape sequence ~%c",
+					return nil, fmt.Errorf("unrecognized escape sequence ~%c",
 						format[i])
 				}
 				result = append(result, []rune(fragment)...)

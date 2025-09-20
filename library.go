@@ -272,7 +272,7 @@ func (lib *Library) Compile(typeInfer bool) (Value, error) {
 		case OpIf, OpIfNot, OpJmp:
 			ofs, ok := labels[instr.J]
 			if !ok {
-				return nil, fmt.Errorf("Label l%v not defined", instr.J)
+				return nil, fmt.Errorf("label l%v not defined", instr.J)
 			}
 			instr.I = ofs - i
 		}

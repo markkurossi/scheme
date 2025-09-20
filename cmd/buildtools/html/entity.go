@@ -6,9 +6,6 @@ package html
 
 import "sync"
 
-// All entities that do not end with ';' are 6 or fewer bytes long.
-const longestEntityWithoutSemicolon = 6
-
 // entityMaps returns entity and entity2.
 //
 // entity is a map from HTML entity names to their values. The semicolon matters:

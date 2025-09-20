@@ -100,7 +100,7 @@ var rnrsBytevectorBuiltins = []Builtin{
 				}
 				fill = byte(f)
 			}
-			elements := make([]byte, length, length)
+			elements := make([]byte, length)
 			for i := 0; i < int(length); i++ {
 				elements[i] = fill
 			}

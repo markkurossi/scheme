@@ -58,7 +58,7 @@ func TestAPIGuard(t *testing.T) {
 		t.Fatalf("scheme.New(): %v", err)
 	}
 
-	v, err := scm.Eval("{data}", strings.NewReader(`
+	_, err = scm.Eval("{data}", strings.NewReader(`
 (define (foo)
   (guard (con (else (raise con)))
          #t))
@@ -70,7 +70,7 @@ func TestAPIGuard(t *testing.T) {
 	if err != nil {
 		t.Fatalf("scm.Global: %v", err)
 	}
-	v, err = scm.Apply(f, nil)
+	v, err := scm.Apply(f, nil)
 	if err != nil {
 		t.Fatalf("scm.Apply: %v", err)
 	}

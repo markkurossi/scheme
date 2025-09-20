@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -12,6 +12,8 @@ import (
 	"unicode"
 
 	"github.com/markkurossi/scheme/types"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // rnrs unicode (6)
@@ -163,10 +165,7 @@ var rnrsUnicodeBuiltins = []Builtin{
 			if !ok {
 				return nil, fmt.Errorf("invalid string: %v", args[0])
 			}
-			// Deprecated: The rule Title uses for word boundaries
-			// does not handle Unicode punctuation properly. Use
-			// golang.org/x/text/cases instead.
-			return String(strings.Title(strings.ToLower(string(str)))), nil
+			return String(cases.Title(language.Und).String(string(str))), nil
 		},
 	},
 	// XXX string-foldcase

@@ -887,7 +887,8 @@ func (ast *ASTDefine) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 
 	// Check the current type of the name.
 	sym := env.inferer.scm.Intern(ast.Name.Name)
-	if !sym.GlobalType.IsA(types.Unspecified) {
+	if !sym.GlobalType.IsA(types.Unspecified) &&
+		!sym.GlobalType.IsA(ast.valueType()) {
 		return nil, nil, errf(ast, "redefining symbol '%s'", ast.Name)
 	}
 
@@ -1296,10 +1297,9 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 			// Check if the function supports rest arguments.
 
 			fnType = fnType.Clone()
-			var rest *types.Type
 
 			if al > 0 && fnType.Args[al-1].Kind == types.Rest {
-				rest = fnType.Args[al-1]
+				rest := fnType.Args[al-1]
 				rest.Kind = types.Fixed
 
 				env.inferer.Debugf(ast, "%v expanding rest: %v\n", fnType, rest)
@@ -1308,7 +1308,6 @@ func (ast *ASTCall) Infer(env *InferEnv) (*InferBranch, *InferTypes, error) {
 					fnType.Args = append(fnType.Args, rest)
 				}
 			} else if fnType.Rest != nil {
-				rest = fnType.Rest
 				fnType.Rest = nil
 
 				// Resolve the type of the rest list's head.
