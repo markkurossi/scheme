@@ -4,6 +4,7 @@
 // All rights reserved.
 //
 
+// Package types implements the Scheme type system.
 package types
 
 import (

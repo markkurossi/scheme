@@ -303,7 +303,7 @@ func (scm *Scheme) Apply(lambda Value, args []Value) (Value, error) {
 
 	var err error
 	var env *VMEnvFrame
-	var accu Value = lambda
+	var accu = lambda
 
 	code := []*Instr{
 		{

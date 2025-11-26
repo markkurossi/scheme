@@ -1469,7 +1469,7 @@ var numberBuiltins = []Builtin{
 		Args:   []string{"z", "[radix<int>]", "[precision<int>]"},
 		Return: types.String,
 		Native: func(scm *Scheme, args []Value) (Value, error) {
-			var radix int = 10
+			var radix = 10
 			var precision int
 
 			if len(args) > 1 {

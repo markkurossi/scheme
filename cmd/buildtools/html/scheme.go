@@ -4,6 +4,7 @@
 // All rights reserved.
 //
 
+// Package html creates (html entities) library.
 package html
 
 import (
